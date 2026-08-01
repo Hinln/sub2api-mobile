@@ -1,317 +1,80 @@
-import { router } from 'expo-router';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Controller, useForm } from 'react-hook-form';
-import { Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { RotateCcw, Save, ShieldCheck } from 'lucide-react-native';
 import { useState } from 'react';
-import { z } from 'zod';
-
-import { getAdminSettings, getDashboardStats } from '@/src/services/admin';
+import { Alert, Platform, Pressable, Switch, Text, TextInput, View } from 'react-native';
+import { Card, Page, SectionTitle } from '@/src/components/ui';
+import { normalizeHubUrl, VEXLUNE_HUB_URL } from '@/src/config/vexlune';
+import { humanizeApiError } from '@/src/lib/admin-fetch';
 import { queryClient } from '@/src/lib/query-client';
-import { adminConfigState, removeAdminAccount, saveAdminConfig, switchAdminAccount, type AdminAccountProfile } from '@/src/store/admin-config';
+import { getAdminSettings } from '@/src/services/admin';
+import { adminConfigState, restoreDefaultHubUrl, saveAdminConfig, setBiometricEnabled } from '@/src/store/admin-config';
+import { theme } from '@/src/theme';
 
+// CommonJS entry avoids import.meta in Expo Metro's classic web bundle.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { useSnapshot } = require('valtio/react');
-
-const schema = z
-  .object({
-    baseUrl: z.string().min(1, '请输入服务器地址'),
-    adminApiKey: z.string(),
-  })
-  .refine((values) => values.adminApiKey.trim().length > 0, {
-    path: ['adminApiKey'],
-    message: '请输入 Admin Key',
-  });
-
-type FormValues = z.infer<typeof schema>;
-type ConnectionState = 'idle' | 'checking' | 'success' | 'error';
-
-const colors = {
-  page: '#f4efe4',
-  card: '#fbf8f2',
-  mutedCard: '#f1ece2',
-  primary: '#1d5f55',
-  text: '#16181a',
-  subtext: '#6f665c',
-  border: '#e7dfcf',
-  dangerBg: '#fbf1eb',
-  danger: '#c25d35',
-  successBg: '#e6f4ee',
-  success: '#1d5f55',
-};
-
-function getConnectionErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) {
-    switch (error.message) {
-      case 'BASE_URL_REQUIRED':
-        return '请先填写服务器地址。';
-      case 'ADMIN_API_KEY_REQUIRED':
-        return '请先填写 Admin Key。';
-      case 'INVALID_SERVER_RESPONSE':
-        return '当前地址返回的数据不正确，请确认它是可用的管理接口。';
-      default:
-        return error.message;
-    }
-  }
-
-  return '连接失败，请检查服务器地址、Admin Key 和网络连通性。';
-}
-
-function ServerCard({
-  account,
-  active,
-  onSelect,
-  onDelete,
-}: {
-  account: AdminAccountProfile;
-  active: boolean;
-  onSelect: () => Promise<void>;
-  onDelete: () => Promise<void>;
-}) {
-  return (
-    <Pressable
-      onPress={onSelect}
-      style={{
-        backgroundColor: active ? '#e6f4ee' : colors.card,
-        borderRadius: 18,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: active ? colors.success : colors.border,
-      }}
-    >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>{account.label}</Text>
-          <Text style={{ marginTop: 6, fontSize: 13, lineHeight: 20, color: colors.subtext }}>{account.baseUrl}</Text>
-          <Text style={{ marginTop: 8, fontSize: 11, color: '#8a8072' }}>更新时间 {new Date(account.updatedAt).toLocaleString()}</Text>
-        </View>
-        {active ? (
-          <View style={{ backgroundColor: colors.success, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>当前使用</Text>
-          </View>
-        ) : null}
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
-        <Pressable onPress={onSelect} style={{ flex: 1, backgroundColor: active ? '#d7eee4' : colors.primary, borderRadius: 14, paddingVertical: 11, alignItems: 'center' }}>
-          <Text style={{ color: active ? colors.success : '#fff', fontSize: 13, fontWeight: '700' }}>{active ? '已选中' : '切换到此服务器'}</Text>
-        </Pressable>
-        <Pressable onPress={onDelete} style={{ backgroundColor: colors.border, borderRadius: 14, paddingHorizontal: 16, justifyContent: 'center' }}>
-          <Text style={{ color: '#7a3d31', fontSize: 13, fontWeight: '700' }}>删除</Text>
-        </Pressable>
-      </View>
-    </Pressable>
-  );
-}
 
 export default function SettingsScreen() {
   const config = useSnapshot(adminConfigState);
-  const [showForm, setShowForm] = useState(config.accounts.length === 0);
-  const [connectionState, setConnectionState] = useState<ConnectionState>('idle');
-  const [connectionMessage, setConnectionMessage] = useState('');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showAdminKey, setShowAdminKey] = useState(false);
-  const { control, handleSubmit, formState, reset } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      baseUrl: '',
-      adminApiKey: '',
-    },
-  });
+  const [advanced, setAdvanced] = useState(config.advancedUrlEnabled);
+  const [url, setUrl] = useState(config.baseUrl);
+  const [token, setToken] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
 
-  async function verifyAndEnter(successMessage: string) {
-    setConnectionState('checking');
-    setConnectionMessage('正在检测当前服务是否可用...');
-
+  async function save() {
+    setSaving(true);
+    setMessage('');
     try {
+      const baseUrl = advanced ? normalizeHubUrl(url) : VEXLUNE_HUB_URL;
+      await saveAdminConfig({ baseUrl, adminApiKey: token.trim() || config.adminApiKey });
       queryClient.clear();
       await queryClient.fetchQuery({ queryKey: ['admin-settings'], queryFn: getAdminSettings });
-      await queryClient.prefetchQuery({ queryKey: ['monitor-stats'], queryFn: getDashboardStats });
-      setConnectionState('success');
-      setConnectionMessage(successMessage);
-      router.replace('/monitor');
+      setToken('');
+      setMessage('\u8fde\u63a5\u8bbe\u7f6e\u5df2\u9a8c\u8bc1\u5e76\u4fdd\u5b58');
     } catch (error) {
-      setConnectionState('error');
-      setConnectionMessage(getConnectionErrorMessage(error));
-    }
-  }
-
-  async function handleAdd(values: FormValues) {
-    await saveAdminConfig(values);
-    reset({ baseUrl: '', adminApiKey: '' });
-    setShowForm(false);
-    await verifyAndEnter('服务器已添加并切换成功。');
-  }
-
-  async function handleSelect(account: AdminAccountProfile) {
-    await switchAdminAccount(account.id);
-    await verifyAndEnter(`已切换到 ${account.label}。`);
-  }
-
-  async function handleDelete(account: AdminAccountProfile) {
-    await removeAdminAccount(account.id);
-    queryClient.clear();
-  }
-
-  async function handleRefresh() {
-    if (!config.baseUrl.trim()) {
-      return;
-    }
-
-    setIsRefreshing(true);
-    setConnectionState('idle');
-    setConnectionMessage('');
-
-    try {
-      await Promise.all([
-        queryClient.fetchQuery({ queryKey: ['admin-settings'], queryFn: getAdminSettings }),
-        queryClient.prefetchQuery({ queryKey: ['monitor-stats'], queryFn: getDashboardStats }),
-      ]);
-    } catch (error) {
-      setConnectionState('error');
-      setConnectionMessage(getConnectionErrorMessage(error));
+      setMessage(humanizeApiError(error));
     } finally {
-      setIsRefreshing(false);
+      setSaving(false);
     }
+  }
+
+  async function toggleBiometric(value: boolean) {
+    if (Platform.OS === 'web') return;
+    if (value) {
+      const [hardware, enrolled] = await Promise.all([LocalAuthentication.hasHardwareAsync(), LocalAuthentication.isEnrolledAsync()]);
+      if (!hardware || !enrolled) {
+        Alert.alert('\u65e0\u6cd5\u542f\u7528', '\u5f53\u524d\u8bbe\u5907\u672a\u914d\u7f6e Face ID\u3001Touch ID \u6216\u8bbe\u5907\u5bc6\u7801\u3002');
+        return;
+      }
+      const result = await LocalAuthentication.authenticateAsync({ promptMessage: '\u786e\u8ba4\u542f\u7528\u751f\u7269\u8bc6\u522b\u9501', disableDeviceFallback: false });
+      if (!result.success) return;
+    }
+    await setBiometricEnabled(value);
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.page }}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 110, gap: 14 }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void handleRefresh()} tintColor="#1d5f55" />}
-      >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 28, fontWeight: '700', color: colors.text }}>服务器</Text>
-            <Text style={{ marginTop: 6, fontSize: 13, color: '#8a8072' }}>选择当前管理的服务器，或添加新的服务器。</Text>
-          </View>
-          <Pressable
-            onPress={() => {
-              setShowForm((value) => !value);
-              setConnectionState('idle');
-              setConnectionMessage('');
-            }}
-            style={{ backgroundColor: colors.primary, borderRadius: 999, width: 42, height: 42, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ color: '#fff', fontSize: 24, lineHeight: 24 }}>+</Text>
-          </Pressable>
-        </View>
+    <Page title={'\u8fde\u63a5\u4e0e\u5b89\u5168'} subtitle={'\u9ed8\u8ba4\u4ec5\u8fde\u63a5 Vexlune Hub\uff0c\u51ed\u636e\u4fdd\u5b58\u5728 SecureStore'}>
+      <SectionTitle title={'\u7ba1\u7406\u8fde\u63a5'} />
+      <Card>
+        <Text style={{ color: theme.faint, fontSize: 11 }}>{'\u5f53\u524d\u9762\u677f\u5730\u5740'}</Text><Text selectable style={{ color: theme.text, fontSize: 14, marginTop: 6 }}>{config.baseUrl}</Text>
+        <View style={{ height: 1, backgroundColor: theme.border, marginVertical: 16 }} />
+        <Text style={{ color: theme.subtext, fontSize: 12, marginBottom: 8 }}>{'\u66f4\u6362\u7ba1\u7406\u5458 Token\uff08\u7559\u7a7a\u5219\u4e0d\u53d8\uff09'}</Text>
+        <TextInput accessibilityLabel="replace-admin-token" value={token} onChangeText={setToken} secureTextEntry autoCapitalize="none" placeholder="admin-xxxxxxxx" placeholderTextColor={theme.faint} style={{ color: theme.text, backgroundColor: theme.cardRaised, borderRadius: 14, borderWidth: 1, borderColor: theme.border, paddingHorizontal: 14, paddingVertical: 13 }} />
+      </Card>
 
-        {showForm ? (
-          <View style={{ backgroundColor: colors.card, borderRadius: 18, padding: 16, gap: 14 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>添加服务器</Text>
+      <SectionTitle title={'\u9ad8\u7ea7\u8bbe\u7f6e'} />
+      <Card>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '800' }}>{'\u5141\u8bb8\u8986\u76d6\u9762\u677f\u5730\u5740'}</Text><Text style={{ color: theme.subtext, fontSize: 11, lineHeight: 17, marginTop: 5 }}>{'\u4ec5\u7528\u4e8e\u707e\u5907\u6216\u6d4b\u8bd5\uff1b\u53ea\u5141\u8bb8 HTTPS\uff0c\u4e0d\u5141\u8bb8\u6a21\u578b API \u57df\u540d\u3002'}</Text></View><Switch value={advanced} onValueChange={(value) => { setAdvanced(value); if (!value) setUrl(VEXLUNE_HUB_URL); }} trackColor={{ false: theme.muted, true: theme.primary }} /></View>
+        {advanced ? <TextInput accessibilityLabel="advanced-hub-url" value={url} onChangeText={setUrl} autoCapitalize="none" autoCorrect={false} placeholder="https://hub.example.com" placeholderTextColor={theme.faint} style={{ marginTop: 14, color: theme.text, backgroundColor: theme.cardRaised, borderRadius: 14, borderWidth: 1, borderColor: theme.border, paddingHorizontal: 14, paddingVertical: 13 }} /> : null}
+        {config.advancedUrlEnabled ? <Pressable onPress={() => void restoreDefaultHubUrl().then(() => { setAdvanced(false); setUrl(VEXLUNE_HUB_URL); queryClient.clear(); })} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 13 }}><RotateCcw color={theme.primary} size={15} /><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '800' }}>{'\u6062\u590d Vexlune \u9ed8\u8ba4\u5730\u5740'}</Text></Pressable> : null}
+      </Card>
 
-            <View>
-              <Text style={{ marginBottom: 8, fontSize: 12, color: colors.subtext }}>服务器地址</Text>
-              <Controller
-                control={control}
-                name="baseUrl"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    value={value}
-                    onChangeText={onChange}
-                    placeholder="例如：https://api.example.com"
-                    placeholderTextColor="#9b9081"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    style={{ backgroundColor: colors.mutedCard, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: colors.text }}
-                  />
-                )}
-              />
-            </View>
+      <SectionTitle title={'\u672c\u5730\u5e94\u7528\u9501'} />
+      <Card><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: theme.successSoft, alignItems: 'center', justifyContent: 'center' }}><ShieldCheck color={theme.success} size={19} /></View><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '800' }}>Face ID / Touch ID</Text><Text style={{ color: theme.subtext, fontSize: 11, lineHeight: 17, marginTop: 4 }}>{Platform.OS === 'web' ? '\u4ec5\u539f\u751f iOS/Android \u53ef\u7528' : '\u5e94\u7528\u56de\u5230\u540e\u53f0\u65f6\u81ea\u52a8\u9501\u5b9a\uff0c\u5141\u8bb8\u8bbe\u5907\u5bc6\u7801\u56de\u9000'}</Text></View><Switch disabled={Platform.OS === 'web'} value={config.biometricEnabled} onValueChange={(value) => void toggleBiometric(value)} trackColor={{ false: theme.muted, true: theme.primary }} /></View></Card>
 
-            <View>
-              <Text style={{ marginBottom: 8, fontSize: 12, color: colors.subtext }}>Admin Key</Text>
-              <Controller
-                control={control}
-                name="adminApiKey"
-                render={({ field: { onChange, value } }) => (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <TextInput
-                      value={value}
-                      onChangeText={onChange}
-                      placeholder="admin-xxxxxxxx"
-                      placeholderTextColor="#9b9081"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      secureTextEntry={!showAdminKey}
-                      style={{
-                        flex: 1,
-                        backgroundColor: colors.mutedCard,
-                        borderRadius: 16,
-                        paddingHorizontal: 16,
-                        paddingVertical: 14,
-                        fontSize: 16,
-                        color: colors.text,
-                      }}
-                    />
-                    <Pressable
-                      onPress={() => setShowAdminKey((value) => !value)}
-                      style={{ backgroundColor: colors.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 }}
-                    >
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#4e463e' }}>{showAdminKey ? '隐藏' : '显示'}</Text>
-                    </Pressable>
-                  </View>
-                )}
-              />
-            </View>
-
-            {formState.errors.baseUrl || formState.errors.adminApiKey ? (
-              <View style={{ borderRadius: 14, backgroundColor: colors.dangerBg, paddingHorizontal: 14, paddingVertical: 12 }}>
-                <Text style={{ color: colors.danger, fontSize: 14 }}>{formState.errors.baseUrl?.message || formState.errors.adminApiKey?.message}</Text>
-              </View>
-            ) : null}
-
-            {connectionMessage ? (
-              <View style={{ borderRadius: 14, backgroundColor: connectionState === 'success' ? colors.successBg : colors.dangerBg, paddingHorizontal: 14, paddingVertical: 12 }}>
-                <Text style={{ color: connectionState === 'success' ? colors.success : colors.danger, fontSize: 14 }}>{connectionMessage}</Text>
-              </View>
-            ) : null}
-
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <Pressable
-                onPress={handleSubmit(handleAdd)}
-                disabled={connectionState === 'checking'}
-                style={{ flex: 1, backgroundColor: connectionState === 'checking' ? '#7ca89f' : colors.primary, borderRadius: 16, paddingVertical: 14, alignItems: 'center' }}
-              >
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>{connectionState === 'checking' ? '检测中...' : '保存并使用'}</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  setShowForm(false);
-                  setConnectionState('idle');
-                  setConnectionMessage('');
-                  reset({ baseUrl: '', adminApiKey: '' });
-                }}
-                style={{ flex: 1, backgroundColor: colors.border, borderRadius: 16, paddingVertical: 14, alignItems: 'center' }}
-              >
-                <Text style={{ color: '#4e463e', fontSize: 14, fontWeight: '700' }}>取消</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
-
-        <View style={{ gap: 12 }}>
-          {config.accounts.map((account: AdminAccountProfile) => (
-            <ServerCard
-              key={account.id}
-              account={account}
-              active={account.id === config.activeAccountId}
-              onSelect={() => handleSelect(account)}
-              onDelete={() => handleDelete(account)}
-            />
-          ))}
-
-          {config.accounts.length === 0 ? (
-            <View style={{ backgroundColor: colors.card, borderRadius: 18, padding: 18 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>还没有服务器</Text>
-              <Text style={{ marginTop: 8, fontSize: 13, lineHeight: 21, color: colors.subtext }}>点击右上角 + 添加服务器，保存成功后会自动切换并进入概览。</Text>
-            </View>
-          ) : null}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      {message ? <Text style={{ color: message.includes('\u5df2\u9a8c\u8bc1') ? theme.success : theme.danger, fontSize: 13, lineHeight: 19, marginTop: 14 }}>{message}</Text> : null}
+      <Pressable disabled={saving} onPress={() => void save()} style={{ marginTop: 18, minHeight: 50, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: saving ? theme.muted : theme.primary }}><Save color="#FFFFFF" size={17} /><Text style={{ color: '#FFFFFF', fontWeight: '900' }}>{saving ? '\u6b63\u5728\u9a8c\u8bc1...' : '\u9a8c\u8bc1\u5e76\u4fdd\u5b58'}</Text></Pressable>
+    </Page>
   );
 }

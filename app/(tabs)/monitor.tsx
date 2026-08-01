@@ -1,446 +1,72 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AlertTriangle, ChevronRight, CircleCheck, RefreshCw } from 'lucide-react-native';
+import { useMemo } from 'react';
+import { Pressable, Text, View } from 'react-native';
 
-import { BarChartCard } from '@/src/components/bar-chart-card';
+import { Badge, Card, Metric, Page, SectionTitle, StateCard } from '@/src/components/ui';
 import { formatTokenValue } from '@/src/lib/formatters';
-import { DonutChartCard } from '@/src/components/donut-chart-card';
-import { LineTrendChart } from '@/src/components/line-trend-chart';
-import { getAdminSettings, getDashboardModels, getDashboardStats, getDashboardTrend, listAccounts } from '@/src/services/admin';
-import { adminConfigState, hasAuthenticatedAdminSession } from '@/src/store/admin-config';
+import { getAdminSettings, getDashboardStats, getDashboardTrend, getSystemVersion, listAccounts, listUsageLogs } from '@/src/services/admin';
+import { theme } from '@/src/theme';
 
-const { useSnapshot } = require('valtio/react');
+function money(value?: number) { return typeof value === 'number' ? `$${value.toFixed(2)}` : '--'; }
+function count(value?: number) { return typeof value === 'number' ? new Intl.NumberFormat('zh-CN').format(value) : '--'; }
 
-type RangeKey = '24h' | '7d' | '30d';
-
-const colors = {
-  page: '#f4efe4',
-  card: '#fbf8f2',
-  mutedCard: '#f1ece2',
-  primary: '#1d5f55',
-  text: '#16181a',
-  subtext: '#6f665c',
-  border: '#e7dfcf',
-  dangerBg: '#fbf1eb',
-  danger: '#c25d35',
-  successBg: '#e6f4ee',
-  success: '#1d5f55',
-};
-
-const RANGE_OPTIONS: Array<{ key: RangeKey; label: string }> = [
-  { key: '24h', label: '24H' },
-  { key: '7d', label: '7D' },
-  { key: '30d', label: '30D' },
-];
-
-const RANGE_TITLE_MAP: Record<RangeKey, string> = {
-  '24h': '24H',
-  '7d': '7D',
-  '30d': '30D',
-};
-
-function hasAccountError(account: { status?: string; error_message?: string | null }) {
-  return Boolean(account.status === 'error' || account.error_message);
-}
-
-function hasAccountRateLimited(account: {
-  rate_limit_reset_at?: string | null;
-  extra?: Record<string, unknown>;
-}) {
-  if (account.rate_limit_reset_at) {
-    const resetTime = new Date(account.rate_limit_reset_at).getTime();
-    if (!Number.isNaN(resetTime) && resetTime > Date.now()) {
-      return true;
-    }
-  }
-
-  const modelLimits = account.extra?.model_rate_limits;
-  if (!modelLimits || typeof modelLimits !== 'object' || Array.isArray(modelLimits)) {
-    return false;
-  }
-
-  const now = Date.now();
-  return Object.values(modelLimits as Record<string, unknown>).some((info) => {
-    if (!info || typeof info !== 'object' || Array.isArray(info)) return false;
-
-    const resetAt = (info as { rate_limit_reset_at?: unknown }).rate_limit_reset_at;
-    if (typeof resetAt !== 'string' || !resetAt.trim()) return false;
-
-    const resetTime = new Date(resetAt).getTime();
-    return !Number.isNaN(resetTime) && resetTime > now;
-  });
-}
-
-function getDateRange(rangeKey: RangeKey) {
+function last24Hours() {
   const end = new Date();
-  const start = new Date();
-
-  if (rangeKey === '24h') {
-    start.setHours(end.getHours() - 23, 0, 0, 0);
-  } else if (rangeKey === '30d') {
-    start.setDate(end.getDate() - 29);
-  } else {
-    start.setDate(end.getDate() - 6);
-  }
-
-  const toDate = (value: Date) => value.toISOString().slice(0, 10);
-
-  return {
-    start_date: toDate(start),
-    end_date: toDate(end),
-    granularity: rangeKey === '24h' ? ('hour' as const) : ('day' as const),
-  };
-}
-
-function formatNumber(value?: number) {
-  if (typeof value !== 'number' || Number.isNaN(value)) return '--';
-  return new Intl.NumberFormat('en-US').format(value);
-}
-
-function formatMoney(value?: number) {
-  if (typeof value !== 'number' || Number.isNaN(value)) return '--';
-  return `$${value.toFixed(2)}`;
-}
-
-function formatCompactNumber(value?: number) {
-  if (typeof value !== 'number' || Number.isNaN(value)) return '--';
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
-  return String(value);
-}
-
-function formatTokenDisplay(value?: number) {
-  if (typeof value !== 'number' || Number.isNaN(value)) return '--';
-  return formatTokenValue(value);
-}
-
-function getPointLabel(value: string, rangeKey: RangeKey) {
-  if (rangeKey === '24h') {
-    return value.slice(11, 13);
-  }
-
-  return value.slice(5, 10);
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) {
-    switch (error.message) {
-      case 'BASE_URL_REQUIRED':
-        return '请先去服务器页填写服务地址。';
-      case 'ADMIN_API_KEY_REQUIRED':
-        return '请先去服务器页填写 Admin Token。';
-      case 'INVALID_SERVER_RESPONSE':
-        return '当前服务返回的数据格式不正确，请确认它是可用的 Sub2API 管理接口。';
-      default:
-        return error.message;
-    }
-  }
-
-  return '当前无法加载概览数据，请检查服务地址、Token 和网络。';
-}
-
-function Section({ title, subtitle, children, right }: { title: string; subtitle?: string; children: React.ReactNode; right?: React.ReactNode }) {
-  return (
-    <View style={{ backgroundColor: colors.card, borderRadius: 18, padding: 16 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>{title}</Text>
-          {subtitle ? <Text style={{ marginTop: 6, fontSize: 12, color: colors.subtext }}>{subtitle}</Text> : null}
-        </View>
-        {right}
-      </View>
-      <View style={{ marginTop: 14 }}>{children}</View>
-    </View>
-  );
-}
-
-function StatCard({ title, value, detail }: { title: string; value: string; detail?: string }) {
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.card, borderRadius: 16, padding: 14 }}>
-      <Text style={{ fontSize: 12, color: '#8a8072' }}>{title}</Text>
-      <Text style={{ marginTop: 8, fontSize: 24, fontWeight: '700', color: colors.text }}>{value}</Text>
-      {detail ? <Text style={{ marginTop: 6, fontSize: 12, color: colors.subtext }}>{detail}</Text> : null}
-    </View>
-  );
+  const start = new Date(end.getTime() - 23 * 60 * 60 * 1000);
+  return { start_date: start.toISOString().slice(0, 10), end_date: end.toISOString().slice(0, 10), granularity: 'hour' as const };
 }
 
 export default function MonitorScreen() {
-  const config = useSnapshot(adminConfigState);
-  const hasAccount = hasAuthenticatedAdminSession(config);
-  const [rangeKey, setRangeKey] = useState<RangeKey>('7d');
-  const range = useMemo(() => getDateRange(rangeKey), [rangeKey]);
+  const range = useMemo(() => last24Hours(), []);
+  const stats = useQuery({ queryKey: ['dashboard-stats'], queryFn: getDashboardStats, staleTime: 30_000 });
+  const settings = useQuery({ queryKey: ['admin-settings'], queryFn: getAdminSettings, staleTime: 120_000 });
+  const version = useQuery({ queryKey: ['system-version'], queryFn: getSystemVersion, staleTime: 300_000 });
+  const accounts = useQuery({ queryKey: ['dashboard-accounts'], queryFn: () => listAccounts('', { page_size: 50 }), staleTime: 30_000 });
+  const trend = useQuery({ queryKey: ['dashboard-trend-24h'], queryFn: () => getDashboardTrend(range), staleTime: 30_000 });
+  const failures = useQuery({ queryKey: ['dashboard-failures'], queryFn: () => listUsageLogs({ status: 'error', page_size: 5 }), staleTime: 30_000 });
 
-  const statsQuery = useQuery({
-    queryKey: ['monitor-stats'],
-    queryFn: getDashboardStats,
-    enabled: hasAccount,
-    staleTime: 60_000,
-  });
-  const settingsQuery = useQuery({
-    queryKey: ['admin-settings'],
-    queryFn: getAdminSettings,
-    enabled: hasAccount,
-    staleTime: 120_000,
-  });
-  const accountsQuery = useQuery({
-    queryKey: ['monitor-accounts'],
-    queryFn: () => listAccounts(''),
-    enabled: hasAccount,
-    staleTime: 60_000,
-  });
-  const trendQuery = useQuery({
-    queryKey: ['monitor-trend', rangeKey, range.start_date, range.end_date, range.granularity],
-    queryFn: () => getDashboardTrend(range),
-    enabled: hasAccount,
-    staleTime: 60_000,
-    placeholderData: (previousData) => previousData,
-  });
-  const modelsQuery = useQuery({
-    queryKey: ['monitor-models', rangeKey, range.start_date, range.end_date],
-    queryFn: () => getDashboardModels(range),
-    enabled: hasAccount,
-    staleTime: 60_000,
-    placeholderData: (previousData) => previousData,
-  });
-
-  function refetchAll() {
-    statsQuery.refetch();
-    settingsQuery.refetch();
-    accountsQuery.refetch();
-    trendQuery.refetch();
-    modelsQuery.refetch();
-  }
-
-  const stats = statsQuery.data;
-  const siteName = settingsQuery.data?.site_name?.trim() || '管理控制台';
-  const accounts = accountsQuery.data?.items ?? [];
-  const trend = trendQuery.data?.trend ?? [];
-  const topModels = (modelsQuery.data?.models ?? []).slice(0, 5);
-  const errorMessage = getErrorMessage(statsQuery.error ?? settingsQuery.error ?? accountsQuery.error ?? trendQuery.error ?? modelsQuery.error);
-  const currentPageErrorAccounts = accounts.filter(hasAccountError).length;
-  const currentPageLimitedAccounts = accounts.filter((item) => hasAccountRateLimited(item)).length;
-  const currentPageBusyAccounts = accounts.filter((item) => {
-    if (hasAccountError(item) || hasAccountRateLimited(item)) return false;
-    return (item.current_concurrency ?? 0) > 0;
-  }).length;
-  const totalAccounts = stats?.total_accounts ?? accountsQuery.data?.total ?? accounts.length;
-  const aggregatedErrorAccounts = stats?.error_accounts ?? 0;
-  const errorAccounts = Math.max(aggregatedErrorAccounts, currentPageErrorAccounts);
-  const healthyAccounts = stats?.normal_accounts ?? Math.max(totalAccounts - errorAccounts, 0);
-  const latestTrendPoints = trend.slice(-6).reverse();
-  const selectedTokenTotal = trend.reduce((sum, item) => sum + item.total_tokens, 0);
-  const selectedCostTotal = trend.reduce((sum, item) => sum + item.cost, 0);
-  const selectedOutputTotal = trend.reduce((sum, item) => sum + item.output_tokens, 0);
-  const rangeTitle = RANGE_TITLE_MAP[rangeKey];
-  const isLoading = statsQuery.isLoading || settingsQuery.isLoading || accountsQuery.isLoading;
-  const hasError = Boolean(statsQuery.error || settingsQuery.error || accountsQuery.error || trendQuery.error || modelsQuery.error);
-
-  const throughputPoints = useMemo(
-    () => trend.map((item) => ({ label: getPointLabel(item.date, rangeKey), value: item.total_tokens })),
-    [rangeKey, trend]
-  );
-  const requestPoints = useMemo(
-    () => trend.map((item) => ({ label: getPointLabel(item.date, rangeKey), value: item.requests })),
-    [rangeKey, trend]
-  );
-  const costPoints = useMemo(
-    () => trend.map((item) => ({ label: getPointLabel(item.date, rangeKey), value: item.cost })),
-    [rangeKey, trend]
-  );
-  const totalInputTokens = useMemo(() => trend.reduce((sum, item) => sum + item.input_tokens, 0), [trend]);
-  const totalOutputTokens = useMemo(() => trend.reduce((sum, item) => sum + item.output_tokens, 0), [trend]);
-  const totalCacheReadTokens = useMemo(() => trend.reduce((sum, item) => sum + item.cache_read_tokens, 0), [trend]);
-  const isRefreshing = statsQuery.isRefetching || settingsQuery.isRefetching || accountsQuery.isRefetching || trendQuery.isRefetching || modelsQuery.isRefetching;
+  const queries = [stats, settings, version, accounts, trend, failures];
+  const loading = stats.isLoading || accounts.isLoading;
+  const error = stats.error || accounts.error;
+  const refreshing = queries.some((query) => query.isRefetching);
+  const refresh = () => { queries.forEach((query) => void query.refetch()); };
+  const accountItems = accounts.data?.items ?? [];
+  const disabled = accountItems.filter((item) => item.schedulable === false).length;
+  const abnormal = accountItems.filter((item) => item.status === 'error' || Boolean(item.error_message)).length;
+  const maxRequests = Math.max(...(trend.data?.trend ?? []).map((point) => point.requests), 1);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.page }}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 110 }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void refetchAll()} tintColor="#1d5f55" />}
-      >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 28, fontWeight: '700', color: colors.text }}>概览</Text>
-            <Text style={{ marginTop: 6, fontSize: 13, color: '#8a8072' }}>{siteName} 的当前运行状态。</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {RANGE_OPTIONS.map((option) => {
-                const active = option.key === rangeKey;
-                return (
-                  <Pressable
-                    key={option.key}
-                    style={{ backgroundColor: active ? colors.primary : colors.border, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
-                    onPress={() => setRangeKey(option.key)}
-                  >
-                    <Text style={{ color: active ? '#fff' : '#4e463e', fontSize: 12, fontWeight: '700' }}>{option.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Text style={{ marginTop: 8, fontSize: 12, color: colors.subtext }}>{range.start_date} 到 {range.end_date}</Text>
-          </View>
-        </View>
+    <Page
+      title={'\u6982\u89c8'}
+      subtitle={`${settings.data?.site_name || 'Vexlune Hub'} \u00b7 ${version.data?.version || '\u7248\u672c\u672a\u77e5'}`}
+      refreshing={refreshing}
+      onRefresh={refresh}
+      right={<Pressable accessibilityLabel="refresh-dashboard" onPress={refresh} style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: theme.cardRaised, alignItems: 'center', justifyContent: 'center' }}><RefreshCw color={theme.primary} size={19} /></Pressable>}
+    >
+      <StateCard loading={loading} error={error} onRetry={refresh} />
+      {!loading && !error ? <>
+        <Card>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><CircleCheck color={theme.success} size={20} /><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '800' }}>{'Hub \u8fde\u63a5\u6b63\u5e38'}</Text><Text style={{ color: theme.subtext, fontSize: 12, marginTop: 4 }}>{'\u6570\u636e\u66f4\u65b0\u4e8e '}{new Date().toLocaleTimeString('zh-CN')}</Text></View><Badge label="ONLINE" tone="success" /></View>
+        </Card>
 
-        {!hasAccount ? (
-          <Section title="未连接服务器" subtitle="需要先配置连接">
-            <Text style={{ fontSize: 14, lineHeight: 22, color: colors.subtext }}>请先前往“服务器”页填写服务地址和 Admin Token，再返回查看概览数据。</Text>
-            <Pressable style={{ marginTop: 14, alignSelf: 'flex-start', backgroundColor: colors.primary, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12 }} onPress={() => router.push('/settings')}>
-              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>去配置服务器</Text>
-            </Pressable>
-          </Section>
-        ) : isLoading ? (
-          <Section title="正在加载概览" subtitle="请稍候">
-            <Text style={{ fontSize: 14, lineHeight: 22, color: colors.subtext }}>已连接服务器，正在拉取概览、模型和账号状态数据。</Text>
-          </Section>
-        ) : hasError ? (
-          <Section title="加载失败" subtitle="请检查连接配置">
-            <View style={{ borderRadius: 14, backgroundColor: colors.dangerBg, paddingHorizontal: 14, paddingVertical: 12 }}>
-              <Text style={{ color: colors.danger, fontSize: 14, lineHeight: 20 }}>{errorMessage}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 14 }}>
-              <Pressable style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 12, alignItems: 'center' }} onPress={refetchAll}>
-                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>重试</Text>
-              </Pressable>
-              <Pressable style={{ flex: 1, backgroundColor: colors.border, borderRadius: 14, paddingVertical: 12, alignItems: 'center' }} onPress={() => router.push('/settings')}>
-                <Text style={{ color: '#4e463e', fontSize: 13, fontWeight: '700' }}>检查服务器</Text>
-              </Pressable>
-            </View>
-          </Section>
-        ) : (
-          <View style={{ gap: 12 }}>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <StatCard
-                title={`${rangeTitle} Token`}
-                value={formatTokenDisplay(rangeKey === '24h' ? selectedTokenTotal || stats?.today_tokens : selectedTokenTotal)}
-                detail={`输出 ${formatTokenDisplay(rangeKey === '24h' ? selectedOutputTotal || stats?.today_output_tokens : selectedOutputTotal)}`}
-              />
-              <StatCard
-                title={`${rangeTitle} 成本`}
-                value={formatMoney(rangeKey === '24h' ? selectedCostTotal || stats?.today_cost : selectedCostTotal)}
-                detail={`TPM ${formatNumber(stats?.tpm)}`}
-              />
-            </View>
-            <Section
-              title="账号概览"
-              subtitle="总数、健康、异常和限流状态一览"
-              right={(
-                <Pressable
-                  style={{ alignSelf: 'flex-start', backgroundColor: colors.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }}
-                  onPress={() => router.push('/accounts/overview')}
-                >
-                  <Text style={{ color: '#4e463e', fontSize: 12, fontWeight: '700' }}>账号清单</Text>
-                </Pressable>
-              )}
-            >
-              <Pressable onPress={() => router.push('/accounts/overview')}>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <View style={{ flex: 1, backgroundColor: colors.mutedCard, borderRadius: 14, padding: 12 }}>
-                    <Text style={{ fontSize: 11, color: '#8a8072' }}>总数</Text>
-                    <Text style={{ marginTop: 6, fontSize: 18, fontWeight: '700', color: colors.text }}>{formatNumber(totalAccounts)}</Text>
-                  </View>
-                  <View style={{ flex: 1, backgroundColor: colors.mutedCard, borderRadius: 14, padding: 12 }}>
-                    <Text style={{ fontSize: 11, color: '#8a8072' }}>健康</Text>
-                    <Text style={{ marginTop: 6, fontSize: 18, fontWeight: '700', color: colors.text }}>{formatNumber(healthyAccounts)}</Text>
-                  </View>
-                  <View style={{ flex: 1, backgroundColor: colors.dangerBg, borderRadius: 14, padding: 12 }}>
-                    <Text style={{ fontSize: 11, color: colors.danger }}>异常</Text>
-                    <Text style={{ marginTop: 6, fontSize: 18, fontWeight: '700', color: colors.danger }}>{formatNumber(errorAccounts)}</Text>
-                  </View>
-                  <View style={{ flex: 1, backgroundColor: colors.mutedCard, borderRadius: 14, padding: 12 }}>
-                    <Text style={{ fontSize: 11, color: '#8a8072' }}>限流</Text>
-                    <Text style={{ marginTop: 6, fontSize: 18, fontWeight: '700', color: colors.text }}>{formatNumber(currentPageLimitedAccounts)}</Text>
-                  </View>
-                </View>
-                <Text style={{ marginTop: 10, fontSize: 12, color: colors.subtext }}>总数 / 健康 / 异常优先使用后端聚合字段；限流与繁忙基于当前页账号列表。点击进入账号清单。</Text>
-              </Pressable>
-            </Section>
+        <SectionTitle title={'\u4eca\u65e5\u6570\u636e'} />
+        <View style={{ flexDirection: 'row', gap: 10 }}><Metric label={'\u8bf7\u6c42\u6570'} value={count(stats.data?.today_requests)} /><Metric label={'\u603b Token'} value={formatTokenValue(stats.data?.today_tokens ?? 0)} /><Metric label={'\u8ba1\u8d39\u91d1\u989d'} value={money(stats.data?.today_cost)} tone="warning" /></View>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}><Metric label={'\u8f93\u5165 Token'} value={formatTokenValue(stats.data?.today_input_tokens ?? 0)} /><Metric label={'\u8f93\u51fa Token'} value={formatTokenValue(stats.data?.today_output_tokens ?? 0)} /><Metric label="RPM" value={count(stats.data?.rpm)} /></View>
 
-            {throughputPoints.length > 1 ? (
-              <LineTrendChart title="Token 吞吐" subtitle="当前时间范围内的 Token 变化趋势" points={throughputPoints} color="#a34d2d" formatValue={formatTokenDisplay} />
-            ) : null}
+        <SectionTitle title={'\u7528\u6237\u4e0e\u8d26\u53f7\u6c60'} />
+        <View style={{ flexDirection: 'row', gap: 10 }}><Metric label={'\u7528\u6237\u603b\u6570'} value={count(stats.data?.total_users)} /><Metric label={'\u4eca\u65e5\u65b0\u589e'} value={count(stats.data?.today_new_users)} tone="success" /><Metric label={'\u6d3b\u8dc3\u7528\u6237'} value={count(stats.data?.active_users)} /></View>
+        <Pressable onPress={() => router.push('/accounts')} style={{ marginTop: 10 }}><Card><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '800' }}>{'\u4e0a\u6e38\u8d26\u53f7'}</Text><Text style={{ color: theme.subtext, fontSize: 12, marginTop: 5 }}>{`\u5171 ${accounts.data?.total ?? stats.data?.total_accounts ?? 0} \u00b7 \u5f02\u5e38 ${abnormal} \u00b7 \u5df2\u505c\u7528 ${disabled}`}</Text></View>{abnormal > 0 ? <AlertTriangle color={theme.danger} size={20} /> : <CircleCheck color={theme.success} size={20} />}<ChevronRight color={theme.faint} size={18} /></View></Card></Pressable>
 
-            {requestPoints.length > 1 ? (
-              <LineTrendChart title="请求趋势" subtitle="当前时间范围内的请求变化趋势" points={requestPoints} color="#1d5f55" formatValue={formatCompactNumber} />
-            ) : null}
+        <SectionTitle title={'24 \u5c0f\u65f6\u8bf7\u6c42\u8d8b\u52bf'} />
+        <Card>
+          {(trend.data?.trend ?? []).length ? <View style={{ height: 126, flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>{(trend.data?.trend ?? []).slice(-24).map((point, index) => <View key={`${point.date}-${index}`} accessibilityLabel={`trend-${index}`} style={{ flex: 1, minHeight: 3, height: `${Math.max(4, (point.requests / maxRequests) * 100)}%`, borderRadius: 3, backgroundColor: index === (trend.data?.trend.length ?? 0) - 1 ? theme.primary : '#493A6B' }} />)}</View> : <Text style={{ color: theme.subtext, textAlign: 'center', paddingVertical: 26 }}>{'\u5f53\u524d\u65f6\u95f4\u8303\u56f4\u6ca1\u6709\u8d8b\u52bf\u6570\u636e'}</Text>}
+        </Card>
 
-            {costPoints.length > 1 ? (
-              <LineTrendChart title="成本趋势" subtitle="当前时间范围内的成本变化趋势" points={costPoints} color="#7651c8" formatValue={formatMoney} />
-            ) : null}
-
-            <BarChartCard
-              title="Token 结构"
-              subtitle="输入、输出、缓存读取占比"
-              items={[
-                { label: '输入 Token', value: totalInputTokens, color: '#1d5f55', hint: '请求进入模型前消耗的 token。' },
-                { label: '输出 Token', value: totalOutputTokens, color: '#d38b36', hint: '模型返回内容消耗的 token。' },
-                { label: '缓存读取 Token', value: totalCacheReadTokens, color: '#7d7468', hint: '命中缓存后复用的 token。' },
-              ]}
-              formatValue={formatTokenDisplay}
-            />
-
-            <DonutChartCard
-              title="账号健康"
-              subtitle="健康、繁忙、限流、异常分布"
-              centerLabel="总账号"
-              centerValue={formatNumber(totalAccounts)}
-              segments={[
-                { label: '健康', value: healthyAccounts, color: '#1d5f55' },
-                { label: '繁忙', value: currentPageBusyAccounts, color: '#d38b36' },
-                { label: '限流', value: currentPageLimitedAccounts, color: '#7d7468' },
-                { label: '异常', value: errorAccounts, color: '#a34d2d' },
-              ]}
-            />
-
-            <BarChartCard
-              title="热点模型"
-              subtitle="当前时间范围内最活跃的模型"
-              items={topModels.map((model) => ({
-                label: model.model,
-                value: model.total_tokens,
-                color: '#a34d2d',
-                meta: `请求 ${formatNumber(model.requests)} · 成本 ${formatMoney(model.cost)}`,
-              }))}
-              formatValue={formatCompactNumber}
-            />
-
-            <Section title="趋势摘要" subtitle="最近几个统计点的请求、Token 和成本变化">
-              {latestTrendPoints.length === 0 ? (
-                <Text style={{ fontSize: 14, color: colors.subtext }}>当前时间范围没有趋势数据。</Text>
-              ) : (
-                <View style={{ gap: 12 }}>
-                  <View style={{ gap: 10 }}>
-                    {latestTrendPoints.map((point) => (
-                      <View key={point.date} style={{ backgroundColor: colors.mutedCard, borderRadius: 14, padding: 12 }}>
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{point.date}</Text>
-                        <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 11, color: '#8a8072' }}>请求</Text>
-                            <Text style={{ marginTop: 4, fontSize: 15, fontWeight: '700', color: colors.text }}>{formatCompactNumber(point.requests)}</Text>
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 11, color: '#8a8072' }}>Token</Text>
-                            <Text style={{ marginTop: 4, fontSize: 15, fontWeight: '700', color: colors.text }}>{formatTokenDisplay(point.total_tokens)}</Text>
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 11, color: '#8a8072' }}>成本</Text>
-                            <Text style={{ marginTop: 4, fontSize: 15, fontWeight: '700', color: colors.text }}>{formatMoney(point.cost)}</Text>
-                          </View>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
-            </Section>
-
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+        <SectionTitle title={'\u6700\u8fd1\u5931\u8d25'} action={<Pressable onPress={() => router.push('/logs')}><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '800' }}>{'\u67e5\u770b\u5168\u90e8'}</Text></Pressable>} />
+        {(failures.data?.items ?? []).length ? <View style={{ gap: 9 }}>{failures.data!.items.map((item) => <Card key={item.id}><View style={{ flexDirection: 'row', gap: 10 }}><AlertTriangle color={theme.danger} size={18} /><View style={{ flex: 1 }}><Text numberOfLines={1} style={{ color: theme.text, fontWeight: '700' }}>{item.model || item.request_type || `Request #${item.id}`}</Text><Text numberOfLines={2} style={{ color: theme.subtext, fontSize: 12, lineHeight: 18, marginTop: 5 }}>{item.error_message || `HTTP ${item.status_code ?? '--'}`}</Text></View><Badge label={String(item.status_code ?? 'ERR')} tone="danger" /></View></Card>)}</View> : <Card><Text style={{ color: theme.subtext, textAlign: 'center' }}>{'\u6682\u65e0\u5931\u8d25\u8bb0\u5f55'}</Text></Card>}
+      </> : null}
+    </Page>
   );
 }

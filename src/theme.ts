@@ -1,0 +1,18 @@
+export const theme = {
+  page: '#08080B',
+  card: '#121218',
+  cardRaised: '#191921',
+  muted: '#23232D',
+  border: '#2D2D39',
+  primary: '#8B5CF6',
+  primarySoft: '#271D42',
+  text: '#F7F7FA',
+  subtext: '#A7A7B3',
+  faint: '#70707E',
+  success: '#46C997',
+  successSoft: '#112D26',
+  warning: '#F4B860',
+  warningSoft: '#332813',
+  danger: '#FF6B7A',
+  dangerSoft: '#34171C',
+} as const;

@@ -14,6 +14,15 @@ export type PaginatedData<T> = {
   pages: number;
 };
 
+export type PaginationParams = {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  status?: string;
+  sort?: string;
+  order?: 'asc' | 'desc';
+};
+
 export type DashboardStats = {
   total_users: number;
   today_new_users: number;
@@ -87,14 +96,14 @@ export type UsageStats = {
 export type DashboardSnapshot = {
   trend?: TrendPoint[];
   models?: ModelStat[];
-  groups?: Array<{
+  groups?: {
     group_id?: number;
     group_name?: string;
     requests?: number;
     total_tokens?: number;
     total_cost?: number;
     total_actual_cost?: number;
-  }>;
+  }[];
 };
 
 export type AdminSettings = {
@@ -193,9 +202,42 @@ export type AdminAccount = {
   error_message?: string;
   updated_at?: string;
   last_used_at?: string | null;
+  last_success_at?: string | null;
+  last_failure_at?: string | null;
+  rate_limit_reset_at?: string | null;
   group_ids?: number[];
   groups?: AdminGroup[];
   extra?: Record<string, string | number | boolean | null>;
+};
+
+export type UsageLog = {
+  id: number;
+  request_id?: string;
+  user_id?: number;
+  account_id?: number;
+  api_key_id?: number;
+  model?: string;
+  request_type?: string;
+  status?: string;
+  status_code?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_read_tokens?: number;
+  total_tokens?: number;
+  cost?: number;
+  actual_cost?: number;
+  duration_ms?: number;
+  error_message?: string | null;
+  created_at?: string;
+  user?: Pick<AdminUser, 'id' | 'email' | 'username'>;
+  account?: Pick<AdminAccount, 'id' | 'name' | 'platform'>;
+};
+
+export type SystemVersion = {
+  version?: string;
+  commit?: string;
+  build_time?: string;
+  uptime?: number;
 };
 
 export type AccountType = 'apikey' | 'oauth' | 'setup-token' | 'upstream';

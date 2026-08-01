@@ -71,3 +71,7 @@ skills-lock.json
 # generated native folders
 /ios
 /android
+
+# Playwright transient output (accepted screenshots live under artifacts/)
+test-results/
+playwright-report/
