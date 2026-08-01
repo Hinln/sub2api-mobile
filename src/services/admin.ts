@@ -14,11 +14,14 @@ import type {
   CreateAccountRequest,
   CreateUserRequest,
   PaginatedData,
+  PaginationParams,
+  SystemVersion,
+  UsageLog,
   UsageStats,
   UserUsageSummary,
 } from '@/src/types/admin';
 
-function buildQuery(params: Record<string, string | number | boolean | null | undefined>) {
+export function buildQuery(params: Record<string, string | number | boolean | null | undefined>) {
   const query = new URLSearchParams();
 
   Object.entries(params).forEach(([key, value]) => {
@@ -87,9 +90,9 @@ export function getUsageStats(params: {
   return adminFetch<UsageStats>(`/api/v1/admin/usage/stats${buildQuery(params)}`);
 }
 
-export function listUsers(search = '') {
+export function listUsers(search = '', pagination: PaginationParams = {}) {
   return adminFetch<PaginatedData<AdminUser>>(
-    `/api/v1/admin/users${buildQuery({ page: 1, page_size: 20, search: search.trim() })}`
+    `/api/v1/admin/users${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 20, search: search.trim(), status: pagination.status, sort: pagination.sort, order: pagination.order })}`
   );
 }
 
@@ -135,9 +138,9 @@ export function updateUserStatus(userId: number, status: 'active' | 'disabled') 
   });
 }
 
-export function listGroups(search = '') {
+export function listGroups(search = '', pagination: PaginationParams = {}) {
   return adminFetch<PaginatedData<AdminGroup>>(
-    `/api/v1/admin/groups${buildQuery({ page: 1, page_size: 20, search: search.trim() })}`
+    `/api/v1/admin/groups${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 50, search: search.trim(), status: pagination.status })}`
   );
 }
 
@@ -145,9 +148,9 @@ export function getGroup(groupId: number) {
   return adminFetch<AdminGroup>(`/api/v1/admin/groups/${groupId}`);
 }
 
-export function listAccounts(search = '') {
+export function listAccounts(search = '', pagination: PaginationParams = {}) {
   return adminFetch<PaginatedData<AdminAccount>>(
-    `/api/v1/admin/accounts${buildQuery({ page: 1, page_size: 20, search: search.trim() })}`
+    `/api/v1/admin/accounts${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 50, search: search.trim(), status: pagination.status, sort: pagination.sort, order: pagination.order })}`
   );
 }
 
@@ -183,4 +186,30 @@ export function setAccountSchedulable(accountId: number, schedulable: boolean) {
     method: 'POST',
     body: JSON.stringify({ schedulable }),
   });
+}
+
+export function clearAccountError(accountId: number) {
+  return adminFetch(`/api/v1/admin/accounts/${accountId}/clear-error`, { method: 'POST' });
+}
+
+export function recoverAccountState(accountId: number) {
+  return adminFetch(`/api/v1/admin/accounts/${accountId}/recover-state`, { method: 'POST' });
+}
+
+export function listUsageLogs(params: PaginationParams & { user_id?: number; account_id?: number; model?: string } = {}) {
+  return adminFetch<PaginatedData<UsageLog>>(`/api/v1/admin/usage${buildQuery({
+    page: params.page ?? 1,
+    page_size: params.page_size ?? 30,
+    search: params.search,
+    status: params.status,
+    user_id: params.user_id,
+    account_id: params.account_id,
+    model: params.model,
+    sort: params.sort ?? 'created_at',
+    order: params.order ?? 'desc',
+  })}`);
+}
+
+export function getSystemVersion() {
+  return adminFetch<SystemVersion>('/api/v1/admin/system/version');
 }

@@ -1,53 +1,60 @@
 {
   "expo": {
-    "name": "sub2api-mobile",
-    "slug": "sub2api-mobile",
-    "owner": "ckken",
+    "name": "Vexlune Mobile Console",
+    "slug": "vexlune-mobile-console",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./icons/ios/AppIcon.appiconset/icon-1024.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/vexlune-icon.png",
+    "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/vexlune-splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#08080b"
     },
     "ios": {
-      "supportsTablet": true,
-      "icon": "./icons/ios/AppIcon.appiconset/icon-1024.png",
-      "bundleIdentifier": "com.ppx.sub2apimobile",
+      "supportsTablet": false,
+      "icon": "./assets/vexlune-icon.png",
+      "bundleIdentifier": "com.vexlune.mobile",
+      "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "icon": "./icons/android/playstore-icon.png",
-      "package": "com.ppx.sub2apimobile",
+      "icon": "./assets/vexlune-icon.png",
+      "package": "com.vexlune.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./icons/android/playstore-icon.png"
+        "backgroundColor": "#08080B",
+        "foregroundImage": "./assets/vexlune-icon.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./icons/ios/AppIcon.appiconset/icon-1024.png"
+      "favicon": "./assets/vexlune-icon.png"
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true,
+          "faceIDPermission": "允许 Vexlune 使用 Face ID 解锁管理控制台。"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "允许 Vexlune 使用 Face ID 解锁管理控制台。"
+        }
+      ],
+      "expo-font"
     ],
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "acaedd05-5a2a-4843-a648-e025c08ce7b3"
-      }
-    },
-    "runtimeVersion": {
-      "policy": "appVersion"
+      "router": {}
     },
     "updates": {
-      "url": "https://u.expo.dev/acaedd05-5a2a-4843-a648-e025c08ce7b3"
+      "enabled": false
     },
-    "scheme": "sub2apimobile"
+    "scheme": "vexlunemobile"
   }
 }

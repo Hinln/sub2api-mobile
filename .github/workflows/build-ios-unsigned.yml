@@ -1,0 +1,141 @@
+name: Build unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios-unsigned:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      CI: "1"
+      APP_VERSION: "1.0.0"
+      IPA_NAME: Vexlune-Mobile-Console-v1.0.0-ios-unsigned.ipa
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Validate source
+        run: |
+          npm run typecheck
+          npm run lint
+          npm test
+          npx expo-doctor
+
+      - name: Generate iOS project
+        run: npx expo prebuild --platform ios --clean --no-install
+
+      - name: Install CocoaPods
+        run: npx pod-install ios
+
+      - name: Discover workspace and scheme
+        id: xcode
+        shell: bash
+        run: |
+          set -euo pipefail
+          workspace="$(find ios -maxdepth 2 -name '*.xcworkspace' -not -path '*/Pods/*' -print -quit)"
+          if [[ -z "$workspace" ]]; then
+            echo "No Xcode workspace found" >&2
+            exit 1
+          fi
+          xcodebuild -workspace "$workspace" -list -json > /tmp/xcode-list.json
+          scheme="$(ruby -rjson -e 'j=JSON.parse(File.read("/tmp/xcode-list.json")); puts(j.dig("workspace","schemes")&.reject{|s| s == "Pods" || s.start_with?("Pods-")}&.first.to_s)')"
+          if [[ -z "$scheme" ]]; then
+            echo "No application scheme found" >&2
+            cat /tmp/xcode-list.json
+            exit 1
+          fi
+          echo "workspace=$workspace" >> "$GITHUB_OUTPUT"
+          echo "scheme=$scheme" >> "$GITHUB_OUTPUT"
+          echo "Workspace: $workspace"
+          echo "Scheme: $scheme"
+
+      - name: Build Release for iPhoneOS without signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -workspace "${{ steps.xcode.outputs.workspace }}" \
+            -scheme "${{ steps.xcode.outputs.scheme }}" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            DEVELOPMENT_TEAM='' \
+            clean build
+
+      - name: Package and validate unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 2 -name '*.app' -type d -print -quit)"
+          if [[ -z "$app" ]]; then
+            echo "Release iPhoneOS .app not found" >&2
+            exit 1
+          fi
+          executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")"
+          architecture="$(file "$app/$executable")"
+          echo "$architecture" | grep -q 'arm64' || { echo "Main executable is not arm64" >&2; exit 1; }
+
+          find "$app" -name '_CodeSignature' -type d -prune -exec rm -rf {} +
+          find "$app" -name 'embedded.mobileprovision' -type f -delete
+          mkdir -p dist/ios/Payload
+          cp -R "$app" dist/ios/Payload/Vexlune.app
+          (cd dist/ios && zip -qry "$IPA_NAME" Payload)
+          (cd dist/ios && ditto -c -k --sequesterRsrc --keepParent Payload/Vexlune.app "Vexlune-Mobile-Console-v1.0.0-ios-app.zip")
+
+          unzip -t "dist/ios/$IPA_NAME"
+          plutil -p dist/ios/Payload/Vexlune.app/Info.plist
+          if codesign -dv --verbose=4 dist/ios/Payload/Vexlune.app 2>/tmp/codesign.txt; then
+            echo "Unexpected signature found" >&2
+            cat /tmp/codesign.txt
+            exit 1
+          fi
+          test ! -e dist/ios/Payload/Vexlune.app/embedded.mobileprovision
+          shasum -a 256 "dist/ios/$IPA_NAME" "dist/ios/Vexlune-Mobile-Console-v1.0.0-ios-app.zip" > dist/ios/SHA256SUMS
+
+          bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' dist/ios/Payload/Vexlune.app/Info.plist)"
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' dist/ios/Payload/Vexlune.app/Info.plist)"
+          build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' dist/ios/Payload/Vexlune.app/Info.plist)"
+          cat > dist/ios/BUILD_INFO.md <<EOF
+          # Vexlune iOS Build Info
+
+          - Commit: $GITHUB_SHA
+          - Runner: $RUNNER_OS / $ImageOS
+          - Workspace: ${{ steps.xcode.outputs.workspace }}
+          - Scheme: ${{ steps.xcode.outputs.scheme }}
+          - Configuration: Release
+          - SDK: iPhoneOS
+          - Architecture: $architecture
+          - Bundle ID: $bundle_id
+          - Version: $version ($build)
+          - Signing: unsigned; CODE_SIGNING_ALLOWED=NO
+          EOF
+          cp docs/SIGNING_GUIDE.md docs/TEST_REPORT.md docs/API_AUDIT.md docs/BACKEND_GAPS.md docs/CHANGELOG.md dist/ios/
+
+      - name: Upload unsigned iOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vexlune-ios-unsigned-v1.0.0
+          path: |
+            dist/ios/Vexlune-Mobile-Console-v1.0.0-ios-unsigned.ipa
+            dist/ios/Vexlune-Mobile-Console-v1.0.0-ios-app.zip
+            dist/ios/SHA256SUMS
+            dist/ios/*.md
+          if-no-files-found: error
+          retention-days: 30

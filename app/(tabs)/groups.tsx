@@ -1,87 +1,24 @@
 import { useQuery } from '@tanstack/react-query';
-import { FolderKanban, Layers3, Search } from 'lucide-react-native';
-import { useCallback, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, Text, TextInput, View } from 'react-native';
+import { Layers3, Search } from 'lucide-react-native';
+import { useState } from 'react';
+import { Text, TextInput, View } from 'react-native';
 
-import { ListCard } from '@/src/components/list-card';
-import { ScreenShell } from '@/src/components/screen-shell';
+import { Badge, Card, Page, StateCard } from '@/src/components/ui';
 import { useDebouncedValue } from '@/src/hooks/use-debounced-value';
 import { listGroups } from '@/src/services/admin';
+import { theme } from '@/src/theme';
 
 export default function GroupsScreen() {
-  const [searchText, setSearchText] = useState('');
-  const keyword = useDebouncedValue(searchText.trim(), 300);
-
-  const groupsQuery = useQuery({
-    queryKey: ['groups', keyword],
-    queryFn: () => listGroups(keyword),
-  });
-
-  const items = groupsQuery.data?.items ?? [];
-  const errorMessage = groupsQuery.error instanceof Error ? groupsQuery.error.message : '';
-  const listHeader = useMemo(
-    () => (
-      <View className="pb-4">
-        <View className="flex-row items-center rounded-[24px] bg-[#fbf8f2] px-4 py-3">
-          <Search color="#7d7468" size={18} />
-          <TextInput
-            defaultValue=""
-            onChangeText={setSearchText}
-            placeholder="搜索分组名称"
-            placeholderTextColor="#9b9081"
-            className="ml-3 flex-1 text-base text-[#16181a]"
-          />
-        </View>
-      </View>
-    ),
-    []
-  );
-  const renderItem = useCallback(
-    ({ item: group }: { item: (typeof items)[number] }) => (
-      <ListCard
-        title={group.name}
-        meta={`${group.platform} · 倍率 ${group.rate_multiplier ?? 1} · ${group.subscription_type || 'standard'}`}
-        badge={group.status || 'active'}
-        icon={FolderKanban}
-      >
-        <View className="flex-row items-center gap-2">
-          <Layers3 color="#7d7468" size={14} />
-          <Text className="text-sm text-[#7d7468]">
-            账号数 {group.account_count ?? 0} · {group.is_exclusive ? '独占分组' : '共享分组'}
-          </Text>
-        </View>
-      </ListCard>
-    ),
-    []
-  );
-  const emptyState = useMemo(
-    () => <ListCard title="暂无分组" meta={errorMessage || '连上 Sub2API 后，这里会展示分组列表。'} icon={FolderKanban} />,
-    [errorMessage]
-  );
+  const [search, setSearch] = useState('');
+  const keyword = useDebouncedValue(search.trim(), 300);
+  const query = useQuery({ queryKey: ['groups', keyword], queryFn: () => listGroups(keyword, { page_size: 100 }) });
+  const items = query.data?.items ?? [];
 
   return (
-    <ScreenShell
-      title="分组管理"
-      subtitle=""
-      titleAside={<Text className="text-[11px] text-[#a2988a]">查看分组与调度归属。</Text>}
-      variant="minimal"
-      scroll={false}
-    >
-      <FlatList
-        data={items}
-        renderItem={renderItem}
-        keyExtractor={(item) => `${item.id}`}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={groupsQuery.isRefetching} onRefresh={() => void groupsQuery.refetch()} tintColor="#1d5f55" />}
-        ListHeaderComponent={listHeader}
-        ListEmptyComponent={emptyState}
-        ItemSeparatorComponent={() => <View className="h-4" />}
-        keyboardShouldPersistTaps="handled"
-        removeClippedSubviews
-        initialNumToRender={8}
-        maxToRenderPerBatch={8}
-        windowSize={5}
-      />
-    </ScreenShell>
+    <Page title={'\u5206\u7ec4\u4e0e\u6a21\u578b'} subtitle={'\u53ea\u5c55\u793a\u540e\u7aef\u8fd4\u56de\u7684\u771f\u5b9e\u5206\u7ec4\u914d\u7f6e'} refreshing={query.isRefetching} onRefresh={() => void query.refetch()}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 16, backgroundColor: theme.cardRaised, borderWidth: 1, borderColor: theme.border, paddingHorizontal: 14, marginBottom: 14 }}><Search color={theme.faint} size={18} /><TextInput value={search} onChangeText={setSearch} placeholder={'\u641c\u7d22\u5206\u7ec4'} placeholderTextColor={theme.faint} style={{ flex: 1, color: theme.text, paddingVertical: 13 }} /></View>
+      <StateCard loading={query.isLoading} error={query.error} empty={!query.isLoading && !query.error && items.length === 0} onRetry={() => void query.refetch()} />
+      <View style={{ gap: 10 }}>{items.map((group) => <Card key={group.id}><View style={{ flexDirection: 'row', gap: 12 }}><View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: theme.primarySoft, alignItems: 'center', justifyContent: 'center' }}><Layers3 color={theme.primary} size={19} /></View><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '900' }}>{group.name}</Text><Text style={{ color: theme.subtext, fontSize: 12, marginTop: 5 }}>{group.platform || '\u5e73\u53f0\u672a\u6807\u8bb0'}</Text><Text style={{ color: theme.faint, fontSize: 11, marginTop: 8 }}>{`\u8d26\u53f7 ${group.account_count ?? '--'} \u00b7 \u500d\u7387 ${(group.rate_multiplier ?? 1).toFixed(2)}x \u00b7 \u6392\u5e8f ${group.sort_order ?? '--'}`}</Text>{group.description ? <Text style={{ color: theme.subtext, fontSize: 11, lineHeight: 17, marginTop: 7 }}>{group.description}</Text> : null}</View><Badge label={group.status || '\u6b63\u5e38'} tone={group.status === 'disabled' ? 'danger' : 'success'} /></View></Card>)}</View>
+    </Page>
   );
 }

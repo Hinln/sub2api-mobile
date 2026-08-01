@@ -1,107 +1,28 @@
-<p align="center">
-  <img src="icons/ios/AppIcon.appiconset/icon-1024.png" alt="sub2api-mobile logo" width="96" />
-</p>
+# Vexlune Mobile Console
 
-# sub2api-mobile
+Vexlune Hub 的个人 iOS 移动管理控制台。项目基于 Expo 54、React Native、Expo Router、TanStack Query、Valtio 与 SecureStore。
 
-Mobile-first admin console for Sub2API operations, built with Expo + React Native + Expo Router.
+- 管理服务：`https://hub.vexlune.com`
+- 模型 API（仅展示边界）：`https://api.vexlune.com`
+- Bundle ID：`com.vexlune.mobile`
+- URL Scheme：`vexlunemobile`
+- Version / Build：`1.0.0 / 1`
 
-## Mobile Preview
-
-<img src="docs/mobile.jpg" alt="Mobile Preview" width="420" />
-
-## Highlights
-
-- Cross-platform app (iOS / Android / Web) for operational and admin workflows.
-- Server health and metrics monitoring views.
-- User, API key, account, and group management pages.
-- Multi-account admin server switching in settings.
-
-## Tech Stack
-
-- Expo SDK 54
-- React Native 0.81
-- React 19
-- Expo Router
-- TanStack Query
-- Valtio
-
-## Prerequisites
-
-- Node.js 20+
-- npm 10+
-
-## Getting Started
-
-Install dependencies:
+## 本地验证
 
 ```bash
 npm ci
+npm run typecheck
+npm run lint
+npm test
+npm run web:build
+npm run test:visual
 ```
 
-Run locally:
+首次启动需要输入合法的 Sub2API 管理员 API Key（通常以 `admin-` 开头）。原生端凭据仅写入系统 SecureStore；Web 验收不持久化凭据。
 
-```bash
-npm run start
-```
+无签名 iOS 真机构建由 `.github/workflows/build-ios-unsigned.yml` 在 macOS Runner 完成。未签名 IPA 不能直接安装，请先阅读 `docs/SIGNING_GUIDE.md`。
 
-Common targets:
+## 开源归属
 
-```bash
-npm run android
-npm run ios
-npm run web
-```
-
-## Build & Release
-
-EAS scripts:
-
-```bash
-npm run eas:build:development
-npm run eas:build:preview
-npm run eas:build:production
-```
-
-OTA update scripts:
-
-```bash
-npm run eas:update:preview -- "your message"
-npm run eas:update:production -- "your message"
-```
-
-Additional release notes: [docs/EXPO_RELEASE.md](docs/EXPO_RELEASE.md)
-
-GitHub Actions Android build (downloadable):
-
-- Workflow: `.github/workflows/eas-build.yml`
-- Trigger: **Actions → EAS Build → Run workflow**
-- Inputs: `profile=preview`, `platform=android`
-- Requirement: repository secret `EXPO_TOKEN`
-- Download: after completion, open the run **Summary** and use the `ANDROID download` link.
-
-## Project Structure
-
-```txt
-app/                 Expo Router routes/screens
-src/components/      Reusable UI components
-src/services/        Admin API request layer
-src/store/           Global config/account state (Valtio)
-src/lib/             Utilities, query client, fetch helpers
-docs/                Operational and release documentation
-server/              Local Express proxy for admin APIs
-```
-
-## Security Notes
-
-- Web builds are intentionally configured to avoid persistent storage of `adminApiKey`.
-- Native platforms continue to use secure storage semantics.
-- For responsible disclosure, see [SECURITY.md](SECURITY.md).
-
-## Contributing
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
-
-## License
-
-This project is licensed under the MIT License. See [LICENSE](LICENSE).
+本项目基于 [ckken/sub2api-mobile](https://github.com/ckken/sub2api-mobile) 改造，保留原始 `LICENSE`、版权与依赖许可证信息。后端接口语义参考 [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api)。
