@@ -511,6 +511,7 @@ function PromoModule() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
+  const [usagePage, setUsagePage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState<PromoCode>();
   const [code, setCode] = useState('');
@@ -523,8 +524,8 @@ function PromoModule() {
     queryFn: () => listPromoCodes(keyword, { page, page_size: 30, status: status || undefined }),
   });
   const usages = useQuery({
-    queryKey: ['promo-code-usages', selected?.id],
-    queryFn: () => listPromoCodeUsages(selected!.id),
+    queryKey: ['promo-code-usages', selected?.id, usagePage],
+    queryFn: () => listPromoCodeUsages(selected!.id, usagePage, 20),
     enabled: Boolean(selected),
   });
   const create = useMutation({ mutationFn: createPromoCode });
@@ -584,7 +585,7 @@ function PromoModule() {
           {items.map((item) => {
             const state = promoState(item);
             return (
-              <Pressable key={item.id} accessibilityRole="button" onPress={() => setSelected(item)}>
+              <Pressable key={item.id} accessibilityRole="button" onPress={() => { setUsagePage(1); setSelected(item); }}>
                 <Card style={cardShadow}>
                   <View style={{ flexDirection: 'row', gap: 12 }}>
                     <View style={{ width: 44, height: 44, borderRadius: 15, backgroundColor: state.tone === 'success' ? theme.successSoft : state.tone === 'danger' ? theme.dangerSoft : theme.muted, alignItems: 'center', justifyContent: 'center' }}>
@@ -627,7 +628,7 @@ function PromoModule() {
         </View>
       </Sheet>
 
-      <Sheet visible={Boolean(selected)} title={selected ? `使用记录 · ${selected.code}` : '使用记录'} onClose={() => setSelected(undefined)}>
+      <Sheet visible={Boolean(selected)} title={selected ? `使用记录 · ${selected.code}` : '使用记录'} onClose={() => { setSelected(undefined); setUsagePage(1); }}>
         {selected ? (
           <Pressable onPress={() => void Clipboard.setStringAsync(selected.code)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', backgroundColor: theme.primarySoft, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 14 }}>
             <Copy color={theme.primary} size={15} />
@@ -649,6 +650,7 @@ function PromoModule() {
             </Card>
           ))}
         </View>
+        <Pager page={usagePage} pages={usages.data?.pages ?? 1} onChange={setUsagePage} />
       </Sheet>
     </>
   );
@@ -722,6 +724,7 @@ function AnnouncementsModule() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
+  const [readPage, setReadPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState<Announcement>();
   const [title, setTitle] = useState('');
@@ -734,8 +737,8 @@ function AnnouncementsModule() {
     queryFn: () => listAnnouncements(keyword, { page, page_size: 30, status: status || undefined }),
   });
   const reads = useQuery({
-    queryKey: ['announcement-read-status', selected?.id],
-    queryFn: () => listAnnouncementReadStatus(selected!.id),
+    queryKey: ['announcement-read-status', selected?.id, readPage],
+    queryFn: () => listAnnouncementReadStatus(selected!.id, readPage, 20),
     enabled: Boolean(selected),
   });
   const create = useMutation({ mutationFn: createAnnouncement });
@@ -768,8 +771,9 @@ function AnnouncementsModule() {
     }
   }
 
-  const eligibleReads = (reads.data?.items ?? []).filter((item) => item.eligible);
-  const readCount = eligibleReads.filter((item) => item.read_at).length;
+  const readRows = reads.data?.items ?? [];
+  const eligibleCount = readRows.filter((item) => item.eligible).length;
+  const readCount = readRows.filter((item) => item.eligible && item.read_at).length;
 
   return (
     <>
@@ -793,7 +797,7 @@ function AnnouncementsModule() {
           {items.map((item) => {
             const state = announcementState(item.status);
             return (
-              <Pressable key={item.id} accessibilityRole="button" onPress={() => setSelected(item)}>
+              <Pressable key={item.id} accessibilityRole="button" onPress={() => { setReadPage(1); setSelected(item); }}>
                 <Card style={cardShadow}>
                   <View style={{ flexDirection: 'row', gap: 12 }}>
                     <View style={{ width: 44, height: 44, borderRadius: 15, backgroundColor: item.status === 'active' ? theme.successSoft : theme.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
@@ -834,7 +838,7 @@ function AnnouncementsModule() {
         </View>
       </Sheet>
 
-      <Sheet visible={Boolean(selected)} title={selected?.title || '公告详情'} onClose={() => setSelected(undefined)}>
+      <Sheet visible={Boolean(selected)} title={selected?.title || '公告详情'} onClose={() => { setSelected(undefined); setReadPage(1); }}>
         {selected ? (
           <>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
@@ -845,26 +849,28 @@ function AnnouncementsModule() {
             <Text style={{ color: theme.faint, fontSize: 11, marginTop: 12 }}>{`创建 ${displayDate(selected.created_at)} · 更新 ${displayDate(selected.updated_at)}`}</Text>
             <SectionTitle title="阅读情况" />
             <MetricGrid>
-              <Metric label="符合条件" value={integer(reads.data?.total)} />
+              <Metric label="用户总数" value={integer(reads.data?.total)} />
+              <Metric label="本页符合条件" value={integer(eligibleCount)} />
               <Metric label="已读（当前页）" value={integer(readCount)} tone="success" />
             </MetricGrid>
             <View style={{ marginTop: 12 }}>
-              <StateCard loading={reads.isLoading} error={reads.error} empty={!reads.isLoading && !reads.error && (reads.data?.items.length ?? 0) === 0} emptyText="尚无用户阅读状态。" onRetry={() => void reads.refetch()} />
+              <StateCard loading={reads.isLoading} error={reads.error} empty={!reads.isLoading && !reads.error && readRows.length === 0} emptyText="尚无用户阅读状态。" onRetry={() => void reads.refetch()} />
             </View>
             <View style={{ gap: 10 }}>
-              {eligibleReads.map((item) => (
+              {readRows.map((item) => (
                 <Card key={item.user_id}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <BellRing color={item.read_at ? theme.success : theme.faint} size={18} />
+                    <BellRing color={item.eligible && item.read_at ? theme.success : theme.faint} size={18} />
                     <View style={{ flex: 1 }}>
                       <Text numberOfLines={1} style={{ color: theme.text, fontWeight: '900' }}>{item.email || item.username || `用户 #${item.user_id}`}</Text>
-                      <Text style={{ color: theme.faint, fontSize: 11, marginTop: 4 }}>{item.read_at ? displayDate(item.read_at) : '尚未阅读'}</Text>
+                      <Text style={{ color: theme.faint, fontSize: 11, marginTop: 4 }}>{item.eligible ? (item.read_at ? displayDate(item.read_at) : '尚未阅读') : '不符合当前公告受众条件'}</Text>
                     </View>
-                    <Badge label={item.read_at ? '已读' : '未读'} tone={item.read_at ? 'success' : 'muted'} />
+                    <Badge label={!item.eligible ? '不符合' : item.read_at ? '已读' : '未读'} tone={item.eligible && item.read_at ? 'success' : 'muted'} />
                   </View>
                 </Card>
               ))}
             </View>
+            <Pager page={readPage} pages={reads.data?.pages ?? 1} onChange={setReadPage} />
           </>
         ) : null}
       </Sheet>

@@ -46,7 +46,7 @@
 | Accounts | `PUT /accounts/:id` | 编辑账号 |
 | Accounts | `GET /accounts/:id/stats` | 账号统计 |
 | Accounts | `GET /accounts/:id/models` | 账号可用模型 |
-| Accounts | `POST /accounts/:id/test` | 测试连接和返回延迟 |
+| Accounts | `POST /accounts/:id/test` | 解析 `text/event-stream` 测试结果并返回连接状态与延迟 |
 | Accounts | `POST /accounts/:id/refresh` | 刷新状态 |
 | Accounts | `POST /accounts/:id/schedulable` | 暂停/恢复调度 |
 | Accounts | `POST /accounts/:id/clear-error` | 清除错误 |

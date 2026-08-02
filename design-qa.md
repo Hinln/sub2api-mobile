@@ -37,7 +37,7 @@ Date: 2026-08-02 (Asia/Shanghai)
 
 - TypeScript: passed.
 - ESLint: passed.
-- Vitest: 4 files / 24 tests passed.
+- Vitest: 5 files / 28 tests passed.
 - Expo Doctor: 18/18 passed.
 - Expo web production export: passed.
 - Playwright visual and interaction suite: 4/4 passed without retry on the final run.

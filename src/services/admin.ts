@@ -1,4 +1,4 @@
-import { adminFetch } from '@/src/lib/admin-fetch';
+import { adminFetch, adminFetchText } from '@/src/lib/admin-fetch';
 import type {
   AccountTodayStats,
   AccountTestResult,
@@ -307,10 +307,66 @@ export function getAccountModels(accountId: number) {
   return adminFetch<AvailableAccountModel[]>(`/api/v1/admin/accounts/${accountId}/models`);
 }
 
-export function testAccount(accountId: number) {
-  return adminFetch<AccountTestResult>(`/api/v1/admin/accounts/${accountId}/test`, {
-    method: 'POST',
+type AccountTestEvent = {
+  type?: string;
+  text?: string;
+  status?: string;
+  success?: boolean;
+  error?: string;
+};
+
+function safeAccountTestMessage(value: string) {
+  return value.replace(/(?:admin-|sk-)[A-Za-z0-9._-]+/gi, '[REDACTED]').slice(0, 500);
+}
+
+export function parseAccountTestEventStream(raw: string, latencyMs?: number): AccountTestResult {
+  let sawEvent = false;
+  let completed = false;
+  let success = false;
+  let errorMessage = '';
+  const content: string[] = [];
+
+  raw.replace(/\r\n/g, '\n').split('\n').forEach((line) => {
+    if (!line.startsWith('data:')) return;
+    const value = line.slice(5).trim();
+    if (!value || value === '[DONE]') return;
+
+    let event: AccountTestEvent;
+    try {
+      event = JSON.parse(value) as AccountTestEvent;
+    } catch {
+      return;
+    }
+    sawEvent = true;
+    if (event.type === 'content' && event.text) content.push(event.text);
+    if (event.type === 'error' || event.error) errorMessage = event.error || event.status || 'Hub 返回连接测试失败。';
+    if (event.type === 'test_complete') {
+      completed = true;
+      success = event.success === true;
+    }
   });
+
+  if (!sawEvent) throw new Error('Hub 返回的账号测试流为空或格式无效。');
+  if (errorMessage) return { success: false, message: safeAccountTestMessage(errorMessage), latency_ms: latencyMs };
+  if (!completed) throw new Error('Hub 返回的账号测试流未正常结束。');
+
+  const responseText = content.join('').trim();
+  return {
+    success,
+    message: safeAccountTestMessage(responseText) || (success ? 'Hub 已完成真实连通性测试。' : 'Hub 返回连接测试失败。'),
+    latency_ms: latencyMs,
+  };
+}
+
+export async function testAccount(accountId: number) {
+  const startedAt = Date.now();
+  const raw = await adminFetchText(`/api/v1/admin/accounts/${accountId}/test`, {
+    method: 'POST',
+    headers: { Accept: 'text/event-stream' },
+  }, {
+    timeoutMs: 120_000,
+  });
+  return parseAccountTestEventStream(raw, Date.now() - startedAt);
 }
 
 export function refreshAccount(accountId: number) {

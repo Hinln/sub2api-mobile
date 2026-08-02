@@ -157,3 +157,55 @@ export async function adminFetch<T>(path: string, init: RequestInit = {}, option
     }
   }
 }
+
+export async function adminFetchText(path: string, init: RequestInit = {}, options: AdminRequestOptions = {}): Promise<string> {
+  const baseUrl = adminConfigState.baseUrl.trim();
+  const adminApiKey = adminConfigState.adminApiKey.trim();
+  if (!baseUrl) throw new Error('BASE_URL_REQUIRED');
+  if (!adminApiKey) throw new Error('ADMIN_API_KEY_REQUIRED');
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort('timeout'), options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  const forwardAbort = () => controller.abort(options.signal?.reason);
+  options.signal?.addEventListener('abort', forwardAbort, { once: true });
+  const headers = new Headers(init.headers);
+  if (!headers.has('Accept')) headers.set('Accept', 'text/plain');
+  if (init.body) headers.set('Content-Type', 'application/json');
+  headers.set('x-api-key', adminApiKey);
+  if (options.idempotencyKey) headers.set('Idempotency-Key', options.idempotencyKey);
+
+  try {
+    const response = await fetch(buildRequestUrl(baseUrl, path), {
+      ...init,
+      method: (init.method || 'GET').toUpperCase(),
+      headers,
+      signal: controller.signal,
+    });
+    const requestId = response.headers.get('x-request-id') || response.headers.get('request-id') || undefined;
+    const retryAfter = parseRetryAfter(response.headers.get('retry-after'));
+    const raw = await response.text();
+    if (response.ok) return raw;
+
+    let payload: ApiEnvelope<unknown> | undefined;
+    try {
+      payload = raw ? JSON.parse(raw) as ApiEnvelope<unknown> : undefined;
+    } catch {
+      payload = undefined;
+    }
+    const message = safeServerMessage(payload?.reason) || safeServerMessage(payload?.message) || `HTTP ${response.status}`;
+    const apiError = new ApiError(message, {
+      status: response.status,
+      requestId,
+      code: payload ? String(payload.code) : undefined,
+      retryAfter,
+    });
+    if (response.status === 401) unauthorizedHandler?.();
+    throw apiError;
+  } catch (error) {
+    if (controller.signal.aborted && !options.signal?.aborted) throw new Error('REQUEST_TIMEOUT');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    options.signal?.removeEventListener('abort', forwardAbort);
+  }
+}
