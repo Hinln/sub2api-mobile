@@ -9,19 +9,24 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 const THEME_MODE_KEY = 'vexlune_theme_mode_v1';
 const IS_WEB = Platform.OS === 'web';
 
-const light = {
+export type ThemePalette = {
+  page: string; card: string; cardRaised: string; muted: string; border: string;
+  primary: string; primarySoft: string; text: string; subtext: string; faint: string;
+  success: string; successSoft: string; warning: string; warningSoft: string; danger: string; dangerSoft: string;
+};
+
+const light: ThemePalette = {
   page: '#F6F5F9', card: '#FFFFFF', cardRaised: '#F0EEF5', muted: '#E5E1EC', border: '#E4E0EA',
   primary: '#7C3AED', primarySoft: '#EEE7FF', text: '#17141F', subtext: '#696273', faint: '#938B9F',
   success: '#16825C', successSoft: '#E6F6EF', warning: '#B86905', warningSoft: '#FFF2DB', danger: '#C73D53', dangerSoft: '#FDE9ED',
-} as const;
+};
 
-const dark = {
+const dark: ThemePalette = {
   page: '#08080B', card: '#121218', cardRaised: '#191921', muted: '#23232D', border: '#2D2D39',
   primary: '#A78BFA', primarySoft: '#271D42', text: '#F7F7FA', subtext: '#B8B2C0', faint: '#807A89',
   success: '#54D6A4', successSoft: '#112D26', warning: '#F5BD69', warningSoft: '#332813', danger: '#FF7180', dangerSoft: '#34171C',
-} as const;
+};
 
-export type ThemePalette = typeof light;
 export const themePreferences = proxy({ mode: 'light' as ThemeMode, hydrated: false });
 
 export function resolvedThemeMode(mode = themePreferences.mode) {
