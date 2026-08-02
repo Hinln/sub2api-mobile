@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { BookOpen, KeyRound, Layers3, LogOut, ServerCog, Settings2, ShieldCheck } from 'lucide-react-native';
+import { AlertTriangle, BookOpen, KeyRound, Layers3, LogOut, ServerCog, Settings2, ShieldCheck } from 'lucide-react-native';
 import { Alert, Text, View } from 'react-native';
 
 import { Card, MenuRow, Page, SectionTitle } from '@/src/components/ui';
@@ -21,6 +21,8 @@ export default function MoreScreen() {
       <Card><View><Text style={{ color: theme.faint, fontSize: 11 }}>{'\u7ba1\u7406\u64cd\u4f5c'}</Text><Text style={{ color: theme.text, fontSize: 13, marginTop: 5 }}>{VEXLUNE_HUB_URL}</Text><Text style={{ color: theme.faint, fontSize: 11, marginTop: 12 }}>{'\u6a21\u578b API\uff08\u4ec5\u5c55\u793a\uff09'}</Text><Text style={{ color: theme.text, fontSize: 13, marginTop: 5 }}>{VEXLUNE_API_URL}</Text></View></Card>
       <SectionTitle title={'\u7ba1\u7406'} />
       <Card>
+        <MenuRow icon={AlertTriangle} title={'\u5f02\u5e38\u4e2d\u5fc3'} subtitle={'\u805a\u5408\u6700\u8fd1\u5931\u8d25\u4e0e\u5f53\u524d\u9875\u8d26\u53f7\u5f02\u5e38'} onPress={() => router.push('/exceptions')} />
+        <View style={{ height: 1, backgroundColor: theme.border }} />
         <MenuRow icon={Layers3} title={'\u5206\u7ec4\u4e0e\u6a21\u578b'} subtitle={'\u5206\u7ec4\u72b6\u6001\u3001\u8d26\u53f7\u6570\u4e0e\u500d\u7387'} onPress={() => router.push('/groups')} />
         <View style={{ height: 1, backgroundColor: theme.border }} />
         <MenuRow icon={KeyRound} title="API Key" subtitle={'\u6309\u7528\u6237\u67e5\u770b\u5bc6\u94a5\u3001\u914d\u989d\u548c\u4f7f\u7528\u60c5\u51b5'} onPress={() => router.push('/users')} />
@@ -31,7 +33,7 @@ export default function MoreScreen() {
       <Card>
         <MenuRow icon={ShieldCheck} title={'\u5b89\u5168\u8bbe\u8ba1'} subtitle={'\u51ed\u636e\u4fdd\u5b58\u4e0e\u6743\u9650\u8bf4\u660e'} onPress={() => router.push('/about')} />
         <View style={{ height: 1, backgroundColor: theme.border }} />
-        <MenuRow icon={BookOpen} title={'\u5173\u4e8e\u4e0e\u5f00\u6e90\u8bb8\u53ef'} subtitle="Vexlune Mobile Console 1.0.0" onPress={() => router.push('/about')} />
+        <MenuRow icon={BookOpen} title={'\u5173\u4e8e\u4e0e\u5f00\u6e90\u8bb8\u53ef'} subtitle="Vexlune Mobile Console 1.0.1" onPress={() => router.push('/about')} />
         <View style={{ height: 1, backgroundColor: theme.border }} />
         <MenuRow icon={Settings2} title={'\u7cfb\u7edf\u8bbe\u7f6e'} subtitle={'\u5f53\u524d\u7248\u672c\u4ec5\u5b89\u5168\u5730\u5c55\u793a\u914d\u7f6e\uff0c\u4e0d\u76f2\u76ee\u63d0\u4ea4'} onPress={() => router.push('/settings')} />
       </Card>

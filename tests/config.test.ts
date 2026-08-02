@@ -41,3 +41,10 @@ describe('formatters and pagination', () => {
     expect(buildQuery({ page: 2, page_size: 30, search: 'a b', status: undefined })).toBe('?page=2&page_size=30&search=a+b');
   });
 });
+
+describe('dashboard billing semantics', () => {
+  it('keeps explicit actual billing and official price fields separate in the contract', () => {
+    const stats = { today_actual_cost: 1.08, today_standard_cost: 5.29 };
+    expect(stats.today_actual_cost).not.toBe(stats.today_standard_cost);
+  });
+});

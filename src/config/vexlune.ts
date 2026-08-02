@@ -1,7 +1,7 @@
 export const VEXLUNE_HUB_URL = 'https://hub.vexlune.com' as const;
 export const VEXLUNE_API_URL = 'https://api.vexlune.com' as const;
 export const APP_NAME = 'Vexlune Mobile Console' as const;
-export const APP_VERSION = '1.0.0' as const;
+export const APP_VERSION = '1.0.1' as const;
 
 export function normalizeHubUrl(input: string) {
   const value = input.trim().replace(/\/+$/, '');

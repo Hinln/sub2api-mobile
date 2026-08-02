@@ -11,6 +11,11 @@ import { theme } from '@/src/theme';
 
 function money(value?: number) { return typeof value === 'number' ? `$${value.toFixed(2)}` : '--'; }
 function count(value?: number) { return typeof value === 'number' ? new Intl.NumberFormat('zh-CN').format(value) : '--'; }
+function successRate(stats?: { today_requests?: number; today_success_requests?: number; today_failed_requests?: number }) {
+  if (!stats || !Number.isFinite(stats.today_requests) || !stats.today_requests) return '--';
+  const success = stats.today_success_requests ?? (typeof stats.today_failed_requests === 'number' ? stats.today_requests - stats.today_failed_requests : undefined);
+  return typeof success === 'number' ? `${Math.max(0, Math.min(100, (success / stats.today_requests) * 100)).toFixed(1)}%` : '--';
+}
 
 function last24Hours() {
   const end = new Date();
@@ -36,6 +41,8 @@ export default function MonitorScreen() {
   const disabled = accountItems.filter((item) => item.schedulable === false).length;
   const abnormal = accountItems.filter((item) => item.status === 'error' || Boolean(item.error_message)).length;
   const maxRequests = Math.max(...(trend.data?.trend ?? []).map((point) => point.requests), 1);
+  const actualBilling = stats.data?.today_actual_cost;
+  const officialReference = stats.data?.today_standard_cost;
 
   return (
     <Page
@@ -52,8 +59,10 @@ export default function MonitorScreen() {
         </Card>
 
         <SectionTitle title={'\u4eca\u65e5\u6570\u636e'} />
-        <View style={{ flexDirection: 'row', gap: 10 }}><Metric label={'\u8bf7\u6c42\u6570'} value={count(stats.data?.today_requests)} /><Metric label={'\u603b Token'} value={formatTokenValue(stats.data?.today_tokens ?? 0)} /><Metric label={'\u8ba1\u8d39\u91d1\u989d'} value={money(stats.data?.today_cost)} tone="warning" /></View>
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}><Metric label={'\u8f93\u5165 Token'} value={formatTokenValue(stats.data?.today_input_tokens ?? 0)} /><Metric label={'\u8f93\u51fa Token'} value={formatTokenValue(stats.data?.today_output_tokens ?? 0)} /><Metric label="RPM" value={count(stats.data?.rpm)} /></View>
+        <View style={{ flexDirection: 'row', gap: 10 }}><Metric label={'\u8bf7\u6c42\u6570'} value={count(stats.data?.today_requests)} /><Metric label={'\u6210\u529f\u7387'} value={successRate(stats.data)} tone="success" /></View>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}><Metric label={'\u603b Token'} value={formatTokenValue(stats.data?.today_tokens ?? 0)} /><Metric label={'\u5b9e\u9645\u8ba1\u8d39'} value={money(actualBilling)} tone="warning" /></View>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}><Metric label={'\u5931\u8d25\u8bf7\u6c42'} value={count(stats.data?.today_failed_requests)} tone="danger" /><Metric label="RPM" value={count(stats.data?.rpm)} /></View>
+        <Card style={{ marginTop: 10 }}><Text style={{ color: theme.subtext, fontSize: 11, lineHeight: 17 }}>{'\u5b9e\u9645\u8ba1\u8d39\u4ec5\u4f7f\u7528 Hub \u8fd4\u56de\u7684 today_actual_cost\uff1b\u7f3a\u5931\u65f6\u4e0d\u7528 today_cost \u63a8\u6d4b\u3002\u5b98\u65b9\u6807\u51c6\u4ef7\u683c'}<Text style={{ color: theme.primary, fontWeight: '900' }}>{money(officialReference)}</Text>{'\uff0c\u4ec5\u4f5c\u53c2\u8003\uff0c\u4e0d\u4ee3\u8868\u5b9e\u9645\u8ba1\u8d39\u6216\u4e0a\u6e38\u6210\u672c\u3002'}</Text></Card>
 
         <SectionTitle title={'\u7528\u6237\u4e0e\u8d26\u53f7\u6c60'} />
         <View style={{ flexDirection: 'row', gap: 10 }}><Metric label={'\u7528\u6237\u603b\u6570'} value={count(stats.data?.total_users)} /><Metric label={'\u4eca\u65e5\u65b0\u589e'} value={count(stats.data?.today_new_users)} tone="success" /><Metric label={'\u6d3b\u8dc3\u7528\u6237'} value={count(stats.data?.active_users)} /></View>
