@@ -45,7 +45,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          workspace="$(find ios -maxdepth 2 -name '*.xcworkspace' -not -path '*/Pods/*' -print -quit)"
+          # Restrict discovery to ios/ itself: an .xcodeproj contains its own
+          # project.xcworkspace, which omits the CocoaPods integration.
+          workspace="$(find ios -maxdepth 1 -name '*.xcworkspace' -not -path '*/Pods/*' -print -quit)"
           if [[ -z "$workspace" ]]; then
             echo "No Xcode workspace found" >&2
             exit 1
