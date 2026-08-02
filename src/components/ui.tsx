@@ -37,7 +37,7 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
 }
 
 export function Card({ children, style }: { children: ReactNode; style?: object }) {
-  return <View style={[{ backgroundColor: theme.card, borderRadius: 20, borderWidth: 1, borderColor: theme.border, padding: 16 }, style]}>{children}</View>;
+  return <View style={[{ backgroundColor: theme.card, borderRadius: 20, borderWidth: 1, borderColor: theme.border, padding: 16, shadowColor: '#25163D', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.045, shadowRadius: 14, elevation: 2 }, style]}>{children}</View>;
 }
 
 export function StateCard({ loading, error, empty, onRetry, emptyText }: {

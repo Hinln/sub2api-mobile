@@ -1,12 +1,12 @@
-# Vexlune Mobile Console
+# Hub Vexlune
 
-Vexlune Hub 的个人 iOS 移动管理控制台。项目基于 Expo 54、React Native、Expo Router、TanStack Query、Valtio 与 SecureStore。
+Hub Vexlune 是 Vexlune Hub 的 iOS 移动管理控制台。项目基于 Expo 54、React Native、Expo Router、TanStack Query、Valtio 与 SecureStore。
 
 - 管理服务：`https://hub.vexlune.com`
 - 模型 API（仅展示边界）：`https://api.vexlune.com`
 - Bundle ID：`com.vexlune.mobile`
 - URL Scheme：`vexlunemobile`
-- Version / Build：`1.0.0 / 1`
+- Version / Build：`1.0.2 / 3`
 
 ## 本地验证
 

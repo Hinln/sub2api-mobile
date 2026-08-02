@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
-import { KeyRound, Wallet, X } from 'lucide-react-native';
+import { Activity, KeyRound, Wallet, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
@@ -8,7 +8,7 @@ import { Badge, Card, Metric, SectionTitle, StateCard } from '@/src/components/u
 import { humanizeApiError } from '@/src/lib/admin-fetch';
 import { formatTokenValue } from '@/src/lib/formatters';
 import { queryClient } from '@/src/lib/query-client';
-import { getUser, getUserUsage, listUserApiKeys, updateUserBalance, updateUserStatus } from '@/src/services/admin';
+import { getUser, getUserUsage, listUsageLogs, listUserApiKeys, updateUserBalance, updateUserStatus } from '@/src/services/admin';
 import { theme } from '@/src/theme';
 import type { BalanceOperation } from '@/src/types/admin';
 
@@ -22,7 +22,8 @@ export default function UserDetailScreen() {
   const user = useQuery({ queryKey: ['user', userId], queryFn: () => getUser(userId), enabled: Number.isFinite(userId) });
   const usage = useQuery({ queryKey: ['user-usage', userId], queryFn: () => getUserUsage(userId, 'month'), enabled: Number.isFinite(userId) });
   const keys = useQuery({ queryKey: ['user-api-keys', userId], queryFn: () => listUserApiKeys(userId), enabled: Number.isFinite(userId) });
-  const refresh = () => { void user.refetch(); void usage.refetch(); void keys.refetch(); };
+  const logs = useQuery({ queryKey: ['user-logs', userId], queryFn: () => listUsageLogs({ user_id: userId, page_size: 8 }), enabled: Number.isFinite(userId) });
+  const refresh = () => { void user.refetch(); void usage.refetch(); void keys.refetch(); void logs.refetch(); };
   const statusMutation = useMutation({ mutationFn: (status: 'active' | 'disabled') => updateUserStatus(userId, status), onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['user', userId] }); void queryClient.invalidateQueries({ queryKey: ['users'] }); } });
   const balanceMutation = useMutation({ mutationFn: () => updateUserBalance(userId, { balance: Number(amount), operation, notes: notes.trim() || undefined }), onSuccess: () => { setBalanceOpen(false); setAmount(''); setNotes(''); void queryClient.invalidateQueries({ queryKey: ['user', userId] }); } });
   const item = user.data;
@@ -49,6 +50,13 @@ export default function UserDetailScreen() {
         <SectionTitle title={`API Key (${keys.data?.total ?? 0})`} />
         <StateCard loading={keys.isLoading} error={keys.error} empty={!keys.isLoading && !keys.error && (keys.data?.items.length ?? 0) === 0} onRetry={() => void keys.refetch()} />
         <View style={{ gap: 9 }}>{keys.data?.items.map((key) => <Card key={key.id}><View style={{ flexDirection: 'row', gap: 11 }}><KeyRound color={theme.primary} size={18} /><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '800' }}>{key.name || `Key #${key.id}`}</Text><Text style={{ color: theme.subtext, fontSize: 11, marginTop: 5 }}>{key.key ? `${key.key.slice(0, 6)}...${key.key.slice(-4)}` : '\u5bc6\u94a5\u5185\u5bb9\u672a\u8fd4\u56de'}</Text><Text style={{ color: theme.faint, fontSize: 11, marginTop: 7 }}>{`\u5df2\u7528 ${key.quota_used ?? 0} / \u914d\u989d ${key.quota ?? 0}`}</Text></View><Badge label={key.status || '--'} tone={key.status === 'active' ? 'success' : 'muted'} /></View></Card>)}</View>
+
+        <SectionTitle title="消费记录与最近请求" />
+        <StateCard loading={logs.isLoading} error={logs.error} empty={!logs.isLoading && !logs.error && (logs.data?.items.length ?? 0) === 0} onRetry={() => void logs.refetch()} emptyText="当前用户没有请求或消费记录。" />
+        <View style={{ gap: 9 }}>{logs.data?.items.map((log) => {
+          const failed = log.status === 'error' || Boolean(log.error_message) || (log.status_code ?? 200) >= 400;
+          return <Card key={log.id}><View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 11 }}><Activity color={failed ? theme.danger : theme.success} size={18} /><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '800' }}>{log.model || log.request_type || `Request #${log.id}`}</Text><Text style={{ color: theme.subtext, fontSize: 11, marginTop: 5 }}>{log.created_at ? new Date(log.created_at).toLocaleString('zh-CN') : '--'} · {typeof log.duration_ms === 'number' ? `${Math.round(log.duration_ms)}ms` : '--'}</Text><Text style={{ color: theme.faint, fontSize: 11, marginTop: 7 }}>Token {formatTokenValue(log.total_tokens ?? 0)} · 计费字段 {typeof log.actual_cost === 'number' ? `$${log.actual_cost.toFixed(4)}` : typeof log.cost === 'number' ? `$${log.cost.toFixed(4)}` : '--'}</Text>{failed && log.error_message ? <Text numberOfLines={2} style={{ color: theme.danger, fontSize: 10, lineHeight: 16, marginTop: 6 }}>{log.error_message}</Text> : null}</View><Badge label={failed ? '失败' : '成功'} tone={failed ? 'danger' : 'success'} /></View></Card>;
+        })}</View>
       </> : null}
 
       <Modal transparent visible={balanceOpen} animationType="slide" onRequestClose={() => setBalanceOpen(false)}><KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000099' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}><View style={{ backgroundColor: theme.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20 }}><View style={{ flexDirection: 'row', alignItems: 'center' }}><Text style={{ color: theme.text, fontSize: 20, fontWeight: '900', flex: 1 }}>{'\u8c03\u6574\u4f59\u989d'}</Text><Pressable onPress={() => setBalanceOpen(false)}><X color={theme.subtext} size={21} /></Pressable></View><Text style={{ color: theme.subtext, fontSize: 12, marginTop: 6 }}>{item?.email}</Text><View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>{([['set', '\u8bbe\u7f6e\u6700\u7ec8\u4f59\u989d'], ['add', '\u589e\u52a0'], ['subtract', '\u6263\u51cf']] as const).map(([value, label]) => <Pressable key={value} onPress={() => setOperation(value)} style={{ flex: 1, borderRadius: 12, backgroundColor: operation === value ? theme.primary : theme.cardRaised, paddingVertical: 10, alignItems: 'center' }}><Text style={{ color: operation === value ? '#FFFFFF' : theme.subtext, fontSize: 11, fontWeight: '800' }}>{label}</Text></Pressable>)}</View><TextInput value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder={'\u91d1\u989d'} placeholderTextColor={theme.faint} style={{ color: theme.text, backgroundColor: theme.cardRaised, borderRadius: 14, padding: 14, marginTop: 14 }} /><TextInput value={notes} onChangeText={setNotes} placeholder={'\u5907\u6ce8\uff08\u53ef\u9009\uff09'} placeholderTextColor={theme.faint} style={{ color: theme.text, backgroundColor: theme.cardRaised, borderRadius: 14, padding: 14, marginTop: 10 }} />{balanceMutation.error ? <Text style={{ color: theme.danger, fontSize: 12, marginTop: 10 }}>{humanizeApiError(balanceMutation.error)}</Text> : null}<Pressable disabled={!Number.isFinite(Number(amount)) || !amount || balanceMutation.isPending} onPress={() => Alert.alert('\u786e\u8ba4\u8c03\u6574\u4f59\u989d', `\u5bf9 ${item?.email} \u6267\u884c\u300c${operation}\u300d\uff0c\u91d1\u989d ${amount}\u3002`, [{ text: '\u53d6\u6d88', style: 'cancel' }, { text: '\u786e\u8ba4', onPress: () => balanceMutation.mutate() }])} style={{ marginTop: 16, borderRadius: 15, backgroundColor: theme.primary, paddingVertical: 14, alignItems: 'center' }}><Text style={{ color: '#FFFFFF', fontWeight: '900' }}>{balanceMutation.isPending ? '\u63d0\u4ea4\u4e2d...' : '\u4e8c\u6b21\u786e\u8ba4\u5e76\u63d0\u4ea4'}</Text></Pressable></View></KeyboardAvoidingView></Modal>

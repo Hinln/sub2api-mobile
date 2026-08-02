@@ -4,7 +4,7 @@ import { Eye, EyeOff, Server, ShieldCheck } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { VEXLUNE_API_URL, VEXLUNE_HUB_URL } from '@/src/config/vexlune';
+import { APP_NAME, VEXLUNE_API_URL, VEXLUNE_HUB_URL } from '@/src/config/vexlune';
 import { humanizeApiError } from '@/src/lib/admin-fetch';
 import { queryClient } from '@/src/lib/query-client';
 import { getAdminSettings } from '@/src/services/admin';
@@ -49,9 +49,9 @@ export default function LoginScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 22 }} keyboardShouldPersistTaps="handled">
           <View style={{ alignItems: 'center', marginBottom: 30 }}>
-            <View style={{ width: 76, height: 76, borderRadius: 25, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#FFFFFF', fontSize: 38, fontWeight: '900' }}>V</Text></View>
-            <Text style={{ color: theme.text, fontSize: 27, fontWeight: '900', marginTop: 18 }}>Vexlune</Text>
-            <Text style={{ color: theme.subtext, fontSize: 13, marginTop: 6 }}>{'Vexlune Hub \u79fb\u52a8\u7ba1\u7406\u63a7\u5236\u53f0'}</Text>
+            <View style={{ width: 76, height: 76, borderRadius: 25, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#FFFFFF', fontSize: 38, fontWeight: '900' }}>H</Text></View>
+            <Text style={{ color: theme.text, fontSize: 27, fontWeight: '900', marginTop: 18 }}>{APP_NAME}</Text>
+            <Text style={{ color: theme.subtext, fontSize: 13, marginTop: 6 }}>AI Gateway 移动运营控制台</Text>
           </View>
 
           <View style={{ backgroundColor: theme.card, borderRadius: 24, borderColor: theme.border, borderWidth: 1, padding: 18 }}>

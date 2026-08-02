@@ -5,6 +5,11 @@ export default defineConfig({
   timeout: 45_000,
   retries: 1,
   workers: 1,
-  use: { baseURL: 'http://127.0.0.1:4173', colorScheme: 'dark', locale: 'zh-CN' },
+  use: {
+    baseURL: 'http://127.0.0.1:4173',
+    colorScheme: 'light',
+    locale: 'zh-CN',
+    timezoneId: 'Asia/Shanghai',
+  },
   webServer: { command: 'npm run serve:web', url: 'http://127.0.0.1:4173', reuseExistingServer: true, timeout: 30_000 },
 });

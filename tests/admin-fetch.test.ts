@@ -80,4 +80,7 @@ describe('client helpers', () => {
     expect(redactSecret('admin-1234567890')).toBe('admi...7890');
     expect(redactSecret('short')).toBe('s***');
   });
+  it('turns browser network failures into an actionable Chinese message', () => {
+    expect(humanizeApiError(new TypeError('Failed to fetch'))).toContain('无法连接 Hub');
+  });
 });

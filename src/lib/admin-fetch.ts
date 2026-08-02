@@ -50,6 +50,9 @@ export function humanizeApiError(error: unknown) {
   if (!(error instanceof ApiError)) {
     if (error instanceof Error && error.name === 'AbortError') return '\u8bf7\u6c42\u5df2\u53d6\u6d88';
     if (error instanceof Error && error.message === 'REQUEST_TIMEOUT') return '\u8bf7\u6c42\u8d85\u65f6\uff0c\u8bf7\u68c0\u67e5\u7f51\u7edc\u540e\u91cd\u8bd5';
+    if (error instanceof TypeError || (error instanceof Error && /failed to fetch|network request failed|load failed/i.test(error.message))) {
+      return '\u65e0\u6cd5\u8fde\u63a5 Hub\uff0c\u8bf7\u68c0\u67e5\u7f51\u7edc\u3001HTTPS \u8bc1\u4e66\u6216\u7ba1\u7406\u5730\u5740';
+    }
     return error instanceof Error ? error.message : '\u7f51\u7edc\u8bf7\u6c42\u5931\u8d25';
   }
 

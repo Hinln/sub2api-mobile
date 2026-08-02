@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2
+
+- Renamed the product to Hub Vexlune.
+- Updated iOS metadata to version 1.0.2 / build 3 while retaining `com.vexlune.mobile`.
+- Updated the unsigned iOS workflow and artifact naming for the 1.0.2 release.
+
 ## 1.0.1
 
 - Defaulted first launch to the persisted light theme, with dark and system options.

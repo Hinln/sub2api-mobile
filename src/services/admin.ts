@@ -1,24 +1,38 @@
 import { adminFetch } from '@/src/lib/admin-fetch';
 import type {
   AccountTodayStats,
+  AccountTestResult,
+  AccountUsageStats,
   AdminAccount,
   AdminApiKey,
   AdminGroup,
   AdminSettings,
   AdminUser,
+  Announcement,
+  AnnouncementUserReadStatus,
+  AuditLog,
   BalanceOperation,
+  CreateAnnouncementRequest,
   DashboardModelStats,
   DashboardSnapshot,
   DashboardStats,
   DashboardTrend,
   CreateAccountRequest,
+  CreatePromoCodeRequest,
   CreateUserRequest,
+  PaymentDashboardStats,
+  PaymentOrder,
   PaginatedData,
   PaginationParams,
+  PromoCode,
+  PromoCodeUsage,
+  SubscriptionPlan,
   SystemVersion,
   UsageLog,
   UsageStats,
   UserUsageSummary,
+  UpdateAccountRequest,
+  AvailableAccountModel,
 } from '@/src/types/admin';
 
 export function buildQuery(params: Record<string, string | number | boolean | null | undefined>) {
@@ -58,6 +72,115 @@ export function getDashboardModels(params: { start_date: string; end_date: strin
   return adminFetch<DashboardModelStats>(`/api/v1/admin/dashboard/models${buildQuery(params)}`);
 }
 
+export function getPaymentDashboard(days = 30) {
+  return adminFetch<PaymentDashboardStats>(`/api/v1/admin/payment/dashboard${buildQuery({ days })}`);
+}
+
+export function listPaymentOrders(params: PaginationParams & {
+  payment_type?: string;
+  user_id?: number;
+  keyword?: string;
+  order_type?: string;
+} = {}) {
+  return adminFetch<PaginatedData<PaymentOrder>>(`/api/v1/admin/payment/orders${buildQuery({
+    page: params.page ?? 1,
+    page_size: params.page_size ?? 30,
+    status: params.status,
+    payment_type: params.payment_type,
+    user_id: params.user_id,
+    keyword: params.keyword,
+    order_type: params.order_type,
+  })}`);
+}
+
+export function listPaymentPlans() {
+  return adminFetch<SubscriptionPlan[]>('/api/v1/admin/payment/plans');
+}
+
+export function listPromoCodes(search = '', pagination: PaginationParams = {}) {
+  return adminFetch<PaginatedData<PromoCode>>(`/api/v1/admin/promo-codes${buildQuery({
+    page: pagination.page ?? 1,
+    page_size: pagination.page_size ?? 30,
+    status: pagination.status,
+    search: search.trim(),
+    sort_by: pagination.sort ?? 'created_at',
+    sort_order: pagination.order ?? 'desc',
+  })}`);
+}
+
+export function createPromoCode(body: CreatePromoCodeRequest) {
+  return adminFetch<PromoCode>('/api/v1/admin/promo-codes', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }, {
+    idempotencyKey: `promo-code-create-${Date.now()}`,
+  });
+}
+
+export function listPromoCodeUsages(promoCodeId: number, page = 1, pageSize = 50) {
+  return adminFetch<PaginatedData<PromoCodeUsage>>(`/api/v1/admin/promo-codes/${promoCodeId}/usages${buildQuery({
+    page,
+    page_size: pageSize,
+  })}`);
+}
+
+export function listAuditLogs(params: PaginationParams & {
+  start_time?: string;
+  end_time?: string;
+  actor_user_id?: number;
+  actor_email?: string;
+  auth_method?: string;
+  action?: string;
+  method?: string;
+  client_ip?: string;
+  success?: boolean;
+  q?: string;
+} = {}) {
+  return adminFetch<PaginatedData<AuditLog>>(`/api/v1/admin/audit-logs${buildQuery({
+    page: params.page ?? 1,
+    page_size: params.page_size ?? 30,
+    start_time: params.start_time,
+    end_time: params.end_time,
+    actor_user_id: params.actor_user_id,
+    actor_email: params.actor_email,
+    auth_method: params.auth_method,
+    action: params.action,
+    method: params.method,
+    client_ip: params.client_ip,
+    success: params.success,
+    q: params.q,
+  })}`);
+}
+
+export function listAnnouncements(search = '', pagination: PaginationParams = {}) {
+  return adminFetch<PaginatedData<Announcement>>(`/api/v1/admin/announcements${buildQuery({
+    page: pagination.page ?? 1,
+    page_size: pagination.page_size ?? 30,
+    status: pagination.status,
+    search: search.trim(),
+    sort_by: pagination.sort ?? 'created_at',
+    sort_order: pagination.order ?? 'desc',
+  })}`);
+}
+
+export function createAnnouncement(body: CreateAnnouncementRequest) {
+  return adminFetch<Announcement>('/api/v1/admin/announcements', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }, {
+    idempotencyKey: `announcement-create-${Date.now()}`,
+  });
+}
+
+export function listAnnouncementReadStatus(announcementId: number, page = 1, pageSize = 50) {
+  return adminFetch<PaginatedData<AnnouncementUserReadStatus>>(`/api/v1/admin/announcements/${announcementId}/read-status${buildQuery({
+    page,
+    page_size: pageSize,
+    sort_by: 'email',
+    sort_order: 'asc',
+  })}`);
+}
+
 export function getDashboardSnapshot(params: {
   start_date: string;
   end_date: string;
@@ -92,7 +215,7 @@ export function getUsageStats(params: {
 
 export function listUsers(search = '', pagination: PaginationParams = {}) {
   return adminFetch<PaginatedData<AdminUser>>(
-    `/api/v1/admin/users${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 20, search: search.trim(), status: pagination.status, sort: pagination.sort, order: pagination.order })}`
+    `/api/v1/admin/users${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 20, search: search.trim(), status: pagination.status, sort_by: pagination.sort, sort_order: pagination.order })}`
   );
 }
 
@@ -150,12 +273,19 @@ export function getGroup(groupId: number) {
 
 export function listAccounts(search = '', pagination: PaginationParams = {}) {
   return adminFetch<PaginatedData<AdminAccount>>(
-    `/api/v1/admin/accounts${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 50, search: search.trim(), status: pagination.status, sort: pagination.sort, order: pagination.order })}`
+    `/api/v1/admin/accounts${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 50, search: search.trim(), status: pagination.status, sort_by: pagination.sort, sort_order: pagination.order })}`
   );
 }
 
 export function getAccount(accountId: number) {
   return adminFetch<AdminAccount>(`/api/v1/admin/accounts/${accountId}`);
+}
+
+export function updateAccount(accountId: number, body: UpdateAccountRequest) {
+  return adminFetch<AdminAccount>(`/api/v1/admin/accounts/${accountId}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
 }
 
 export function createAccount(body: CreateAccountRequest) {
@@ -169,8 +299,16 @@ export function getAccountTodayStats(accountId: number) {
   return adminFetch<AccountTodayStats>(`/api/v1/admin/accounts/${accountId}/today-stats`);
 }
 
+export function getAccountStats(accountId: number, days = 30) {
+  return adminFetch<AccountUsageStats>(`/api/v1/admin/accounts/${accountId}/stats${buildQuery({ days })}`);
+}
+
+export function getAccountModels(accountId: number) {
+  return adminFetch<AvailableAccountModel[]>(`/api/v1/admin/accounts/${accountId}/models`);
+}
+
 export function testAccount(accountId: number) {
-  return adminFetch(`/api/v1/admin/accounts/${accountId}/test`, {
+  return adminFetch<AccountTestResult>(`/api/v1/admin/accounts/${accountId}/test`, {
     method: 'POST',
   });
 }
@@ -200,13 +338,11 @@ export function listUsageLogs(params: PaginationParams & { user_id?: number; acc
   return adminFetch<PaginatedData<UsageLog>>(`/api/v1/admin/usage${buildQuery({
     page: params.page ?? 1,
     page_size: params.page_size ?? 30,
-    search: params.search,
-    status: params.status,
     user_id: params.user_id,
     account_id: params.account_id,
     model: params.model,
-    sort: params.sort ?? 'created_at',
-    order: params.order ?? 'desc',
+    sort_by: params.sort ?? 'created_at',
+    sort_order: params.order ?? 'desc',
   })}`);
 }
 

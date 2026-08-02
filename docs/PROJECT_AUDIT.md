@@ -5,7 +5,7 @@
 - 上游：`https://github.com/ckken/sub2api-mobile.git`
 - 原始分支：`main`
 - 原始提交：`3177500 feat: streamline account overview list workflow`
-- 开发分支：`codex/vexlune-ios-admin`
+- 开发分支：`codex/vexlune-ios-production`
 - 后端参考：`Wei-Shaw/sub2api@b74024c`
 - 工作区开始时为空，无用户未提交修改。
 
@@ -22,7 +22,7 @@
 
 ## 品牌与原生配置结论
 
-- 名称：Vexlune Mobile Console
+- 名称：Hub Vexlune
 - 短品牌：Vexlune
 - Bundle ID：`com.vexlune.mobile`
 - Scheme：`vexlunemobile`

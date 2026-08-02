@@ -7,6 +7,16 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+- No unreleased changes.
+
+## [1.0.2] - 2026-08-02
+
+### Changed
+
+- Renamed the product to Hub Vexlune.
+- Advanced the iOS release metadata to version 1.0.2, build 3.
+- Updated the unsigned iPhoneOS workflow and release artifact names for 1.0.2.
+
 ### Added
 
 - Open-source baseline documentation:
