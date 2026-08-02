@@ -2,20 +2,20 @@
   "expo": {
     "name": "Vexlune Mobile Console",
     "slug": "vexlune-mobile-console",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/vexlune-icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/vexlune-splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#08080b"
+      "backgroundColor": "#F6F5F9"
     },
     "ios": {
       "supportsTablet": false,
       "icon": "./assets/vexlune-icon.png",
       "bundleIdentifier": "com.vexlune.mobile",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -24,7 +24,7 @@
       "icon": "./assets/vexlune-icon.png",
       "package": "com.vexlune.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#08080B",
+        "backgroundColor": "#F6F5F9",
         "foregroundImage": "./assets/vexlune-icon.png"
       },
       "predictiveBackGestureEnabled": false

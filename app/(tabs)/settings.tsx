@@ -9,6 +9,7 @@ import { queryClient } from '@/src/lib/query-client';
 import { getAdminSettings } from '@/src/services/admin';
 import { adminConfigState, restoreDefaultHubUrl, saveAdminConfig, setBiometricEnabled } from '@/src/store/admin-config';
 import { theme } from '@/src/theme';
+import { setThemeMode, themePreferences, type ThemeMode } from '@/src/theme';
 
 // CommonJS entry avoids import.meta in Expo Metro's classic web bundle.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -16,6 +17,7 @@ const { useSnapshot } = require('valtio/react');
 
 export default function SettingsScreen() {
   const config = useSnapshot(adminConfigState);
+  const appearance = useSnapshot(themePreferences);
   const [advanced, setAdvanced] = useState(config.advancedUrlEnabled);
   const [url, setUrl] = useState(config.baseUrl);
   const [token, setToken] = useState('');
@@ -53,6 +55,10 @@ export default function SettingsScreen() {
     await setBiometricEnabled(value);
   }
 
+  async function changeTheme(mode: ThemeMode) {
+    try { await setThemeMode(mode); setMessage('\u4e3b\u9898\u8bbe\u7f6e\u5df2\u4fdd\u5b58'); } catch { setMessage('\u4e3b\u9898\u8bbe\u7f6e\u4fdd\u5b58\u5931\u8d25'); }
+  }
+
   return (
     <Page title={'\u8fde\u63a5\u4e0e\u5b89\u5168'} subtitle={'\u9ed8\u8ba4\u4ec5\u8fde\u63a5 Vexlune Hub\uff0c\u51ed\u636e\u4fdd\u5b58\u5728 SecureStore'}>
       <SectionTitle title={'\u7ba1\u7406\u8fde\u63a5'} />
@@ -72,6 +78,12 @@ export default function SettingsScreen() {
 
       <SectionTitle title={'\u672c\u5730\u5e94\u7528\u9501'} />
       <Card><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: theme.successSoft, alignItems: 'center', justifyContent: 'center' }}><ShieldCheck color={theme.success} size={19} /></View><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '800' }}>Face ID / Touch ID</Text><Text style={{ color: theme.subtext, fontSize: 11, lineHeight: 17, marginTop: 4 }}>{Platform.OS === 'web' ? '\u4ec5\u539f\u751f iOS/Android \u53ef\u7528' : '\u5e94\u7528\u56de\u5230\u540e\u53f0\u65f6\u81ea\u52a8\u9501\u5b9a\uff0c\u5141\u8bb8\u8bbe\u5907\u5bc6\u7801\u56de\u9000'}</Text></View><Switch disabled={Platform.OS === 'web'} value={config.biometricEnabled} onValueChange={(value) => void toggleBiometric(value)} trackColor={{ false: theme.muted, true: theme.primary }} /></View></Card>
+
+      <SectionTitle title={'\u663e\u793a'} />
+      <Card>
+        <Text style={{ color: theme.text, fontWeight: '800' }}>{'\u4e3b\u9898'}</Text><Text style={{ color: theme.subtext, fontSize: 11, lineHeight: 17, marginTop: 5 }}>{'\u9996\u6b21\u5b89\u88c5\u9ed8\u8ba4\u4e3a\u6d45\u8272\uff1b\u4f1a\u4fdd\u7559\u5df2\u9009\u4e3b\u9898\uff0c\u4e0d\u5f71\u54cd\u767b\u5f55\u51ed\u636e\u3002'}</Text>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>{([['light', '\u6d45\u8272'], ['dark', '\u6df1\u8272'], ['system', '\u8ddf\u968f\u7cfb\u7edf']] as [ThemeMode, string][]).map(([mode, label]) => <Pressable key={mode} onPress={() => void changeTheme(mode)} style={{ flex: 1, borderRadius: 12, paddingVertical: 10, alignItems: 'center', backgroundColor: appearance.mode === mode ? theme.primary : theme.cardRaised }}><Text style={{ color: appearance.mode === mode ? '#FFFFFF' : theme.subtext, fontSize: 12, fontWeight: '800' }}>{label}</Text></Pressable>)}</View>
+      </Card>
 
       {message ? <Text style={{ color: message.includes('\u5df2\u9a8c\u8bc1') ? theme.success : theme.danger, fontSize: 13, lineHeight: 19, marginTop: 14 }}>{message}</Text> : null}
       <Pressable disabled={saving} onPress={() => void save()} style={{ marginTop: 18, minHeight: 50, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: saving ? theme.muted : theme.primary }}><Save color="#FFFFFF" size={17} /><Text style={{ color: '#FFFFFF', fontWeight: '900' }}>{saving ? '\u6b63\u5728\u9a8c\u8bc1...' : '\u9a8c\u8bc1\u5e76\u4fdd\u5b58'}</Text></Pressable>

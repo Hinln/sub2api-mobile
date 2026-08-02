@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1
+
+- Defaulted first launch to the persisted light theme, with dark and system options.
+- Added a read-only exception center and current-page account selection mode.
+- Clarified dashboard billing semantics and introduced the billing-field audit.
+- Updated the unsigned iOS workflow and artifact naming for version 1.0.1 / build 2.
+
 ## 1.0.0 - 2026-08-02
 
 - 更名并重塑为 Vexlune Mobile Console。

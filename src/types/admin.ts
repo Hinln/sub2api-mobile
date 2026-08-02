@@ -37,6 +37,12 @@ export type DashboardStats = {
   total_tokens: number;
   today_requests: number;
   today_cost: number;
+  /** Amount actually charged to users; only rendered when supplied by the Hub. */
+  today_actual_cost?: number;
+  /** Official reference price; never presented as revenue or actual billing. */
+  today_standard_cost?: number;
+  today_success_requests?: number;
+  today_failed_requests?: number;
   today_tokens: number;
   today_input_tokens?: number;
   today_output_tokens?: number;

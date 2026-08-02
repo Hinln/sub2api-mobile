@@ -10,7 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { setUnauthorizedHandler } from '@/src/lib/admin-fetch';
 import { queryClient } from '@/src/lib/query-client';
 import { adminConfigState, hydrateAdminConfig, logoutAdminAccount } from '@/src/store/admin-config';
-import { theme } from '@/src/theme';
+import { hydrateThemePreference, resolvedThemeMode, theme, themePreferences } from '@/src/theme';
 
 // CommonJS entry avoids import.meta in Expo Metro's classic web bundle.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -39,6 +39,7 @@ function LockedScreen({ unlock }: { unlock: () => void }) {
 
 export default function RootLayout() {
   const config = useSnapshot(adminConfigState);
+  const appearance = useSnapshot(themePreferences);
   const [unlocked, setUnlocked] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
 
@@ -62,7 +63,7 @@ export default function RootLayout() {
     }
   }, [authenticating]);
 
-  useEffect(() => { void hydrateAdminConfig(); }, []);
+  useEffect(() => { void hydrateAdminConfig(); void hydrateThemePreference(); }, []);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
@@ -83,15 +84,16 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="light" />
+      <StatusBar style={resolvedThemeMode(appearance.mode) === 'dark' ? 'light' : 'dark'} />
       <QueryClientProvider client={queryClient}>
-        {!config.hydrated ? <LoadingScreen /> : Platform.OS !== 'web' && config.biometricEnabled && Boolean(config.adminApiKey) && !unlocked ? <LockedScreen unlock={() => void unlock()} /> : (
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.page } }}>
+        {!config.hydrated || !appearance.hydrated ? <LoadingScreen /> : Platform.OS !== 'web' && config.biometricEnabled && Boolean(config.adminApiKey) && !unlocked ? <LockedScreen unlock={() => void unlock()} /> : (
+          <Stack key={appearance.mode} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.page } }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="login" />
             <Stack.Screen name="users/[id]" options={{ headerShown: true, title: '\u7528\u6237\u8be6\u60c5', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
             <Stack.Screen name="users/create-user" options={{ headerShown: true, title: '\u521b\u5efa\u7528\u6237', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
             <Stack.Screen name="accounts/[id]" options={{ headerShown: true, title: '\u8d26\u53f7\u8be6\u60c5', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
+            <Stack.Screen name="exceptions" options={{ headerShown: true, title: '\u5f02\u5e38\u4e2d\u5fc3', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
             <Stack.Screen name="about" options={{ headerShown: true, title: '\u5173\u4e8e', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
           </Stack>
         )}
