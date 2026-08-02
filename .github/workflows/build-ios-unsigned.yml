@@ -52,8 +52,13 @@ jobs:
             echo "No Xcode workspace found" >&2
             exit 1
           fi
+          project_name="$(basename "$(find ios -maxdepth 1 -name '*.xcodeproj' -print -quit)" .xcodeproj)"
+          if [[ -z "$project_name" ]]; then
+            echo "No application Xcode project found" >&2
+            exit 1
+          fi
           xcodebuild -workspace "$workspace" -list -json > /tmp/xcode-list.json
-          scheme="$(ruby -rjson -e 'j=JSON.parse(File.read("/tmp/xcode-list.json")); puts(j.dig("workspace","schemes")&.reject{|s| s == "Pods" || s.start_with?("Pods-")}&.first.to_s)')"
+          scheme="$(ruby -rjson -e 'j=JSON.parse(File.read("/tmp/xcode-list.json")); expected=ARGV.fetch(0); schemes=j.dig("workspace","schemes") || []; abort("Application scheme #{expected} not found") unless schemes.include?(expected); puts expected' "$project_name")"
           if [[ -z "$scheme" ]]; then
             echo "No application scheme found" >&2
             cat /tmp/xcode-list.json
