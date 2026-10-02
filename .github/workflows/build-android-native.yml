@@ -58,7 +58,10 @@ jobs:
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          # Expo SDK 54 prebuild currently resolves these values from the
+          # React Native/Expo version catalog. Keep the runner explicit so a
+          # fresh machine can compile without relying on a prewarmed SDK.
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006"
 
       - name: Install JavaScript dependencies
         run: pnpm install --frozen-lockfile
