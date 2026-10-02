@@ -9,7 +9,7 @@
 - ios/Pods、Podfile.lock 和 CocoaPods workspace 已生成。
 - iOS Simulator Release 构建通过，产物为 build/ios/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app，包含 arm64 与 x86_64。
 - iPhoneOS Release 未签名构建通过，产物为 build/ios-device/Build/Products/Release-iphoneos/VexluneMobileConsole.app，主程序为 arm64；已验证可打包为 IPA，压缩包完整性通过。
-- 本机存在 Apple Development: YONGCHI PAN (KRVKFG5D67) 证书，Team ID 为 6KW552MWV6。
+- 本机存在 Apple Development: YONGCHI PAN (KRVKFG5D67) 证书，Team ID 为 6KW552MWV6；`app.json` 已固定该 Team，prebuild 会写入 Debug/Release 的 `DEVELOPMENT_TEAM`。
 
 ## 尚未完成的发布条件
 
