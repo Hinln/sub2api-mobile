@@ -7,7 +7,7 @@
 | 检查 | 结果 | 说明 |
 |---|---|---|
 | TypeScript | 通过 | `pnpm exec tsc --noEmit` |
-| Vitest | 通过（23/23） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore 和真实服务契约 |
+| Vitest | 通过（25/25） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore 和真实服务契约 |
 | ESLint | 通过 | `pnpm exec expo lint`；0 error，仅既有 CommonJS import warning |
 | Expo Web export | 通过 | `pnpm run web:build` |
 | Expo Doctor | 18/18（临时 npm shim） | `pnpm dlx expo-doctor@1.20.4`；主机直接运行 15/18，差异仅为缺少 npm；CI 已统一 pnpm |
@@ -15,7 +15,7 @@
 | iOS Xcode 编译 | 环境阻塞 | CocoaPods 未安装，Xcode 许可尚未接受；签名身份和 provisioning profile 均未发现；见 `docs/BUILD_BLOCKERS.md` |
 | GitHub native iOS workflow | 环境阻塞 | run `37051524996` 因 GitHub billing issue 未启动，未产生 IPA/.app artifact |
 | Android prebuild | 通过（隔离目录） | 本机无 Android SDK/Java/adb；APK/AAB 需本机 Android SDK/Java 或原生 Gradle CI |
-| Go 后端测试 | 环境阻塞 | 当前机器没有 `go`/`gofmt`，需在 CI 或 Go 构建机执行 |
+| Go 后端测试 | 通过 | Go 1.27.1 `GOPROXY=https://goproxy.cn,direct go test ./...`；全仓库通过 |
 
 ## 必测真实链路
 

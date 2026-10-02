@@ -7,14 +7,14 @@
 | `pnpm install --frozen-lockfile --offline --ignore-scripts` | 通过 |
 | TypeScript `pnpm exec tsc --noEmit` | 通过 |
 | ESLint `pnpm exec expo lint` | 通过，0 error；仅保留 Metro 兼容所需的 CommonJS import warning |
-| Vitest `pnpm exec vitest run` | 4 文件、23 测试通过 |
+| Vitest `pnpm exec vitest run` | 5 文件、25 测试通过 |
 | Expo Web `pnpm exec expo export --platform web` | 通过，Metro 处理 3014 个模块 |
 | iOS prebuild | 通过（隔离目录生成 Xcode project） |
 | iOS Xcode 编译 | 环境阻塞：CocoaPods 未安装，Xcode 许可尚未接受；见 `BUILD_BLOCKERS.md` |
 | `pnpm dlx expo-doctor@1.20.4` | 主机直接运行 15/18；临时 npm shim 重跑 18/18；CI 已统一 pnpm，见 `BUILD_BLOCKERS.md` |
 | 原生 iOS workflow `37051524996` | 未启动 | GitHub 账号 billing issue 锁定，未产生构建 artifact |
 | Android Expo prebuild | 通过（隔离目录） | 本机无 Android SDK/Java/adb；APK/AAB 由原生 Gradle CI `build-android-native.yml` 负责 |
-| Go 后端测试 | 环境阻塞：当前机器无 `go`/`gofmt`；后端新增测试已提交，需在 CI/Go 构建机执行 |
+| Go 后端测试 | 通过：Go 1.27.1 `GOPROXY=https://goproxy.cn,direct go test ./...`；新增支付幂等、Turnstile nonce/action/hostname 测试均通过 |
 
 已覆盖的客户端规则：HTTPS Hub URL 校验、模型 API/管理域隔离、Bearer token、单飞刷新、401 清理、Cloudflare HTML challenge 识别、非幂等写请求不自动重试、SecureStore 设备级存储、退出清理、用户 API key/公告/订单错误态和稳定幂等键。
 
