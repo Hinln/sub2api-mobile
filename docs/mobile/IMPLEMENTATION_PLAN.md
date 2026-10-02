@@ -1,6 +1,6 @@
 # Vexlune Hub Mobile Implementation Plan
 
-Updated: 2026-10-02 (Asia/Shanghai)
+Updated: 2026-10-03 (Asia/Shanghai)
 
 ## Repository identity and authority
 
@@ -20,25 +20,25 @@ Updated: 2026-10-02 (Asia/Shanghai)
 
 | Goal | Scope | Evidence | Status |
 |---|---|---|---|
-| 0 | Snapshot, branch, dependency/build baseline | this plan, `CURRENT_ARCHITECTURE.md`, command log | In progress |
-| 1 | Real route and DTO audit | `API_COVERAGE_MATRIX.md`, `API_GAP_REPORT.md` | In progress; private backend unavailable |
-| 2 | Shared design system, logo, API client, query/session boundaries | source changes + tests | Pending after baseline |
-| 3 | Email/password auth, role routing, refresh, Turnstile WebView | source changes + tests | Pending |
-| 4 | User workspace and real payment/usage/key flows | source changes + contract tests | Pending |
-| 5 | Admin workspace and audited high-risk operations | source changes + contract tests | Pending |
-| 6 | Private backend gaps, migrations, idempotency, audit | private checkout required | Blocked by missing private checkout |
-| 7 | E2E, security and no-placeholder scan | environment + accounts required | Pending |
-| 8 | Android/iOS builds, CI, release and rollback | signing/build environment required | Pending |
+| 0 | Snapshot, branch, dependency/build baseline | independent Git branches, lockfiles and environment audit | Complete locally |
+| 1 | Real route and DTO audit | `API_COVERAGE_MATRIX.md`, `API_GAP_REPORT.md` | Complete from authenticated private checkout |
+| 2 | Shared design system, logo, API client, query/session boundaries | unified V Logo, Bearer client, cache clearing, tests | Complete locally |
+| 3 | Email/password auth, role routing, refresh, Turnstile WebView | source changes + 23 mobile tests + backend policy tests | Complete in source; staging pending |
+| 4 | User workspace and real payment/usage/key flows | real endpoint screens + stable payment/key idempotency | Complete in source; provider sandbox pending |
+| 5 | Admin workspace and audited high-risk operations | existing admin routes migrated to Bearer JWT; no API-key UI | Complete in source; staging role/step-up pending |
+| 6 | Private backend gaps, migrations, idempotency, audit | backend commit `aab6899`, Redis nonce ledger, payment coordinator | Complete in source; Go CI pending |
+| 7 | E2E, security and no-placeholder scan | QA/security reports and source scan | Complete locally; staging accounts pending |
+| 8 | Android/iOS builds, CI, release and rollback | EAS/Actions workflows and runbooks | Workflows ready; local signing/CocoaPods blocked |
 
 ## Immediate execution order
 
-1. Replace API-key boot/login with an email/password session layer while preserving server-owned authorization.
-2. Add public settings, login/register/2FA/refresh/logout/me contracts with runtime validation and Cloudflare HTML detection.
-3. Add a first-party Turnstile WebView gate with origin/nonce/type validation; never accept a secret or reuse a token.
-4. Establish role-aware user/admin router groups and query-cache isolation.
-5. Port existing admin read/write functions to Bearer JWT only after server contract verification; retain no API-key UI.
-6. Add user navigation and feature modules only for endpoints confirmed in the private backend.
-7. Once the private checkout is supplied, close every `BLOCKED_PRIVATE` row, implement migrations/tests, then run device and release gates.
+1. Replace API-key boot/login with an email/password session layer while preserving server-owned authorization. **Done.**
+2. Add public settings, login/register/2FA/refresh/logout/me contracts with runtime validation and Cloudflare HTML detection. **Done.**
+3. Add a first-party Turnstile WebView gate with origin/nonce/type validation; never accept a secret or reuse a token. **Done in source; staging proof pending.**
+4. Establish role-aware user/admin router groups and query-cache isolation. **Done.**
+5. Port existing admin read/write functions to Bearer JWT only after server contract verification; retain no API-key UI. **Done.**
+6. Add user navigation and feature modules only for endpoints confirmed in the private backend. **Done.**
+7. Run the remaining staging/device and Go CI gates; do not mark deployed evidence complete from source inspection alone.
 
 ## Required proof before completion
 

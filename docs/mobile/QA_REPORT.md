@@ -11,7 +11,7 @@
 | ESLint | 待本轮最终代码合并后执行 | `pnpm exec expo lint`；只允许既有 warning，不允许 error |
 | Expo Web export | 待本轮最终代码合并后执行 | `pnpm run web:build` |
 | iOS prebuild | 通过 | 隔离目录生成 `VexluneMobileConsole.xcodeproj` |
-| iOS Xcode 编译 | 环境阻塞 | CocoaPods 未安装，Xcode 许可尚未接受；见 `docs/BUILD_BLOCKERS.md` |
+| iOS Xcode 编译 | 环境阻塞 | CocoaPods 未安装，Xcode 许可尚未接受；签名身份和 provisioning profile 均未发现；见 `docs/BUILD_BLOCKERS.md` |
 | Go 后端测试 | 环境阻塞 | 当前机器没有 `go`/`gofmt`，需在 CI 或 Go 构建机执行 |
 
 ## 必测真实链路

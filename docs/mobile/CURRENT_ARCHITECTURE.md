@@ -5,10 +5,10 @@
 - Expo SDK `~54.0.36`, React Native `0.81.5`, Expo Router `~6.0.24`, TanStack Query v5, Valtio, SecureStore, React Hook Form, Zod and Lucide.
 - Bundle ID/package `com.vexlune.mobile`; scheme `vexlunemobile`; version `1.0.1`; iOS build `2`.
 - Existing routes are an admin-only console: `app/login.tsx`, `(tabs)/monitor`, `accounts`, `users`, `logs`, `groups`, `more`, `settings`, plus detail pages.
-- Existing auth stores an `admin-*` API key in SecureStore and sends `x-api-key`. This violates the required email/password + JWT/refresh contract and must be removed from product paths.
+- Authentication stores only email/password-issued Bearer access/refresh tokens in SecureStore. The legacy API-key compatibility field remains empty for source compatibility and is never read or sent.
 - Existing theme uses a purple palette and page-local `V` text mark. It must move to one SVG Vexlune brand component and blue design tokens.
 - Existing API wrapper has timeout/retry/error handling and API envelope parsing, but it has no Bearer token, refresh single-flight, Cloudflare HTML detection, or role validation.
-- Existing tests cover API-key storage/fetch, theme and config. They do not prove email auth, role routing, Turnstile, or user flows.
+- Tests cover Bearer storage/fetch, refresh and Cloudflare boundary behavior, theme/config, and the user service contracts; staging still must prove real role routing and Turnstile.
 - Existing EAS and unsigned iOS workflow are present but cannot be considered verified without a build service or macOS runner.
 
 ## Public upstream comparison

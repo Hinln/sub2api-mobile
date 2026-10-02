@@ -5,7 +5,7 @@
 - 管理基地址：`https://hub.vexlune.com`
 - 管理路由前缀：`/api/v1/admin`
 - 模型 API：`https://api.vexlune.com`，本管理客户端不向其发送推理请求。
-- 当前 APP 认证：`x-api-key: <admin-api-key>`。
+- 当前 APP 认证：邮箱密码登录后使用服务端签发的 `Authorization: Bearer <access_token>`，并按 `/api/v1/auth/me` 角色路由。
 - 后端同时支持 `Authorization: Bearer <admin-jwt>`，但 APP 未实现账号密码/JWT 登录，因为上游移动端已验证 Admin API Key 路径且无需 Cookie。
 - 标准响应：`{ code, message, reason?, metadata?, data? }`。
 - 分页：`page`、`page_size`；响应 `items`、`total`、`page`、`page_size`、`pages`。

@@ -61,7 +61,7 @@ The mobile transport must:
 4. Record only request path, timestamp and cf-ray for diagnostics.
 5. Avoid infinite retries and direct the user to the first-party WebView gate when a Turnstile proof is required.
 
-The backend already has challenge heuristics in backend/internal/util/httputil/httputil.go; the mobile client still needs an equivalent test-covered classifier.
+The backend has challenge heuristics in backend/internal/util/httputil/httputil.go; the mobile client implements the same boundary in src/lib/admin-fetch.ts and covers HTML challenge handling in tests.
 
 ## Turnstile WebView requirements
 
@@ -87,4 +87,3 @@ Attach a sanitized Cloudflare rules export and staging test results covering:
 - Android and iOS can reach the API over HTTPS and receive the same response envelope.
 
 Current status: source rule specification complete; zone-specific deployment and staging evidence are blocked by missing Cloudflare access/configuration.
-
