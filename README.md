@@ -1,6 +1,6 @@
 # Vexlune Mobile Console
 
-Vexlune Hub 的个人 iOS 移动管理控制台。项目基于 Expo 54、React Native、Expo Router、TanStack Query、Valtio 与 SecureStore。
+Vexlune Hub 的个人 iOS/Android 移动管理控制台。项目基于 Expo 54、React Native、Expo Router、TanStack Query、Valtio 与 SecureStore。
 
 Expo 仅用于开发、Web 导出和生成 iOS/Android 原生工程；移动端安装包由本机或 GitHub Actions 的 Xcode/Gradle 原生工具链构建，不使用 Expo 云构建或云更新。
 
