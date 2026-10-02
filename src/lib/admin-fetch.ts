@@ -107,8 +107,12 @@ function safeServerMessage(value: unknown) {
 
 function isHtmlChallenge(raw: string, response: Response) {
   const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
+  // Cloudflare can return a challenge marker with an otherwise empty or
+  // non-HTML body. Check the documented response header before attempting to
+  // parse the body as the Hub JSON envelope.
+  const mitigated = response.headers.get('cf-mitigated')?.trim().toLowerCase();
   const trimmed = raw.trimStart().toLowerCase();
-  return contentType.includes('text/html') || trimmed.startsWith('<!doctype html') || trimmed.startsWith('<html');
+  return mitigated === 'challenge' || contentType.includes('text/html') || trimmed.startsWith('<!doctype html') || trimmed.startsWith('<html');
 }
 
 function parsePayload<T>(raw: string): ApiEnvelope<T> | T | undefined {

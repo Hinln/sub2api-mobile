@@ -43,6 +43,15 @@ describe('adminFetch', () => {
     expect(error.message).toBe('Cloudflare security challenge required');
   });
 
+  it('classifies Cloudflare challenge responses by cf-mitigated header', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response('', 403, { 'cf-mitigated': 'challenge' }));
+    const error = await adminFetch<never>('/api/v1/admin/settings', {}, { retry: 0 }).catch((value) => value as ApiError) as ApiError;
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(403);
+    expect(error.isCloudflareChallenge).toBe(true);
+    expect(error.code).toBe('CLOUDFLARE_CHALLENGE');
+  });
+
   it('notifies on 401', async () => {
     const handler = vi.fn();
     setUnauthorizedHandler(handler);

@@ -196,6 +196,41 @@ export function recoverAccountState(accountId: number) {
   return adminFetch(`/api/v1/admin/accounts/${accountId}/recover-state`, { method: 'POST' });
 }
 
+export type BatchAccountError = { account_id?: number; error?: string };
+export type BatchAccountOperationResult = {
+  total?: number;
+  success?: number;
+  failed?: number;
+  success_ids?: number[];
+  failed_ids?: number[];
+  errors?: BatchAccountError[];
+  warnings?: BatchAccountError[];
+};
+
+/** Execute a server-owned batch refresh for the selected account IDs. */
+export function batchRefreshAccounts(accountIds: number[]) {
+  return adminFetch<BatchAccountOperationResult>('/api/v1/admin/accounts/batch-refresh', {
+    method: 'POST',
+    body: JSON.stringify({ account_ids: accountIds }),
+  });
+}
+
+/** Clear only the server-recorded error state for the selected accounts. */
+export function batchClearAccountErrors(accountIds: number[]) {
+  return adminFetch<BatchAccountOperationResult>('/api/v1/admin/accounts/batch-clear-error', {
+    method: 'POST',
+    body: JSON.stringify({ account_ids: accountIds }),
+  });
+}
+
+/** Delete selected accounts through the audited backend batch endpoint. */
+export function batchDeleteAccounts(accountIds: number[]) {
+  return adminFetch<BatchAccountOperationResult>('/api/v1/admin/accounts/batch-delete', {
+    method: 'POST',
+    body: JSON.stringify({ account_ids: accountIds }),
+  });
+}
+
 export function listUsageLogs(params: PaginationParams & { user_id?: number; account_id?: number; model?: string } = {}) {
   return adminFetch<PaginatedData<UsageLog>>(`/api/v1/admin/usage${buildQuery({
     page: params.page ?? 1,

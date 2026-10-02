@@ -27,7 +27,8 @@ function urlFor(path: string) {
 
 function isHtmlResponse(response: Response, body: string) {
   const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
-  return contentType.includes('text/html') || /^\s*<(?:!doctype\s+html|html|head|body)\b/i.test(body);
+  const mitigated = response.headers.get('cf-mitigated')?.trim().toLowerCase();
+  return mitigated === 'challenge' || contentType.includes('text/html') || /^\s*<(?:!doctype\s+html|html|head|body)\b/i.test(body);
 }
 
 async function request<T>(path: string, init: RequestInit = {}, options: { auth?: boolean } = {}) {
