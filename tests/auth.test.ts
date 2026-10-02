@@ -59,6 +59,22 @@ describe('public auth transport', () => {
     expect(headers.get('Authorization')).toBe('Bearer access-token');
   });
 
+  it('accepts the password step response that requires TOTP before issuing a token', async () => {
+    sessionState.baseUrl = 'https://hub.vexlune.com';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ code: 0, data: {
+      requires_2fa: true,
+      temp_token: 'temporary-login-token',
+      user_email_masked: 'p***@example.com',
+    } }), { status: 200, headers: { 'content-type': 'application/json' } }));
+
+    const result = await login({ email: 'person@example.com', password: 'password' });
+
+    expect(result.requires_2fa).toBe(true);
+    expect(result.temp_token).toBe('temporary-login-token');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(sessionState.accessToken).toBe('');
+  });
+
   it('always calls the public logout endpoint and sends the refresh token when available', async () => {
     sessionState.baseUrl = 'https://hub.vexlune.com';
     sessionState.refreshToken = 'refresh-token';

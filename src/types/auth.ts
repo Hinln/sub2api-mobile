@@ -29,7 +29,10 @@ export const publicSettingsSchema = z.object({
 export type PublicSettings = z.infer<typeof publicSettingsSchema>;
 
 export const authResponseSchema = z.object({
-  access_token: z.string(),
+  // The first password-login response can require TOTP and therefore only
+  // carries requires_2fa/temp_token. Final token responses still validate the
+  // token at the service boundary before persisting a session.
+  access_token: z.string().optional(),
   refresh_token: z.string().optional(),
   expires_in: z.number().optional(),
   token_type: z.string().optional(),
