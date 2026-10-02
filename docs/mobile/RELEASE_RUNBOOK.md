@@ -6,7 +6,7 @@
 
 1. 后端先完成数据库迁移、Go 单元/集成测试和 staging smoke test，确认 `/mobile/captcha/turnstile` 使用第一方 HTTPS 域名。
 2. Cloudflare 配置只放在服务端：WAF、TLS、速率限制和 Turnstile secret 不进入 APP、CI 环境变量或日志。
-3. 执行 `pnpm install --frozen-lockfile`、`pnpm exec tsc --noEmit`、`pnpm exec expo lint`、`pnpm exec vitest run`、`pnpm run web:build`。
+3. 执行 `scripts/verify-mobile-origin.sh`（可用 `BASE_URL=https://staging.example.com` 覆盖域名），确认 settings JSON、非法 action 拒绝和第一方 bridge 未被 SPA 截获；再执行 `pnpm install --frozen-lockfile`、`pnpm exec tsc --noEmit`、`pnpm exec expo lint`、`pnpm exec vitest run`、`pnpm run web:build`。
 4. Android 构建按当前产品范围暂缓，不触发 Android workflow；重新开放 Android 范围时再生成 APK/AAB 并补齐对应签名证据。
 5. 触发 `build-ios-unsigned.yml` 或本机 Xcode 流程生成 iPhoneOS Release 包；签名 TestFlight/生产包必须在受控 macOS Runner 或本机用 Xcode `archive`/`-exportArchive` 完成，凭据由 macOS Keychain/CI Secret 提供。
 6. 按 [APP_STORE_CONNECT_CHECKLIST.md](./APP_STORE_CONNECT_CHECKLIST.md) 检查 Bundle ID、版本/build、隐私与支持链接、截图、年龄分级、审核账号和出口合规；没有这些资料不能提交审核。
