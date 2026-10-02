@@ -8,8 +8,7 @@ import { adminConfigState } from '@/src/store/admin-config';
 import { createUserApiKey, deleteUserApiKey, listAvailableGroups, listUserApiKeys, updateUserApiKey, type UserApiKey } from '@/src/services/user';
 import { humanizeApiError, redactSecret } from '@/src/lib/admin-fetch';
 import { theme } from '@/src/theme';
-
-const { useSnapshot } = require('valtio/react');
+import { useSnapshot } from 'valtio/react';
 
 export default function UserKeys() {
   const config = useSnapshot(adminConfigState); const queryClient = useQueryClient(); const createKey = useRef('');

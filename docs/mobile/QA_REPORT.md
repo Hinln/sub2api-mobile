@@ -8,7 +8,7 @@
 |---|---|---|
 | TypeScript | 通过 | `pnpm exec tsc --noEmit` |
 | Vitest | 通过（27/27） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、真实服务契约和缺失数据格式化 |
-| ESLint | 通过 | `pnpm exec expo lint`；0 error，仅既有 CommonJS import warning |
+| ESLint | 通过 | `pnpm exec expo lint`；0 error、0 warning |
 | Expo Web export | 通过 | `pnpm exec expo export --platform web` |
 | Expo Doctor | 18/18（临时 npm shim） | `pnpm dlx expo-doctor@1.20.4`；主机直接运行 15/18，差异仅为缺少 npm；CI 已统一 pnpm |
 | iOS prebuild | 通过 | 隔离目录生成 `VexluneMobileConsole.xcodeproj` |

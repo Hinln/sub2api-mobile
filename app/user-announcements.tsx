@@ -7,7 +7,7 @@ import { adminConfigState } from '@/src/store/admin-config';
 import { listUserAnnouncements, markAnnouncementRead, type UserAnnouncement } from '@/src/services/user';
 import { humanizeApiError } from '@/src/lib/admin-fetch';
 import { theme } from '@/src/theme';
-const { useSnapshot } = require('valtio/react');
+import { useSnapshot } from 'valtio/react';
 
 export default function UserAnnouncements() {
   const config = useSnapshot(adminConfigState); const client = useQueryClient(); const [selected, setSelected] = useState<UserAnnouncement>();

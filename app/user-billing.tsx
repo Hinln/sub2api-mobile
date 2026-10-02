@@ -7,7 +7,7 @@ import { adminConfigState } from '@/src/store/admin-config';
 import { cancelPaymentOrder, createPaymentOrder, getCheckoutInfo, listPaymentOrders, verifyPaymentOrder, type CheckoutPlan, type PaymentOrder } from '@/src/services/user';
 import { humanizeApiError } from '@/src/lib/admin-fetch';
 import { theme } from '@/src/theme';
-const { useSnapshot } = require('valtio/react');
+import { useSnapshot } from 'valtio/react';
 
 export default function UserBilling() {
   const config = useSnapshot(adminConfigState); const client = useQueryClient(); const [plan, setPlan] = useState<CheckoutPlan>(); const createKey = useRef('');

@@ -8,8 +8,7 @@ import { getUsageStats, listUsageLogs, type UsageLog } from '@/src/services/user
 import { humanizeApiError } from '@/src/lib/admin-fetch';
 import { formatOptionalMoney, formatOptionalNumber } from '@/src/lib/formatters';
 import { theme } from '@/src/theme';
-
-const { useSnapshot } = require('valtio/react');
+import { useSnapshot } from 'valtio/react';
 
 export default function UserUsage() {
   const config = useSnapshot(adminConfigState); const [period, setPeriod] = useState<'today' | 'week' | 'month'>('month');
