@@ -1,24 +1,31 @@
-# iOS 构建环境阻塞
+# iOS 构建环境检查与阻塞
 
-## 当前状态
+检查时间：2026-10-03（Asia/Shanghai）。
 
-全部源码、Windows 测试、Expo Web 构建、Playwright 验收、iOS Prebuild/Pods/Xcode 工作流和签名文档已经完成。IPA 尚未生成。
+## 已确认
 
-## 阻塞原因
+- Xcode 26.6（Build 17F113）已安装，`xcode-select` 指向 `/Applications/Xcode.app/Contents/Developer`。
+- iOS 26.5 模拟器运行时和 iPhone 17 系列模拟器已安装。
+- Expo SDK 54 的 iOS prebuild 在隔离目录成功生成 `VexluneMobileConsole.xcodeproj`。
+- `xcodebuild` 能够开始编译并生成构建目录；代码签名身份查询返回 0 个身份，因此当前没有可用的本机 Apple Development/Distribution 证书。
+- Xcode 偏好设置中残留两个开发团队记录（`6KW552MWV6` 公司团队、`2B5JU96JLT` Personal Team），但没有可用签名身份，不能据此认定 Apple Developer 会话仍然有效。
 
-`gh auth status` 返回“not logged into any GitHub hosts”，当前只配置了原作者只读远程 `upstream = https://github.com/ckken/sub2api-mobile.git`。因此无法自动创建可写 Fork、Push 分支或启动 GitHub macOS Runner。Windows 没有 Xcode，不能在本机伪造 iPhoneOS 编译。
+## 仍需补齐
 
-## 用户唯一需要做的动作
+1. 本机尚未接受 Xcode/Apple SDK 许可。需要在交互式终端执行 `sudo xcodebuild -license` 并接受条款。
+2. CocoaPods 未安装；iOS 工程的 CocoaPods 检查阶段会因缺少 `Podfile.lock` 失败。建议安装与 Xcode 26 兼容的 CocoaPods 后运行 `pod install`。
+3. EAS CLI 未安装或登录，当前不能从本机触发云端签名构建；GitHub Actions 的 `EXPO_TOKEN`、Apple App Store Connect/API 凭据和签名凭据仍应放在 GitHub/EAS Secret 中。
+4. 未在本机发现 provisioning profile 或 signing certificate。真机/TestFlight 构建必须在 EAS 或已登录的 Xcode 账户中创建并保存这些凭据，禁止提交到仓库。
 
-在本机完成一次 `gh auth login`，允许对自己仓库写入和运行 Actions。之后执行：
+## 无人值守入口
+
+完成上面环境准备后，使用目标仓库的 GitHub Actions：
 
 ```bash
-gh repo fork ckken/sub2api-mobile --clone=false --remote
-git push -u origin codex/vexlune-ios-admin
-gh workflow run build-ios-unsigned.yml --ref codex/vexlune-ios-admin
+gh workflow run build-ios-unsigned.yml --ref codex/vexlune-hub
 gh run list --workflow build-ios-unsigned.yml --limit 1
 gh run watch <RUN_ID> --exit-status
 gh run download <RUN_ID> --dir dist/ios
 ```
 
-预期 IPA：`dist/ios/Vexlune-Mobile-Console-v1.0.0-ios-unsigned.ipa`。
+正式 TestFlight/生产签名使用 `eas build --non-interactive --profile preview|production --platform ios`，并通过 `EXPO_TOKEN`、EAS 项目凭据和 App Store Connect 发行凭据注入；不要把 Apple 密码或私钥写入脚本。

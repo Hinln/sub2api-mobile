@@ -13,7 +13,8 @@ function response(body: unknown, status = 200, headers: Record<string, string> =
 describe('adminFetch', () => {
   beforeEach(() => {
     adminConfigState.baseUrl = 'https://hub.vexlune.com';
-    adminConfigState.adminApiKey = 'admin-test-secret';
+    adminConfigState.accessToken = 'access-test-token';
+    adminConfigState.refreshToken = '';
     vi.restoreAllMocks();
   });
   afterEach(() => setUnauthorizedHandler(undefined));
@@ -23,7 +24,7 @@ describe('adminFetch', () => {
     await expect(adminFetch<{ ok: boolean }>('/api/v1/admin/settings')).resolves.toEqual({ ok: true });
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe('https://hub.vexlune.com/api/v1/admin/settings');
-    expect(new Headers(init?.headers).get('x-api-key')).toBe('admin-test-secret');
+    expect(new Headers(init?.headers).get('authorization')).toBe('Bearer access-test-token');
   });
 
   it('reads request id and status from JSON errors', async () => {
@@ -39,7 +40,7 @@ describe('adminFetch', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(response('<html>bad gateway</html>', 502));
     const error = await adminFetch<never>('/api/v1/admin/settings', {}, { retry: 0 }).catch((value) => value as ApiError) as ApiError;
     expect(error.status).toBe(502);
-    expect(error.message).toBe('HTTP 502');
+    expect(error.message).toBe('Cloudflare security challenge required');
   });
 
   it('notifies on 401', async () => {
@@ -69,8 +70,8 @@ describe('adminFetch', () => {
     controller.abort();
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new DOMException('Aborted', 'AbortError'));
     await expect(adminFetch('/api/v1/admin/settings', {}, { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' });
-    adminConfigState.adminApiKey = '';
-    await expect(adminFetch('/api/v1/admin/settings')).rejects.toThrow('ADMIN_API_KEY_REQUIRED');
+    adminConfigState.accessToken = '';
+    await expect(adminFetch('/api/v1/admin/settings')).rejects.toThrow('ACCESS_TOKEN_REQUIRED');
   });
 });
 

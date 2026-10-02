@@ -7,7 +7,7 @@ import { normalizeHubUrl, VEXLUNE_HUB_URL } from '@/src/config/vexlune';
 import { humanizeApiError } from '@/src/lib/admin-fetch';
 import { queryClient } from '@/src/lib/query-client';
 import { getAdminSettings } from '@/src/services/admin';
-import { adminConfigState, restoreDefaultHubUrl, saveAdminConfig, setBiometricEnabled } from '@/src/store/admin-config';
+import { adminConfigState, restoreDefaultHubUrl, setBaseUrl, setBiometricEnabled } from '@/src/store/admin-config';
 import { theme } from '@/src/theme';
 import { setThemeMode, themePreferences, type ThemeMode } from '@/src/theme';
 
@@ -18,9 +18,8 @@ const { useSnapshot } = require('valtio/react');
 export default function SettingsScreen() {
   const config = useSnapshot(adminConfigState);
   const appearance = useSnapshot(themePreferences);
-  const [advanced, setAdvanced] = useState(config.advancedUrlEnabled);
+  const [advanced, setAdvanced] = useState(config.baseUrl !== VEXLUNE_HUB_URL);
   const [url, setUrl] = useState(config.baseUrl);
-  const [token, setToken] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -29,10 +28,9 @@ export default function SettingsScreen() {
     setMessage('');
     try {
       const baseUrl = advanced ? normalizeHubUrl(url) : VEXLUNE_HUB_URL;
-      await saveAdminConfig({ baseUrl, adminApiKey: token.trim() || config.adminApiKey });
+      await setBaseUrl(baseUrl);
       queryClient.clear();
       await queryClient.fetchQuery({ queryKey: ['admin-settings'], queryFn: getAdminSettings });
-      setToken('');
       setMessage('\u8fde\u63a5\u8bbe\u7f6e\u5df2\u9a8c\u8bc1\u5e76\u4fdd\u5b58');
     } catch (error) {
       setMessage(humanizeApiError(error));
@@ -65,15 +63,14 @@ export default function SettingsScreen() {
       <Card>
         <Text style={{ color: theme.faint, fontSize: 11 }}>{'\u5f53\u524d\u9762\u677f\u5730\u5740'}</Text><Text selectable style={{ color: theme.text, fontSize: 14, marginTop: 6 }}>{config.baseUrl}</Text>
         <View style={{ height: 1, backgroundColor: theme.border, marginVertical: 16 }} />
-        <Text style={{ color: theme.subtext, fontSize: 12, marginBottom: 8 }}>{'\u66f4\u6362\u7ba1\u7406\u5458 Token\uff08\u7559\u7a7a\u5219\u4e0d\u53d8\uff09'}</Text>
-        <TextInput accessibilityLabel="replace-admin-token" value={token} onChangeText={setToken} secureTextEntry autoCapitalize="none" placeholder="admin-xxxxxxxx" placeholderTextColor={theme.faint} style={{ color: theme.text, backgroundColor: theme.cardRaised, borderRadius: 14, borderWidth: 1, borderColor: theme.border, paddingHorizontal: 14, paddingVertical: 13 }} />
+        <Text style={{ color: theme.subtext, fontSize: 12, lineHeight: 18 }}>{'\u5f53\u524d\u4f1a\u8bdd\u4f7f\u7528\u670d\u52a1\u7aef\u7b7e\u53d1\u7684 Bearer Token\uff1b\u79fb\u52a8\u7aef\u4e0d\u4f1a\u63a5\u6536\u6216\u4fdd\u5b58\u7ba1\u7406\u5458 API Key\u3002'}</Text>
       </Card>
 
       <SectionTitle title={'\u9ad8\u7ea7\u8bbe\u7f6e'} />
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '800' }}>{'\u5141\u8bb8\u8986\u76d6\u9762\u677f\u5730\u5740'}</Text><Text style={{ color: theme.subtext, fontSize: 11, lineHeight: 17, marginTop: 5 }}>{'\u4ec5\u7528\u4e8e\u707e\u5907\u6216\u6d4b\u8bd5\uff1b\u53ea\u5141\u8bb8 HTTPS\uff0c\u4e0d\u5141\u8bb8\u6a21\u578b API \u57df\u540d\u3002'}</Text></View><Switch value={advanced} onValueChange={(value) => { setAdvanced(value); if (!value) setUrl(VEXLUNE_HUB_URL); }} trackColor={{ false: theme.muted, true: theme.primary }} /></View>
         {advanced ? <TextInput accessibilityLabel="advanced-hub-url" value={url} onChangeText={setUrl} autoCapitalize="none" autoCorrect={false} placeholder="https://hub.example.com" placeholderTextColor={theme.faint} style={{ marginTop: 14, color: theme.text, backgroundColor: theme.cardRaised, borderRadius: 14, borderWidth: 1, borderColor: theme.border, paddingHorizontal: 14, paddingVertical: 13 }} /> : null}
-        {config.advancedUrlEnabled ? <Pressable onPress={() => void restoreDefaultHubUrl().then(() => { setAdvanced(false); setUrl(VEXLUNE_HUB_URL); queryClient.clear(); })} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 13 }}><RotateCcw color={theme.primary} size={15} /><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '800' }}>{'\u6062\u590d Vexlune \u9ed8\u8ba4\u5730\u5740'}</Text></Pressable> : null}
+        {config.baseUrl !== VEXLUNE_HUB_URL ? <Pressable onPress={() => void restoreDefaultHubUrl().then(() => { setAdvanced(false); setUrl(VEXLUNE_HUB_URL); queryClient.clear(); })} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 13 }}><RotateCcw color={theme.primary} size={15} /><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '800' }}>{'\u6062\u590d Vexlune \u9ed8\u8ba4\u5730\u5740'}</Text></Pressable> : null}
       </Card>
 
       <SectionTitle title={'\u672c\u5730\u5e94\u7528\u9501'} />
