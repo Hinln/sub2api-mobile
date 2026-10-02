@@ -70,16 +70,16 @@ export function getAdminPaymentDashboard() {
   return adminFetch<Record<string, unknown>>('/api/v1/admin/payment/dashboard');
 }
 
-export function cancelAdminPaymentOrder(id: number) {
-  return adminFetch<Record<string, unknown>>(`/api/v1/admin/payment/orders/${id}/cancel`, { method: 'POST' }, { idempotencyKey: `mobile-admin-payment-cancel-${id}` });
+export function cancelAdminPaymentOrder(id: number, idempotencyKey?: string) {
+  return adminFetch<Record<string, unknown>>(`/api/v1/admin/payment/orders/${id}/cancel`, { method: 'POST' }, { idempotencyKey });
 }
 
-export function retryAdminPaymentOrder(id: number) {
-  return adminFetch<Record<string, unknown>>(`/api/v1/admin/payment/orders/${id}/retry`, { method: 'POST' }, { idempotencyKey: `mobile-admin-payment-retry-${id}` });
+export function retryAdminPaymentOrder(id: number, idempotencyKey?: string) {
+  return adminFetch<Record<string, unknown>>(`/api/v1/admin/payment/orders/${id}/retry`, { method: 'POST' }, { idempotencyKey });
 }
 
-export function refundAdminPaymentOrder(id: number, body: { amount?: number; reason: string; force?: boolean; deduct_balance?: boolean }) {
-  return adminFetch<Record<string, unknown>>(`/api/v1/admin/payment/orders/${id}/refund`, { method: 'POST', body: JSON.stringify(body) }, { idempotencyKey: `mobile-admin-payment-refund-${id}` });
+export function refundAdminPaymentOrder(id: number, body: { amount?: number; reason: string; force?: boolean; deduct_balance?: boolean }, idempotencyKey?: string) {
+  return adminFetch<Record<string, unknown>>(`/api/v1/admin/payment/orders/${id}/refund`, { method: 'POST', body: JSON.stringify(body) }, { idempotencyKey });
 }
 
 export function listAuditLogs(params: { page?: number; page_size?: number; q?: string; action?: string; success?: boolean } = {}) {
