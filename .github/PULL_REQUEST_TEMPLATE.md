@@ -5,8 +5,8 @@
 
 ## Verification
 
-- [ ] `npm ci`
-- [ ] `npm run start` (or relevant platform run)
+- [ ] `pnpm install --frozen-lockfile`
+- [ ] `pnpm run start` (or relevant platform run)
 - [ ] Relevant manual verification completed
 
 Commands and outputs:

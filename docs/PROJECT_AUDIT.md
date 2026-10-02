@@ -5,8 +5,8 @@
 - 上游：`https://github.com/ckken/sub2api-mobile.git`
 - 原始分支：`main`
 - 原始提交：`3177500 feat: streamline account overview list workflow`
-- 开发分支：`codex/vexlune-ios-admin`
-- 后端参考：`Wei-Shaw/sub2api@b74024c`
+- 开发分支：`codex/vexlune-hub`
+- 后端源：`Hinln/sub2api@aab6899`（`Wei-Shaw/sub2api` 仅作公开参考）
 - 工作区开始时为空，无用户未提交修改。
 
 ## 发现
@@ -27,5 +27,5 @@
 - Bundle ID：`com.vexlune.mobile`
 - Scheme：`vexlunemobile`
 - Updates：禁用
-- EAS owner/project/update URL：无
+- EAS owner/project/update URL：无；`expo config` 未发现 `extra.eas.projectId`，非交互式云构建前需由已认证账号执行一次 `eas project:init`
 - 图标：全新黑紫几何 V，RGB、无 Alpha

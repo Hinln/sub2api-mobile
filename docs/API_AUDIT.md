@@ -6,7 +6,7 @@
 - 管理路由前缀：`/api/v1/admin`
 - 模型 API：`https://api.vexlune.com`，本管理客户端不向其发送推理请求。
 - 当前 APP 认证：邮箱密码登录后使用服务端签发的 `Authorization: Bearer <access_token>`，并按 `/api/v1/auth/me` 角色路由。
-- 后端同时支持 `Authorization: Bearer <admin-jwt>`，但 APP 未实现账号密码/JWT 登录，因为上游移动端已验证 Admin API Key 路径且无需 Cookie。
+- 后端同时支持 `Authorization: Bearer <admin-jwt>`；APP 统一使用邮箱密码登录后取得的 Bearer JWT，并按 `/api/v1/auth/me` 返回的角色进入用户或管理员工作台。管理员 API Key 兼容路径不属于 APP 登录方式。
 - 标准响应：`{ code, message, reason?, metadata?, data? }`。
 - 分页：`page`、`page_size`；响应 `items`、`total`、`page`、`page_size`、`pages`。
 - Request ID：读取 `x-request-id` 或 `request-id` 响应头。
@@ -50,4 +50,4 @@
 
 ## 版本差异风险
 
-Vexlune 生产部署的精确后端提交未知；以上接口来自上游移动端及 `Wei-Shaw/sub2api@b74024c`。APP 对不支持的字段使用空状态，不伪造数据。真实管理员联调因环境无凭据未执行。
+Vexlune 私有后端目标提交为 `aab6899`（分支 `codex/backend-hardening`）；接口和 Turnstile/幂等改造以 `Hinln/sub2api` 为源。APP 对不支持的字段使用空状态，不伪造数据；真实 staging 管理员联调仍需账号和 Cloudflare 环境凭据。

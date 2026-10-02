@@ -1,6 +1,7 @@
 {
   "name": "vexlune-mobile-console",
   "version": "1.0.1",
+  "packageManager": "pnpm@11.19.0",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",

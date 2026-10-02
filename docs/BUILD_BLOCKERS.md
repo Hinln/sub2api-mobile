@@ -16,7 +16,8 @@
 2. CocoaPods 未安装；iOS 工程的 CocoaPods 检查阶段会因缺少 `Podfile.lock` 失败。建议安装与 Xcode 26 兼容的 CocoaPods 后运行 `pod install`。
 3. EAS CLI 可通过 `pnpm dlx eas-cli` 临时运行（当前版本 24.8.0），但 `pnpm dlx eas-cli whoami` 返回 `Not logged in`；当前不能把本机当作已授权的无人值守云构建环境。GitHub Actions 的 `EXPO_TOKEN`、Apple App Store Connect/API 凭据和签名凭据仍应放在 GitHub/EAS Secret 中。
 4. 未在本机发现 provisioning profile 或 signing certificate。真机/TestFlight 构建必须在 EAS 或已登录的 Xcode 账户中创建并保存这些凭据，禁止提交到仓库。
-5. `pnpm dlx expo-doctor` 能运行，但报告项目同时存在 `pnpm-lock.yaml` 和 `package-lock.json`，并因系统没有 `npm` 无法完成两项依赖树检查；这需要在 CI 使用明确的 pnpm 工具链验证，或补齐 npm 后重新运行。
+5. `pnpm dlx expo-doctor@1.20.4` 在本机直接运行通过 15/18 项；用临时 npm shim 重跑为 18/18。剩余本机差异只来自系统没有 npm，GitHub Actions runner 自带 npm，工作流会执行固定版本的 doctor。
+6. `expo config` 未发现 `extra.eas.projectId`，且 `pnpm dlx eas-cli@24.8.0 project:info --non-interactive` 因未登录而失败。首次云构建前，需用已认证的 EAS 账号运行一次 `eas project:init` 并提交生成的 project ID；CI 继续只通过 `EXPO_TOKEN` 读取凭据。
 
 ## 无人值守入口
 

@@ -6,10 +6,11 @@
 
 | 检查 | 结果 | 说明 |
 |---|---|---|
-| TypeScript | 待本轮最终代码合并后执行 | `pnpm exec tsc --noEmit` |
-| Vitest | 待本轮最终代码合并后执行 | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore 和真实服务契约 |
-| ESLint | 待本轮最终代码合并后执行 | `pnpm exec expo lint`；只允许既有 warning，不允许 error |
-| Expo Web export | 待本轮最终代码合并后执行 | `pnpm run web:build` |
+| TypeScript | 通过 | `pnpm exec tsc --noEmit` |
+| Vitest | 通过（23/23） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore 和真实服务契约 |
+| ESLint | 通过 | `pnpm exec expo lint`；0 error，仅既有 CommonJS import warning |
+| Expo Web export | 通过 | `pnpm run web:build` |
+| Expo Doctor | 18/18（临时 npm shim） | `pnpm dlx expo-doctor@1.20.4`；主机直接运行 15/18，差异仅为缺少 npm；CI 已统一 pnpm |
 | iOS prebuild | 通过 | 隔离目录生成 `VexluneMobileConsole.xcodeproj` |
 | iOS Xcode 编译 | 环境阻塞 | CocoaPods 未安装，Xcode 许可尚未接受；签名身份和 provisioning profile 均未发现；见 `docs/BUILD_BLOCKERS.md` |
 | Go 后端测试 | 环境阻塞 | 当前机器没有 `go`/`gofmt`，需在 CI 或 Go 构建机执行 |
