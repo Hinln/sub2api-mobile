@@ -6,7 +6,7 @@
 - 原始分支：`main`
 - 原始提交：`3177500 feat: streamline account overview list workflow`
 - 开发分支：`codex/vexlune-hub`
-- 后端源：`Hinln/sub2api@aab6899`（`Wei-Shaw/sub2api` 仅作公开参考）
+- 后端源：`Hinln/sub2api@37f1606`（`Wei-Shaw/sub2api` 仅作公开参考）
 - 工作区开始时为空，无用户未提交修改。
 
 ## 发现

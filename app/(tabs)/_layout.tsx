@@ -1,6 +1,7 @@
 import { Redirect, Tabs } from 'expo-router';
 import { Activity, ChartNoAxesCombined, KeyRound, Menu, Users } from 'lucide-react-native';
 import { adminConfigState, hasAuthenticatedAdminSession, hasAuthenticatedSession } from '@/src/store/admin-config';
+import { isAdmin } from '@/src/auth/session';
 import { theme } from '@/src/theme';
 
 // CommonJS entry avoids import.meta in Expo Metro's classic web bundle.
@@ -9,6 +10,7 @@ const { useSnapshot } = require('valtio/react');
 
 export default function TabsLayout() {
   const config = useSnapshot(adminConfigState);
+  if (isAdmin(config.user) && config.workspaceMode === 'user') return <Redirect href="/user" />;
   if (!hasAuthenticatedAdminSession(config)) return <Redirect href={hasAuthenticatedSession(config) ? '/user' : '/login'} />;
 
   return (

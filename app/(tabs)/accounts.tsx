@@ -1,12 +1,13 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { CheckSquare, KeyRound, Search, Square } from 'lucide-react-native';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 
 import { Badge, Card, Page, StateCard } from '@/src/components/ui';
 import { useDebouncedValue } from '@/src/hooks/use-debounced-value';
 import { humanizeApiError } from '@/src/lib/admin-fetch';
+import { newIdempotencyKey } from '@/src/lib/idempotency';
 import { queryClient } from '@/src/lib/query-client';
 import { batchClearAccountErrors, batchDeleteAccounts, batchRefreshAccounts, listAccounts, type BatchAccountOperationResult } from '@/src/services/admin';
 import { theme } from '@/src/theme';
@@ -24,21 +25,23 @@ export default function AccountsScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [batchResult, setBatchResult] = useState<BatchAccountOperationResult>();
+  const batchKeys = useRef<Record<string, string>>({});
   const keyword = useDebouncedValue(search.trim(), 300);
   const query = useQuery({ queryKey: ['accounts', keyword, status, page], queryFn: () => listAccounts(keyword, { page, page_size: 30, status: status || undefined }) });
   const items = query.data?.items ?? [];
   const toggleSelection = (id: number) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
   const cancelSelection = () => { setSelectionMode(false); setSelectedIds([]); setBatchResult(undefined); };
   const batchAction = useMutation({
-    mutationFn: ({ action, accountIds }: { action: 'refresh' | 'clear' | 'delete'; accountIds: number[] }) => {
-      if (action === 'refresh') return batchRefreshAccounts(accountIds);
-      if (action === 'clear') return batchClearAccountErrors(accountIds);
-      return batchDeleteAccounts(accountIds);
+    mutationFn: ({ action, accountIds, idempotencyKey }: { action: 'refresh' | 'clear' | 'delete'; accountIds: number[]; idempotencyKey: string }) => {
+      if (action === 'refresh') return batchRefreshAccounts(accountIds, idempotencyKey);
+      if (action === 'clear') return batchClearAccountErrors(accountIds, idempotencyKey);
+      return batchDeleteAccounts(accountIds, idempotencyKey);
     },
-    onSuccess: (result) => {
+    onSuccess: (result, input) => {
       setBatchResult(result);
       void queryClient.invalidateQueries({ queryKey: ['accounts'] });
       const failedIds = result.failed_ids?.length ? result.failed_ids : (result.errors ?? []).map((item) => item.account_id).filter((id): id is number => typeof id === 'number');
+      delete batchKeys.current[input.action];
       if (failedIds.length) setSelectedIds(failedIds); else cancelSelection();
     },
   });
@@ -46,7 +49,8 @@ export default function AccountsScreen() {
   function runBatch(action: 'refresh' | 'clear' | 'delete') {
     if (!selectedIds.length || batchAction.isPending) return;
     setBatchResult(undefined);
-    batchAction.mutate({ action, accountIds: [...selectedIds] });
+    if (!batchKeys.current[action]) batchKeys.current[action] = newIdempotencyKey(`admin-accounts-batch-${action}`);
+    batchAction.mutate({ action, accountIds: [...selectedIds], idempotencyKey: batchKeys.current[action] });
   }
 
   function confirmBatchDelete() {

@@ -1,5 +1,5 @@
 import { normalizeHubUrl } from '@/src/config/vexlune';
-import { sessionState, saveSession, updateAccessToken } from '@/src/auth/session';
+import { clearSession, sessionState, saveSession, updateAccessToken, updateSessionUser } from '@/src/auth/session';
 import { userSchema, publicSettingsSchema, authResponseSchema, type AuthResponse, type AuthUser, type PublicSettings } from '@/src/types/auth';
 
 type ApiEnvelope<T> = { code?: number; message?: string; reason?: string; data?: T } & Record<string, unknown>;
@@ -85,21 +85,39 @@ export async function login(input: { email: string; password: string; turnstile_
   if (response.requires_2fa) return response;
   if (!response.access_token || !response.user) throw new AuthApiError('登录响应缺少会话信息', 502);
   await saveSession({ accessToken: response.access_token, refreshToken: response.refresh_token, expiresIn: response.expires_in, user: parseUser(response.user) });
-  return response;
+  try {
+    const user = await getCurrentUser();
+    return { ...response, user };
+  } catch (error) {
+    await clearSession();
+    throw error;
+  }
 }
 
 export async function completeTwoFactor(tempToken: string, totpCode: string) {
   const response = parseAuthResponse(await request<unknown>('/api/v1/auth/login/2fa', { method: 'POST', body: JSON.stringify({ temp_token: tempToken, totp_code: totpCode }) }, { auth: false }));
   if (!response.access_token || !response.user) throw new AuthApiError('二次验证响应缺少会话信息', 502);
   await saveSession({ accessToken: response.access_token, refreshToken: response.refresh_token, expiresIn: response.expires_in, user: parseUser(response.user) });
-  return response;
+  try {
+    const user = await getCurrentUser();
+    return { ...response, user };
+  } catch (error) {
+    await clearSession();
+    throw error;
+  }
 }
 
 export async function register(input: { email: string; password: string; verify_code?: string; turnstile_token?: string; turnstile_nonce?: string }) {
   const response = parseAuthResponse(await request<unknown>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify(input) }, { auth: false }));
   if (!response.access_token || !response.user) throw new AuthApiError('注册响应缺少会话信息', 502);
   await saveSession({ accessToken: response.access_token, refreshToken: response.refresh_token, expiresIn: response.expires_in, user: parseUser(response.user) });
-  return response;
+  try {
+    const user = await getCurrentUser();
+    return { ...response, user };
+  } catch (error) {
+    await clearSession();
+    throw error;
+  }
 }
 
 export async function sendVerifyCode(input: { email: string; turnstile_token?: string; turnstile_nonce?: string }) {
@@ -109,9 +127,7 @@ export async function sendVerifyCode(input: { email: string; turnstile_token?: s
 export async function getCurrentUser() {
   const value = await request<unknown>('/api/v1/auth/me');
   const user = parseUser(value);
-  if (sessionState.user) {
-    sessionState.user = user;
-  }
+  await updateSessionUser(user);
   return user;
 }
 
@@ -136,6 +152,13 @@ export async function refreshSession() {
 }
 
 export async function logoutRemote() {
-  if (!sessionState.refreshToken) return;
-  await request('/api/v1/auth/logout', { method: 'POST', body: JSON.stringify({ refresh_token: sessionState.refreshToken }) }, { auth: false });
+  // The logout route is intentionally public and accepts an optional refresh
+  // token. Always call it while a session is being signed out so admin and
+  // user workspaces revoke the server session even when the local token was
+  // already removed or expired. The caller still clears local credentials in
+  // a finally block when the network is unavailable.
+  await request('/api/v1/auth/logout', {
+    method: 'POST',
+    body: JSON.stringify(sessionState.refreshToken ? { refresh_token: sessionState.refreshToken } : {}),
+  }, { auth: false });
 }

@@ -23,12 +23,12 @@ Updated: 2026-10-03 (Asia/Shanghai)
 | 0 | Snapshot, branch, dependency/build baseline | independent Git branches, lockfiles and environment audit | Complete locally |
 | 1 | Real route and DTO audit | `API_COVERAGE_MATRIX.md`, `API_GAP_REPORT.md` | Complete from authenticated private checkout |
 | 2 | Shared design system, logo, API client, query/session boundaries | unified V Logo, Bearer client, cache clearing, tests | Complete locally |
-| 3 | Email/password auth, role routing, refresh, Turnstile WebView | source changes + 27 mobile tests + backend policy tests | Complete in source; staging pending |
+| 3 | Email/password auth, role routing, refresh, Turnstile WebView | source changes + 37 mobile tests + backend policy tests | Complete in source; staging pending |
 | 4 | User workspace and real payment/usage/key flows | real endpoint screens + stable payment/key idempotency | Complete in source; provider sandbox pending |
 | 5 | Admin workspace and audited high-risk operations | existing admin routes migrated to Bearer JWT; no API-key UI | Complete in source; staging role/step-up pending |
-| 6 | Private backend gaps, migrations, idempotency, audit | backend commit `013ae19`, Redis nonce ledger, payment coordinator | Complete in source; final Go CI rerun pending |
+| 6 | Private backend gaps, migrations, idempotency, audit | backend commit `37f1606`, Redis nonce ledger, payment coordinator | Complete in source; final Go CI rerun pending |
 | 7 | E2E, security and no-placeholder scan | QA/security reports and source scan | Complete locally; staging accounts pending |
-| 8 | Android/iOS builds, CI, release and rollback | Native Xcode/Gradle workflows and runbooks | iOS unsigned Simulator/device builds verified; Android is deferred by current scope; signing/TestFlight and Actions billing remain external gates |
+| 8 | iOS build, release and rollback | Native Xcode workflow and runbooks | iOS unsigned Simulator/device builds verified; Android is deferred by current scope; signing/TestFlight and Actions billing remain external gates |
 
 ## Immediate execution order
 

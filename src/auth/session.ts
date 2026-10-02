@@ -30,6 +30,13 @@ export type SessionState = {
   refreshToken: string;
   expiresAt: number;
   user: AuthUser | null;
+  /**
+   * Which first-party workspace the current administrator is viewing. This is
+   * intentionally local UI state: the access token always remains the
+   * administrator's own token, so switching to the user workspace can never
+   * impersonate another account.
+   */
+  workspaceMode: 'admin' | 'user';
   biometricEnabled: boolean;
   hydrated: boolean;
   locked: boolean;
@@ -44,6 +51,7 @@ export const sessionState = createProxy<SessionState>({
   refreshToken: '',
   expiresAt: 0,
   user: null,
+  workspaceMode: 'admin',
   biometricEnabled: false,
   hydrated: false,
   locked: false,
@@ -73,6 +81,7 @@ export function isAdmin(user: AuthUser | null | undefined) {
 }
 
 export async function hydrateSession() {
+  sessionState.hydrated = false;
   const [accessToken, refreshToken, expiresAt, user, biometric, baseUrl] = await Promise.all([
     readSecure(ACCESS_TOKEN_KEY), readSecure(REFRESH_TOKEN_KEY), readSecure(EXPIRES_AT_KEY),
     readSecure(USER_KEY), readSecure(BIOMETRIC_KEY), readSecure(BASE_URL_KEY),
@@ -83,11 +92,40 @@ export async function hydrateSession() {
   sessionState.refreshToken = refreshToken ?? '';
   sessionState.expiresAt = Number(expiresAt ?? 0) || 0;
   sessionState.user = user ? safeParseUser(user) : null;
+  sessionState.workspaceMode = isAdmin(sessionState.user) ? 'admin' : 'user';
   sessionState.biometricEnabled = biometric === 'true';
   if (baseUrl) {
     try { sessionState.baseUrl = normalizeHubUrl(baseUrl); } catch { sessionState.baseUrl = VEXLUNE_HUB_URL; }
   }
   sessionState.advancedUrlEnabled = sessionState.baseUrl !== VEXLUNE_HUB_URL;
+
+  // The cached user is only a bootstrap value. Once a token is present, ask
+  // the Hub for its authoritative user record so role changes and disabled
+  // accounts take effect on a cold start. A stale access token gets one
+  // normal refresh attempt first. Network failures keep the cached session so
+  // the app can recover when connectivity returns; an explicit auth failure
+  // clears credentials and cannot leave a stale administrator workspace open.
+  if (sessionState.accessToken) {
+    try {
+      if (sessionState.expiresAt > 0 && Date.now() >= sessionState.expiresAt && sessionState.refreshToken) {
+        const { refreshSession } = await import('@/src/services/auth');
+        if (!await refreshSession()) throw new Error('SESSION_REFRESH_FAILED');
+      }
+      const { getCurrentUser } = await import('@/src/services/auth');
+      const currentUser = await getCurrentUser();
+      sessionState.workspaceMode = isAdmin(currentUser) ? 'admin' : 'user';
+    } catch (error) {
+      const status = typeof error === 'object' && error !== null && 'status' in error ? Number((error as { status?: unknown }).status) : 0;
+      const code = typeof error === 'object' && error !== null && 'code' in error ? String((error as { code?: unknown }).code).toUpperCase() : '';
+      const authFailure = status === 401 || status === 403 || code === '401' || code === '403' || code === 'UNAUTHORIZED' || code === 'TOKEN_EXPIRED' || code === 'INVALID_TOKEN';
+      if (authFailure || error instanceof Error && error.message === 'SESSION_REFRESH_FAILED') {
+        await clearSession();
+      }
+    }
+  }
+  // Keep the root route behind the loading screen until the server-authority
+  // check above has settled. This prevents a cached administrator role from
+  // briefly rendering the wrong workspace during a cold start.
   sessionState.hydrated = true;
   sessionState.locked = sessionState.biometricEnabled && isAuthenticated() && !IS_WEB;
 }
@@ -117,6 +155,7 @@ export async function saveSession(input: { accessToken: string; refreshToken?: s
   sessionState.refreshToken = input.refreshToken ?? '';
   sessionState.expiresAt = expiresAt;
   sessionState.user = input.user;
+  sessionState.workspaceMode = isAdmin(input.user) ? 'admin' : 'user';
   sessionState.locked = false;
 }
 
@@ -130,6 +169,33 @@ export async function updateAccessToken(input: { accessToken: string; refreshTok
   sessionState.accessToken = input.accessToken;
   if (input.refreshToken) sessionState.refreshToken = input.refreshToken;
   sessionState.expiresAt = expiresAt;
+}
+
+/** Persist the server-authoritative user record after auth/me or a role refresh. */
+export async function updateSessionUser(user: AuthUser) {
+  await writeSecure(USER_KEY, JSON.stringify(user));
+  sessionState.user = user;
+  // Every auth/me response is authoritative for both identity and the
+  // initial workspace. A role promotion/demotion must take effect before any
+  // route redirect is evaluated.
+  sessionState.workspaceMode = isAdmin(user) ? 'admin' : 'user';
+}
+
+/**
+ * Switches the first-party workspace for the signed-in administrator. The
+ * server identity and bearer token do not change; this only changes which
+ * client surface is shown. Ordinary users can never enter administrator mode
+ * through this function.
+ */
+export function setWorkspaceMode(mode: 'admin' | 'user') {
+  if (!isAdmin(sessionState.user)) {
+    if (mode === 'user') {
+      sessionState.workspaceMode = 'user';
+      return;
+    }
+    throw new Error('ADMIN_WORKSPACE_REQUIRED');
+  }
+  sessionState.workspaceMode = mode;
 }
 
 export async function setBiometricEnabled(enabled: boolean) {
@@ -151,6 +217,7 @@ export async function clearSession() {
   sessionState.refreshToken = '';
   sessionState.expiresAt = 0;
   sessionState.user = null;
+  sessionState.workspaceMode = 'admin';
   sessionState.locked = false;
 }
 

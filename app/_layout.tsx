@@ -90,7 +90,10 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="login" />
             <Stack.Screen name="register" />
+            <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+            <Stack.Screen name="reset-password" options={{ headerShown: false }} />
             <Stack.Screen name="user" />
+            <Stack.Screen name="user-settings" options={{ headerShown: false }} />
             <Stack.Screen name="users/[id]" options={{ headerShown: true, title: '\u7528\u6237\u8be6\u60c5', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
             <Stack.Screen name="users/create-user" options={{ headerShown: true, title: '\u521b\u5efa\u7528\u6237', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
             <Stack.Screen name="accounts/[id]" options={{ headerShown: true, title: '\u8d26\u53f7\u8be6\u60c5', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />

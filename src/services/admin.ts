@@ -100,11 +100,11 @@ export function getUser(userId: number) {
   return adminFetch<AdminUser>(`/api/v1/admin/users/${userId}`);
 }
 
-export function createUser(body: CreateUserRequest) {
+export function createUser(body: CreateUserRequest, idempotencyKey?: string) {
   return adminFetch<AdminUser>('/api/v1/admin/users', {
     method: 'POST',
     body: JSON.stringify(body),
-  });
+  }, { idempotencyKey });
 }
 
 export function getUserUsage(userId: number, period: 'day' | 'week' | 'month' = 'month') {
@@ -117,7 +117,8 @@ export function listUserApiKeys(userId: number) {
 
 export function updateUserBalance(
   userId: number,
-  body: { balance: number; operation: BalanceOperation; notes?: string }
+  body: { balance: number; operation: BalanceOperation; notes?: string },
+  idempotencyKey?: string,
 ) {
   return adminFetch<AdminUser>(
     `/api/v1/admin/users/${userId}/balance`,
@@ -125,17 +126,15 @@ export function updateUserBalance(
       method: 'POST',
       body: JSON.stringify(body),
     },
-    {
-      idempotencyKey: `user-balance-${userId}-${Date.now()}`,
-    }
+    { idempotencyKey }
   );
 }
 
-export function updateUserStatus(userId: number, status: 'active' | 'disabled') {
+export function updateUserStatus(userId: number, status: 'active' | 'disabled', idempotencyKey?: string) {
   return adminFetch<AdminUser>(`/api/v1/admin/users/${userId}`, {
     method: 'PUT',
     body: JSON.stringify({ status }),
-  });
+  }, { idempotencyKey });
 }
 
 export function listGroups(search = '', pagination: PaginationParams = {}) {
@@ -158,42 +157,42 @@ export function getAccount(accountId: number) {
   return adminFetch<AdminAccount>(`/api/v1/admin/accounts/${accountId}`);
 }
 
-export function createAccount(body: CreateAccountRequest) {
+export function createAccount(body: CreateAccountRequest, idempotencyKey?: string) {
   return adminFetch<AdminAccount>('/api/v1/admin/accounts', {
     method: 'POST',
     body: JSON.stringify(body),
-  });
+  }, { idempotencyKey });
 }
 
 export function getAccountTodayStats(accountId: number) {
   return adminFetch<AccountTodayStats>(`/api/v1/admin/accounts/${accountId}/today-stats`);
 }
 
-export function testAccount(accountId: number) {
+export function testAccount(accountId: number, idempotencyKey?: string) {
   return adminFetch(`/api/v1/admin/accounts/${accountId}/test`, {
     method: 'POST',
-  });
+  }, { idempotencyKey });
 }
 
-export function refreshAccount(accountId: number) {
+export function refreshAccount(accountId: number, idempotencyKey?: string) {
   return adminFetch(`/api/v1/admin/accounts/${accountId}/refresh`, {
     method: 'POST',
-  });
+  }, { idempotencyKey });
 }
 
-export function setAccountSchedulable(accountId: number, schedulable: boolean) {
+export function setAccountSchedulable(accountId: number, schedulable: boolean, idempotencyKey?: string) {
   return adminFetch<AdminAccount>(`/api/v1/admin/accounts/${accountId}/schedulable`, {
     method: 'POST',
     body: JSON.stringify({ schedulable }),
-  });
+  }, { idempotencyKey });
 }
 
-export function clearAccountError(accountId: number) {
-  return adminFetch(`/api/v1/admin/accounts/${accountId}/clear-error`, { method: 'POST' });
+export function clearAccountError(accountId: number, idempotencyKey?: string) {
+  return adminFetch(`/api/v1/admin/accounts/${accountId}/clear-error`, { method: 'POST' }, { idempotencyKey });
 }
 
-export function recoverAccountState(accountId: number) {
-  return adminFetch(`/api/v1/admin/accounts/${accountId}/recover-state`, { method: 'POST' });
+export function recoverAccountState(accountId: number, idempotencyKey?: string) {
+  return adminFetch(`/api/v1/admin/accounts/${accountId}/recover-state`, { method: 'POST' }, { idempotencyKey });
 }
 
 export type BatchAccountError = { account_id?: number; error?: string };
@@ -208,27 +207,27 @@ export type BatchAccountOperationResult = {
 };
 
 /** Execute a server-owned batch refresh for the selected account IDs. */
-export function batchRefreshAccounts(accountIds: number[]) {
+export function batchRefreshAccounts(accountIds: number[], idempotencyKey?: string) {
   return adminFetch<BatchAccountOperationResult>('/api/v1/admin/accounts/batch-refresh', {
     method: 'POST',
     body: JSON.stringify({ account_ids: accountIds }),
-  });
+  }, { idempotencyKey });
 }
 
 /** Clear only the server-recorded error state for the selected accounts. */
-export function batchClearAccountErrors(accountIds: number[]) {
+export function batchClearAccountErrors(accountIds: number[], idempotencyKey?: string) {
   return adminFetch<BatchAccountOperationResult>('/api/v1/admin/accounts/batch-clear-error', {
     method: 'POST',
     body: JSON.stringify({ account_ids: accountIds }),
-  });
+  }, { idempotencyKey });
 }
 
 /** Delete selected accounts through the audited backend batch endpoint. */
-export function batchDeleteAccounts(accountIds: number[]) {
+export function batchDeleteAccounts(accountIds: number[], idempotencyKey?: string) {
   return adminFetch<BatchAccountOperationResult>('/api/v1/admin/accounts/batch-delete', {
     method: 'POST',
     body: JSON.stringify({ account_ids: accountIds }),
-  });
+  }, { idempotencyKey });
 }
 
 export function listUsageLogs(params: PaginationParams & { user_id?: number; account_id?: number; model?: string } = {}) {
