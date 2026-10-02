@@ -16,7 +16,7 @@
 | iPhoneOS Release unsigned | 通过 | arm64 `.app` 已打包并验证 IPA 完整性；未签名不能安装真机 |
 | GitHub native iOS workflow | 环境阻塞 | run `37051524996` 在步骤前因 billing issue 失败（steps=0），未产生 IPA/.app artifact |
 | Android prebuild | 通过（隔离目录） | 本机无 Android SDK/Java/adb；APK/AAB 需本机 Android SDK/Java 或原生 Gradle CI |
-| Go 后端测试 | 通过 | Go 1.27.1 `GOPROXY=https://goproxy.cn,direct go test ./...`；全仓库通过（本机当前未安装 Go，结果来自此前受控运行记录） |
+| Go 后端测试 | 基线通过，最终增量待受控环境重跑 | Go 1.27.1 `GOPROXY=https://goproxy.cn,direct go test ./...` 的全仓库基线记录通过；本机当前未安装 Go，后端最终幂等增量需在 CI 或 Go 1.27.1 受控环境复核 |
 
 ## 必测真实链路
 
