@@ -15,6 +15,7 @@
       "supportsTablet": false,
       "icon": "./assets/vexlune-icon.png",
       "bundleIdentifier": "com.vexlune.mobile",
+      "appleTeamId": "6KW552MWV6",
       "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
