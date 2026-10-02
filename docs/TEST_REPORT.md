@@ -13,6 +13,8 @@
 | iOS Xcode 编译 | 环境阻塞：CocoaPods 未安装，Xcode 许可尚未接受；见 `BUILD_BLOCKERS.md` |
 | `pnpm dlx expo-doctor@1.20.4` | 主机直接运行 15/18；临时 npm shim 重跑 18/18；CI 已统一 pnpm，见 `BUILD_BLOCKERS.md` |
 | `pnpm dlx eas-cli --version` / `whoami` | CLI 通过（24.8.0）；`whoami` 返回 `Not logged in`，云端凭据尚未验证；EAS project ID 也未关联 |
+| GitHub unsigned iOS workflow `37051524996` | 未启动 | GitHub 账号 billing issue 锁定，未产生构建 artifact |
+| Android Expo prebuild | 通过（隔离目录） | 本机无 Android SDK/Java/adb，APK/AAB 仍需 EAS/CI |
 | Go 后端测试 | 环境阻塞：当前机器无 `go`/`gofmt`；后端新增测试已提交，需在 CI/Go 构建机执行 |
 
 已覆盖的客户端规则：HTTPS Hub URL 校验、模型 API/管理域隔离、Bearer token、单飞刷新、401 清理、Cloudflare HTML challenge 识别、非幂等写请求不自动重试、SecureStore 设备级存储、退出清理、用户 API key/公告/订单错误态和稳定幂等键。

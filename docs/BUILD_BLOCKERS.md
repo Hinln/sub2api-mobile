@@ -18,6 +18,8 @@
 4. 未在本机发现 provisioning profile 或 signing certificate。真机/TestFlight 构建必须在 EAS 或已登录的 Xcode 账户中创建并保存这些凭据，禁止提交到仓库。
 5. `pnpm dlx expo-doctor@1.20.4` 在本机直接运行通过 15/18 项；用临时 npm shim 重跑为 18/18。剩余本机差异只来自系统没有 npm，GitHub Actions runner 自带 npm，工作流会执行固定版本的 doctor。
 6. `expo config` 未发现 `extra.eas.projectId`，且 `pnpm dlx eas-cli@24.8.0 project:info --non-interactive` 因未登录而失败。首次云构建前，需用已认证的 EAS 账号运行一次 `eas project:init` 并提交生成的 project ID；CI 继续只通过 `EXPO_TOKEN` 读取凭据。
+7. 已触发远端 unsigned iOS workflow run `37051524996`，GitHub 返回 `The job was not started because your account is locked due to a billing issue`，因此当前没有 IPA/.app artifact 证据；需先恢复 GitHub Actions 计费状态。
+8. Android 本机没有 `adb`、Java runtime 或 Android SDK；隔离目录 Expo Android prebuild 已通过，但 APK/AAB 必须使用已配置的 EAS/Android CI。
 
 ## 无人值守入口
 
