@@ -26,7 +26,7 @@ Updated: 2026-10-03 (Asia/Shanghai)
 | 3 | Email/password auth, role routing, refresh, Turnstile WebView | source changes + 39 mobile tests + backend policy tests | Complete in source; staging pending |
 | 4 | User workspace and real payment/usage/key flows | real endpoint screens + stable payment/key idempotency | Complete in source; provider sandbox pending |
 | 5 | Admin workspace and audited high-risk operations | existing admin routes migrated to Bearer JWT; no API-key UI | Complete in source; staging role/step-up pending |
-| 6 | Private backend gaps, migrations, idempotency, audit | backend commit `37f1606`, Redis nonce ledger, payment coordinator | Complete in source; final Go CI rerun pending |
+| 6 | Private backend gaps, migrations, idempotency, audit | backend commit `37f1606`, Redis nonce ledger, payment coordinator, Go 1.27.1 `go test ./...` | Complete and locally verified |
 | 7 | E2E, security and no-placeholder scan | QA/security reports and source scan | Complete locally; staging accounts pending |
 | 8 | iOS build, release and rollback | Native Xcode workflow and runbooks | iOS unsigned Simulator/device builds verified; Android is deferred by current scope; signing/TestFlight and Actions billing remain external gates |
 

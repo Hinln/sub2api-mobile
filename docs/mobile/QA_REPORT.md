@@ -19,7 +19,7 @@
 | Live Hub Turnstile bridge | 未通过部署验收 | `GET /api/v1/settings/public` 返回 200 JSON；`GET /mobile/captcha/turnstile` 返回前端 SPA HTML，未返回后端一次性 nonce bridge。需先部署 backend `37f1606` 并修正 Cloudflare/origin 路由。 |
 | GitHub native iOS workflow | 环境阻塞 | run `37051524996` 在步骤前因 billing issue 失败（steps=0），未产生 IPA/.app artifact |
 | Android | 暂缓 | 按当前范围不开发 Android；恢复范围时再配置 Android SDK/Java/签名并补充 APK/AAB 证据 |
-| Go 后端测试 | 基线通过，最终增量待受控环境重跑 | Go 1.27.1 `GOPROXY=https://goproxy.cn,direct go test ./...` 的全仓库基线记录通过；本机当前未安装 Go，后端最终幂等增量需在 CI 或 Go 1.27.1 受控环境复核 |
+| Go 后端测试 | 通过 | 在隔离 Go 1.27.1 darwin/arm64 工具链中执行 `GOPROXY=https://goproxy.cn,direct GOTOOLCHAIN=local go test ./...`；`cmd/*`、`internal/*`、迁移和插件包全部通过 |
 
 ## 必测真实链路
 
