@@ -82,7 +82,13 @@ export async function getPublicSettings(): Promise<PublicSettings> {
 
 export async function login(input: { email: string; password: string; turnstile_token?: string; turnstile_nonce?: string }) {
   const response = parseAuthResponse(await request<unknown>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify(input) }, { auth: false }));
-  if (response.requires_2fa) return response;
+  if (response.requires_2fa) {
+    // A challenge response is not a session yet. Treat a malformed response
+    // without the one-time login session as an upstream error instead of
+    // allowing the screen to route to a workspace with no credentials.
+    if (!response.temp_token) throw new AuthApiError('二次验证响应缺少临时令牌', 502);
+    return response;
+  }
   if (!response.access_token || !response.user) throw new AuthApiError('登录响应缺少会话信息', 502);
   await saveSession({ accessToken: response.access_token, refreshToken: response.refresh_token, expiresIn: response.expires_in, user: parseUser(response.user) });
   try {

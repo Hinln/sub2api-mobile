@@ -75,6 +75,20 @@ describe('public auth transport', () => {
     expect(sessionState.accessToken).toBe('');
   });
 
+  it('rejects a malformed TOTP challenge without a temporary token', async () => {
+    sessionState.baseUrl = 'https://hub.vexlune.com';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ code: 0, data: {
+      requires_2fa: true,
+    } }), { status: 200, headers: { 'content-type': 'application/json' } }));
+
+    const error = await login({ email: 'person@example.com', password: 'password' }).catch((value) => value as AuthApiError);
+
+    expect(error).toBeInstanceOf(AuthApiError);
+    expect(error.status).toBe(502);
+    expect(error.message).toContain('临时令牌');
+    expect(sessionState.accessToken).toBe('');
+  });
+
   it('always calls the public logout endpoint and sends the refresh token when available', async () => {
     sessionState.baseUrl = 'https://hub.vexlune.com';
     sessionState.refreshToken = 'refresh-token';

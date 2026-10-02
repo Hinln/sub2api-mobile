@@ -49,6 +49,7 @@ export function TurnstileGate({ action, resetKey, onToken }: { action: 'login' |
   function allowNavigation(request: WebViewNavigation) {
     try {
       const url = new URL(request.url);
+      if (url.protocol === 'about:' && url.href === 'about:blank') return true;
       return url.origin === origin || url.origin === 'https://challenges.cloudflare.com' || url.protocol === 'about:';
     } catch { return false; }
   }
