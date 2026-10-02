@@ -4,13 +4,13 @@ Updated: 2026-10-03 (Asia/Shanghai).
 
 ## Repository authority
 
-The delivery targets are the two Hinln repositories. GitHub metadata reports Hinln/sub2api as a private standalone repository (isFork=false, no parent) and Hinln/sub2api-mobile as a public fork of ckken/sub2api-mobile; the latter is still the requested delivery repository and is unrelated to the public Wei-Shaw/sub2api reference. The authenticated backend checkout is repos/sub2api at local commit `aab6899` on branch `codex/backend-hardening`, with remote https://github.com/Hinln/sub2api.git.
+The delivery targets are the two Hinln repositories. GitHub metadata reports Hinln/sub2api as a private standalone repository (isFork=false, no parent) and Hinln/sub2api-mobile as a public fork of ckken/sub2api-mobile; the latter is still the requested delivery repository and is unrelated to the public Wei-Shaw/sub2api reference. The authenticated backend checkout is repos/sub2api at final commit `013ae19` on branch `codex/backend-hardening`, with remote https://github.com/Hinln/sub2api.git.
 
 ## Audit conclusion
 
 The private backend already provides the required email/password authentication primitives, role discovery, JWT/refresh rotation, TOTP, user/admin route families, response envelope, server-side audit middleware and server-side Cloudflare Turnstile verification. The mobile contract can be implemented against these source-verified paths.
 
-The private backend now serves the first-party Turnstile WebView page required by the mobile brief. The bridge issues a Redis-backed five-minute nonce, binds action and request host, verifies Cloudflare action/hostname, and atomically consumes the nonce. Payment order creation now uses the shared durable idempotency coordinator with request-fingerprint conflicts and replay headers. Staging/device evidence is still required.
+The private backend now serves the first-party Turnstile WebView page required by the mobile brief. The bridge issues a Redis-backed five-minute nonce, binds action and request host, verifies Cloudflare action/hostname, and atomically consumes the nonce. Payment order creation now uses the shared durable idempotency coordinator with request-fingerprint conflicts and replay headers; the final hardening is in backend commit `013ae19`. Staging/device evidence is still required.
 
 ## Cloudflare rule specification
 
@@ -24,7 +24,7 @@ The non-secret API/WAF/Turnstile rule blueprint is in CLOUDFLARE_MOBILE_API_RULE
 | CLOSED_PRIVATE_002 | Payment POST /api/v1/payment/orders idempotency | Shared durable coordinator now persists request fingerprints, rejects changed payloads with 409, replays stored responses, and records idempotency audit events. | Run a staging timeout/retry test with a real payment provider sandbox. |
 | BLOCKED_PRIVATE_003 | No deployed staging origin/Cloudflare rule export | Source proof cannot establish native API reachability, Cloudflare challenge behavior, CORS/CSP/WebView origin or first-party domain. | Provide a staging origin and sanitized Cloudflare/WAF rules; validate cf-mitigated: challenge, HTML challenge handling and Turnstile hostname/action. |
 | BLOCKED_PRIVATE_004 | No QA user/admin accounts | Role routing, TOTP, payment, admin writes, rate limits and audit entries cannot be proven end-to-end. | Provision disposable staging accounts through a secure channel and revoke them after QA. |
-| BLOCKED_PRIVATE_005 | Android/iOS signing and release environment absent | No production AAB/IPA/archive evidence can be produced. | Configure native Gradle/Xcode signing secrets and macOS/Android runners; keep credentials out of the repositories. |
+| BLOCKED_PRIVATE_005 | iOS signing and release environment absent | The unsigned iPhoneOS IPA is verified, but no signed archive/TestFlight evidence can be produced until the local keychain/profile is authorized. Android delivery is intentionally deferred by the current scope. | Unlock and authorize the Xcode signing keychain, then configure the App Store Connect profile; keep credentials out of the repositories. |
 
 ## Source-verified contract details
 
