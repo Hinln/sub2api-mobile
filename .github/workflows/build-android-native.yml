@@ -1,0 +1,94 @@
+name: Build native Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: Gradle variant to assemble
+        required: true
+        default: release
+        type: choice
+        options:
+          - debug
+          - release
+      artifact:
+        description: Native output type
+        required: true
+        default: apk
+        type: choice
+        options:
+          - apk
+          - aab
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CI: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate source
+        run: |
+          pnpm run typecheck
+          pnpm run lint
+          pnpm test
+          pnpm dlx expo-doctor@1.20.4
+
+      - name: Generate Android project
+        run: pnpm run native:prebuild:android
+
+      - name: Assemble native Android artifact
+        shell: bash
+        run: |
+          chmod +x android/gradlew
+          case "${{ inputs.artifact }}:${{ inputs.variant }}" in
+            apk:debug) task=assembleDebug ;;
+            apk:release) task=assembleRelease ;;
+            aab:release) task=bundleRelease ;;
+            *) echo "Unsupported variant" >&2; exit 1 ;;
+          esac
+          (cd android && ./gradlew ":app:${task}" --no-daemon --stacktrace)
+
+      - name: Upload native Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vexlune-android-${{ inputs.artifact }}-${{ inputs.variant }}-${{ github.sha }}
+          path: android/app/build/outputs/${{ inputs.artifact }}/${{ inputs.variant }}/*
+          if-no-files-found: error
+          retention-days: 30

@@ -24,7 +24,7 @@ The non-secret API/WAF/Turnstile rule blueprint is in CLOUDFLARE_MOBILE_API_RULE
 | CLOSED_PRIVATE_002 | Payment POST /api/v1/payment/orders idempotency | Shared durable coordinator now persists request fingerprints, rejects changed payloads with 409, replays stored responses, and records idempotency audit events. | Run a staging timeout/retry test with a real payment provider sandbox. |
 | BLOCKED_PRIVATE_003 | No deployed staging origin/Cloudflare rule export | Source proof cannot establish native API reachability, Cloudflare challenge behavior, CORS/CSP/WebView origin or first-party domain. | Provide a staging origin and sanitized Cloudflare/WAF rules; validate cf-mitigated: challenge, HTML challenge handling and Turnstile hostname/action. |
 | BLOCKED_PRIVATE_004 | No QA user/admin accounts | Role routing, TOTP, payment, admin writes, rate limits and audit entries cannot be proven end-to-end. | Provision disposable staging accounts through a secure channel and revoke them after QA. |
-| BLOCKED_PRIVATE_005 | Android/iOS signing and release environment absent | No production AAB/IPA/archive evidence can be produced. | Configure EAS/CI signing secrets and macOS/iOS runner; keep credentials out of the repositories. |
+| BLOCKED_PRIVATE_005 | Android/iOS signing and release environment absent | No production AAB/IPA/archive evidence can be produced. | Configure native Gradle/Xcode signing secrets and macOS/Android runners; keep credentials out of the repositories. |
 
 ## Source-verified contract details
 

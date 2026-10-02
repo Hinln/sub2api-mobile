@@ -27,5 +27,5 @@
 - Bundle ID：`com.vexlune.mobile`
 - Scheme：`vexlunemobile`
 - Updates：禁用
-- EAS owner/project/update URL：无；`expo config` 未发现 `extra.eas.projectId`，非交互式云构建前需由已认证账号执行一次 `eas project:init`
+- 云构建项目绑定：无；原生包不依赖云构建服务，CI 直接执行 Expo prebuild 后使用 Xcode/Gradle 编译
 - 图标：全新黑紫几何 V，RGB、无 Alpha

@@ -9,7 +9,7 @@
 - Existing theme uses a purple palette and page-local `V` text mark. It must move to one SVG Vexlune brand component and blue design tokens.
 - Existing API wrapper has timeout/retry/error handling and API envelope parsing, but it has no Bearer token, refresh single-flight, Cloudflare HTML detection, or role validation.
 - Tests cover Bearer storage/fetch, refresh and Cloudflare boundary behavior, theme/config, and the user service contracts; staging still must prove real role routing and Turnstile.
-- Existing EAS and unsigned iOS workflow are present but cannot be considered verified without a build service or macOS runner.
+- Native iOS and Android workflows generate projects with Expo prebuild and compile them with `xcodebuild`/Gradle. Unsigned iOS and Android workflows are present; signed release evidence still requires a configured macOS/Android signing environment.
 
 ## Public upstream comparison
 

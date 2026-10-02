@@ -10,7 +10,7 @@
 ## 1.0.0 - 2026-08-02
 
 - 更名并重塑为 Vexlune Mobile Console。
-- 固定 Hub/API 域名边界，解除上游 EAS/Expo 绑定。
+- 固定 Hub/API 域名边界，解除上游项目与云构建绑定。
 - 新增深色黑紫移动界面与五栏导航。
 - 新增邮箱密码 + Bearer JWT/refresh 认证、SecureStore、401 清理与生物识别应用锁。
 - 重构类型化 API Client、超时、取消、Request ID、错误映射和安全重试。
