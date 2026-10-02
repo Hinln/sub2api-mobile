@@ -209,7 +209,16 @@ async function request<T>(path: string, init: RequestInit = {}, options: Interna
       const challenge = isHtmlChallenge(raw, response);
       const payload = parsePayload<T>(raw);
 
-      if (response.ok && !challenge && (!isEnvelope(payload) || payload.code === 0)) return payloadData(payload);
+      if (response.ok && !challenge) {
+        // Empty 2xx responses are valid for delete/revoke endpoints, but a
+        // non-empty body that is not JSON must never be treated as success.
+        // Returning undefined here would let a screen render a false success
+        // state after an upstream proxy or HTML error page.
+        if (raw.trim() && payload === undefined) {
+          throw new ApiError('服务器返回了无效响应', { status: 502, code: 'INVALID_JSON_RESPONSE', requestId });
+        }
+        if (!isEnvelope(payload) || payload.code === 0) return payloadData(payload);
+      }
 
       const envelope = isEnvelope(payload) ? payload : undefined;
       const message = challenge ? 'Cloudflare security challenge required' :

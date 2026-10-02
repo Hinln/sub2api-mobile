@@ -7,16 +7,16 @@
 | 检查 | 结果 | 说明 |
 |---|---|---|
 | TypeScript | 通过 | `pnpm exec tsc --noEmit` |
-| Vitest | 通过（25/25） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore 和真实服务契约 |
+| Vitest | 通过（27/27） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、真实服务契约和缺失数据格式化 |
 | ESLint | 通过 | `pnpm exec expo lint`；0 error，仅既有 CommonJS import warning |
-| Expo Web export | 通过 | `pnpm run web:build` |
+| Expo Web export | 通过 | `pnpm exec expo export --platform web` |
 | Expo Doctor | 18/18（临时 npm shim） | `pnpm dlx expo-doctor@1.20.4`；主机直接运行 15/18，差异仅为缺少 npm；CI 已统一 pnpm |
 | iOS prebuild | 通过 | 隔离目录生成 `VexluneMobileConsole.xcodeproj` |
 | iOS Simulator Release | 通过 | Xcode 26.6；arm64/x86_64 `.app` |
 | iPhoneOS Release unsigned | 通过 | arm64 `.app` 已打包并验证 IPA 完整性；未签名不能安装真机 |
 | GitHub native iOS workflow | 环境阻塞 | run `37051524996` 在步骤前因 billing issue 失败（steps=0），未产生 IPA/.app artifact |
 | Android prebuild | 通过（隔离目录） | 本机无 Android SDK/Java/adb；APK/AAB 需本机 Android SDK/Java 或原生 Gradle CI |
-| Go 后端测试 | 通过 | Go 1.27.1 `GOPROXY=https://goproxy.cn,direct go test ./...`；全仓库通过 |
+| Go 后端测试 | 通过 | Go 1.27.1 `GOPROXY=https://goproxy.cn,direct go test ./...`；全仓库通过（本机当前未安装 Go，结果来自此前受控运行记录） |
 
 ## 必测真实链路
 

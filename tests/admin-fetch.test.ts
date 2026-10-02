@@ -43,6 +43,14 @@ describe('adminFetch', () => {
     expect(error.message).toBe('Cloudflare security challenge required');
   });
 
+  it('rejects non-empty invalid JSON on a successful response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response('upstream text', 200, { 'content-type': 'text/plain' }));
+    await expect(adminFetch('/api/v1/admin/settings', {}, { retry: 0 })).rejects.toMatchObject({
+      status: 502,
+      code: 'INVALID_JSON_RESPONSE',
+    });
+  });
+
   it('classifies Cloudflare challenge responses by cf-mitigated header', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(response('', 403, { 'cf-mitigated': 'challenge' }));
     const error = await adminFetch<never>('/api/v1/admin/settings', {}, { retry: 0 }).catch((value) => value as ApiError) as ApiError;
