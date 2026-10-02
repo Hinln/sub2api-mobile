@@ -14,7 +14,7 @@
 
 1. 本机尚未接受 Xcode/Apple SDK 许可。需要在交互式终端执行 `sudo xcodebuild -license` 并接受条款。
 2. CocoaPods 未安装；iOS 工程的 CocoaPods 检查阶段会因缺少 `Podfile.lock` 失败。建议安装与 Xcode 26 兼容的 CocoaPods 后运行 `pod install`。
-3. EAS CLI 可通过 `pnpm dlx eas-cli` 临时运行（当前版本 24.8.0），但本机尚未验证 `eas whoami` 登录状态；当前不能把本机当作已授权的无人值守云构建环境。GitHub Actions 的 `EXPO_TOKEN`、Apple App Store Connect/API 凭据和签名凭据仍应放在 GitHub/EAS Secret 中。
+3. EAS CLI 可通过 `pnpm dlx eas-cli` 临时运行（当前版本 24.8.0），但 `pnpm dlx eas-cli whoami` 返回 `Not logged in`；当前不能把本机当作已授权的无人值守云构建环境。GitHub Actions 的 `EXPO_TOKEN`、Apple App Store Connect/API 凭据和签名凭据仍应放在 GitHub/EAS Secret 中。
 4. 未在本机发现 provisioning profile 或 signing certificate。真机/TestFlight 构建必须在 EAS 或已登录的 Xcode 账户中创建并保存这些凭据，禁止提交到仓库。
 5. `pnpm dlx expo-doctor` 能运行，但报告项目同时存在 `pnpm-lock.yaml` 和 `package-lock.json`，并因系统没有 `npm` 无法完成两项依赖树检查；这需要在 CI 使用明确的 pnpm 工具链验证，或补齐 npm 后重新运行。
 

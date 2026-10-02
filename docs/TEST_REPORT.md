@@ -12,7 +12,7 @@
 | iOS prebuild | 通过（隔离目录生成 Xcode project） |
 | iOS Xcode 编译 | 环境阻塞：CocoaPods 未安装，Xcode 许可尚未接受；见 `BUILD_BLOCKERS.md` |
 | `pnpm dlx expo-doctor` | 14/18 检查通过；因 pnpm/npm 双锁文件和系统缺少 npm，有 4 项检查无法通过或无法完成；见 `BUILD_BLOCKERS.md` |
-| `pnpm dlx eas-cli --version` | 通过（24.8.0）；账号登录和云端凭据尚未验证 |
+| `pnpm dlx eas-cli --version` / `whoami` | CLI 通过（24.8.0）；`whoami` 返回 `Not logged in`，云端凭据尚未验证 |
 | Go 后端测试 | 环境阻塞：当前机器无 `go`/`gofmt`；后端新增测试已提交，需在 CI/Go 构建机执行 |
 
 已覆盖的客户端规则：HTTPS Hub URL 校验、模型 API/管理域隔离、Bearer token、单飞刷新、401 清理、Cloudflare HTML challenge 识别、非幂等写请求不自动重试、SecureStore 设备级存储、退出清理、用户 API key/公告/订单错误态和稳定幂等键。
