@@ -10,9 +10,10 @@
 | Vitest `pnpm exec vitest run` | 5 文件、25 测试通过 |
 | Expo Web `pnpm exec expo export --platform web` | 通过，Metro 处理 3014 个模块 |
 | iOS prebuild | 通过（隔离目录生成 Xcode project） |
-| iOS Xcode 编译 | 环境阻塞：CocoaPods 未安装，Xcode 许可尚未接受；见 `BUILD_BLOCKERS.md` |
+| iOS Simulator Release | 通过；产物包含 arm64/x86_64 |
+| iPhoneOS Release unsigned | 通过；arm64 `.app` 已打包并验证 IPA 完整性；未签名不能安装真机 |
 | `pnpm dlx expo-doctor@1.20.4` | 主机直接运行 15/18；临时 npm shim 重跑 18/18；CI 已统一 pnpm，见 `BUILD_BLOCKERS.md` |
-| 原生 iOS workflow `37051524996` | 未启动 | GitHub 账号 billing issue 锁定，未产生构建 artifact |
+| 原生 iOS workflow `37051524996` | 步骤前失败 | GitHub billing issue 导致 steps=0、无 artifact；本机原生构建不受影响 |
 | Android Expo prebuild | 通过（隔离目录） | 本机无 Android SDK/Java/adb；APK/AAB 由原生 Gradle CI `build-android-native.yml` 负责 |
 | Go 后端测试 | 通过：Go 1.27.1 `GOPROXY=https://goproxy.cn,direct go test ./...`；新增支付幂等、Turnstile nonce/action/hostname 测试均通过 |
 

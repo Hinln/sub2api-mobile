@@ -28,7 +28,7 @@ Updated: 2026-10-03 (Asia/Shanghai)
 | 5 | Admin workspace and audited high-risk operations | existing admin routes migrated to Bearer JWT; no API-key UI | Complete in source; staging role/step-up pending |
 | 6 | Private backend gaps, migrations, idempotency, audit | backend commit `aab6899`, Redis nonce ledger, payment coordinator | Complete in source; Go CI pending |
 | 7 | E2E, security and no-placeholder scan | QA/security reports and source scan | Complete locally; staging accounts pending |
-| 8 | Android/iOS builds, CI, release and rollback | Native Xcode/Gradle Actions workflows and runbooks | Unsigned workflows ready; local signing/CocoaPods blocked |
+| 8 | Android/iOS builds, CI, release and rollback | Native Xcode/Gradle Actions workflows and runbooks | iOS unsigned Simulator/device builds verified; signing/TestFlight and Actions billing remain external gates |
 
 ## Immediate execution order
 

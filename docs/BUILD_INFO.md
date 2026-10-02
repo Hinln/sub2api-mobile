@@ -1,19 +1,21 @@
 # 构建信息
 
-- 源码分支：`codex/vexlune-hub`
-- App：Vexlune Mobile Console 1.0.1 (2)
-- Bundle ID：`com.vexlune.mobile`
-- Scheme：`vexlunemobile`
-- 目标工作流：iPhoneOS / Release / arm64 / unsigned
-- JavaScript 包管理器：pnpm 11.19.0；仓库仅保留 `pnpm-lock.yaml`，GitHub Actions 已使用 `pnpm install --frozen-lockfile`
-- Expo Web 构建：通过
-- iOS prebuild：通过（隔离目录）
-- macOS Xcode 编译：已验证可进入编译阶段；因 CocoaPods 未安装而在 `Podfile.lock` 检查阶段停止
-- 代码签名：本机 0 个签名身份；未生成 IPA
-- Apple/Xcode 账号：Xcode 偏好设置保留公司团队 `6KW552MWV6` 与 Personal Team `2B5JU96JLT`，但未发现签名身份或 provisioning profile，不能据此确认开发者会话有效
-- 原生构建入口：`pnpm run native:build:ios`（Xcode）与 `pnpm run native:build:android`（Gradle）；Expo 仅用于 prebuild 生成原生工程
-- 本机 Xcode 许可尚未接受；无云构建凭据依赖
-- 远端 unsigned iOS 尝试：run `37051524996` 未启动，GitHub 账号因 billing issue 被锁定；未生成 IPA
-- Android prebuild：隔离目录通过；本机没有 Android SDK/Java/adb，未生成 APK/AAB；原生 Gradle CI 已加入 `build-android-native.yml`
+更新时间：2026-10-03（Asia/Shanghai）。
 
-成功运行工作流后，动态架构、Workspace、Scheme、Bundle 与签名状态将写入 Artifact 内的 `BUILD_INFO.md`。
+- 源码分支：codex/vexlune-hub
+- App：Vexlune Mobile Console 1.0.1 (2)
+- Bundle ID：com.vexlune.mobile
+- Scheme：VexluneMobileConsole
+- JavaScript 包管理器：pnpm 11.19.0；仓库仅保留 pnpm-lock.yaml
+- Expo Web 构建：通过
+- iOS prebuild：通过
+- iOS Simulator Release：通过；arm64/x86_64
+- iPhoneOS Release：通过；arm64，CODE_SIGNING_ALLOWED=NO，未签名
+- 未签名 IPA：已从 iPhoneOS .app 打包并通过 unzip -t 完整性检查
+- 本机证书：Apple Development: YONGCHI PAN (KRVKFG5D67)；Team ID 6KW552MWV6
+- CocoaPods：1.15.2，用户 RubyGems 安装；scripts/native-build-ios.sh 会自动处理 PATH 与 Ruby 2.6 Logger 兼容性
+- 原生构建入口：pnpm run native:build:ios；Expo 仅用于生成原生工程，不使用 Expo 云构建或托管签名
+- GitHub Actions unsigned iOS run 37051524996：在步骤前因 billing issue 失败（steps=0），未产生云端 artifact
+- Android：按当前范围暂缓；未生成 APK/AAB
+
+未签名构建只能证明源码、Pods 和 Xcode 工具链可编译，不能替代真机签名、TestFlight 上传或 App Review。

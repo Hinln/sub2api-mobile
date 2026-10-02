@@ -5,11 +5,33 @@ set -eu
 # Set IOS_SDK=iphoneos and CODE_SIGNING_ALLOWED=YES for a signed device build.
 pnpm exec expo prebuild --platform ios --clean --no-install
 
+# CocoaPods may be installed with `gem install --user-install`, which places
+# the executable outside the default non-login PATH used by Codex/Xcode.
+if ! command -v pod >/dev/null 2>&1; then
+  ruby_user_bin="$(ruby -e 'print Gem.user_dir' 2>/dev/null)/bin"
+  if [ -x "$ruby_user_bin/pod" ]; then
+    PATH="$ruby_user_bin:$PATH"
+    export PATH
+  fi
+fi
+
 if ! command -v pod >/dev/null 2>&1; then
   echo "CocoaPods is required. Install it before building the iOS target." >&2
   exit 1
 fi
-pod install --project-directory=ios
+
+# macOS system Ruby 2.6 loads ActiveSupport before Logger in some CocoaPods
+# installations. Retry the version probe with Logger preloaded and preserve
+# that workaround only for the CocoaPods invocation.
+pod_rubyopt="${RUBYOPT:-}"
+if ! pod --version >/dev/null 2>&1; then
+  pod_rubyopt="${pod_rubyopt:+$pod_rubyopt }-rlogger"
+  if ! RUBYOPT="$pod_rubyopt" pod --version >/dev/null 2>&1; then
+    echo "CocoaPods is installed but cannot start under the current Ruby runtime." >&2
+    exit 1
+  fi
+fi
+RUBYOPT="$pod_rubyopt" pod install --project-directory=ios
 
 workspace="$(find ios -maxdepth 1 -name '*.xcworkspace' -not -path '*/Pods/*' -print -quit)"
 project="$(find ios -maxdepth 1 -name '*.xcodeproj' -print -quit)"
