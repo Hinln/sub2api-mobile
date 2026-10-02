@@ -20,6 +20,10 @@ pnpm exec expo lint
 pnpm exec vitest run
 pnpm run web:build
 pnpm run native:build:ios
+# Signed device archive (requires the Apple Development/Distribution identity
+# to be unlocked in the macOS Keychain and Automatic signing enabled in Xcode).
+IOS_SDK=iphoneos CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES \
+  CODE_SIGN_IDENTITY='Apple Development' pnpm run native:build:ios
 ```
 
 ## 上线顺序

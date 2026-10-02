@@ -59,6 +59,12 @@ destination="${IOS_DESTINATION:-$default_destination}"
 derived_data="${DERIVED_DATA_PATH:-$PWD/build/ios}"
 signing_allowed="${CODE_SIGNING_ALLOWED:-NO}"
 signing_required="${CODE_SIGNING_REQUIRED:-$signing_allowed}"
+# Xcode 26 no longer resolves the legacy `iPhone Developer` identity during
+# command-line archives.  Use the certificate class so Automatic signing can
+# resolve the installed Apple Development certificate without hard-coding a
+# personal certificate hash; callers may override it when using distribution
+# signing.
+signing_identity="${CODE_SIGN_IDENTITY:-Apple Development}"
 
 xcodebuild \
   -workspace "$workspace" \
@@ -67,6 +73,7 @@ xcodebuild \
   -sdk "$sdk" \
   -destination "$destination" \
   -derivedDataPath "$derived_data" \
+  CODE_SIGN_IDENTITY="$signing_identity" \
   CODE_SIGNING_ALLOWED="$signing_allowed" \
   CODE_SIGNING_REQUIRED="$signing_required" \
   clean build
