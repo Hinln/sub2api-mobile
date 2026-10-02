@@ -43,8 +43,22 @@ fi
 scheme="${IOS_SCHEME:-$(basename "$project" .xcodeproj)}"
 configuration="${IOS_CONFIGURATION:-Release}"
 sdk="${IOS_SDK:-iphonesimulator}"
-destination="${IOS_DESTINATION:-generic/platform=iOS Simulator}"
+case "$sdk" in
+  iphoneos)
+    default_destination='generic/platform=iOS'
+    ;;
+  iphonesimulator)
+    default_destination='generic/platform=iOS Simulator'
+    ;;
+  *)
+    echo "Unsupported IOS_SDK '$sdk'; use iphoneos or iphonesimulator." >&2
+    exit 1
+    ;;
+esac
+destination="${IOS_DESTINATION:-$default_destination}"
 derived_data="${DERIVED_DATA_PATH:-$PWD/build/ios}"
+signing_allowed="${CODE_SIGNING_ALLOWED:-NO}"
+signing_required="${CODE_SIGNING_REQUIRED:-$signing_allowed}"
 
 xcodebuild \
   -workspace "$workspace" \
@@ -53,6 +67,6 @@ xcodebuild \
   -sdk "$sdk" \
   -destination "$destination" \
   -derivedDataPath "$derived_data" \
-  CODE_SIGNING_ALLOWED="${CODE_SIGNING_ALLOWED:-NO}" \
-  CODE_SIGNING_REQUIRED="${CODE_SIGNING_REQUIRED:-NO}" \
+  CODE_SIGNING_ALLOWED="$signing_allowed" \
+  CODE_SIGNING_REQUIRED="$signing_required" \
   clean build

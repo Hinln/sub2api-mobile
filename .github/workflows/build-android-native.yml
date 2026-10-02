@@ -92,6 +92,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vexlune-android-${{ inputs.artifact }}-${{ inputs.variant }}-${{ github.sha }}
-          path: android/app/build/outputs/${{ inputs.artifact }}/${{ inputs.variant }}/*
+          # Gradle writes APKs under outputs/apk and bundles under
+          # outputs/bundle. Keep the upload path aligned with the task above.
+          path: ${{ inputs.artifact == 'aab' && 'android/app/build/outputs/bundle/release/*' || format('android/app/build/outputs/apk/{0}/*', inputs.variant) }}
           if-no-files-found: error
           retention-days: 30

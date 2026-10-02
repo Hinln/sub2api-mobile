@@ -9,6 +9,7 @@
 3. 执行 `pnpm install --frozen-lockfile`、`pnpm exec tsc --noEmit`、`pnpm exec expo lint`、`pnpm exec vitest run`、`pnpm run web:build`。
 4. 触发 `build-android-native.yml` 生成 Android debug/release APK（`-f artifact=apk`）；生产 AAB 使用 `-f variant=release -f artifact=aab`，凭据由 CI Secret 注入。
 5. 触发 `build-ios-unsigned.yml` 生成无签名 iPhoneOS Release IPA；签名 TestFlight/生产包必须在受控 macOS Runner 或本机用 Xcode `archive`/`-exportArchive` 完成，凭据由 macOS Keychain/CI Secret 提供。
+6. 按 [APP_STORE_CONNECT_CHECKLIST.md](./APP_STORE_CONNECT_CHECKLIST.md) 检查 Bundle ID、版本/build、隐私与支持链接、截图、年龄分级、审核账号和出口合规；没有这些资料不能提交审核。
 
 ## 构建命令
 
@@ -29,3 +30,14 @@ pnpm run native:build:ios
 ## 观测
 
 记录发布 commit、后端迁移版本、Android/iOS 构建 ID、Gradle/Xcode 构建日志摘要、Cloudflare 规则版本和 staging 验收账号。监控 401/403/429、Turnstile 失败率、支付幂等冲突、刷新失败、崩溃和 API p95；不要记录 access token、refresh token、支付凭据或 Turnstile secret。
+
+## TestFlight 交付证据
+
+签名归档完成后，保存以下可审计信息到发布记录（不要提交证书、私钥或 provisioning profile）：
+
+- Xcode archive 路径、归档 UUID、`CFBundleIdentifier`、短版本号和 build number。
+- `xcodebuild -exportArchive` 使用的导出方式（App Store/TestFlight）及导出日志摘要。
+- App Store Connect build ID、上传时间、处理状态和 TestFlight 内部测试结果。
+- 上传包的 SHA-256、对应源码 commit、后端 commit/迁移版本和 QA 报告链接。
+
+签名包只能从受控 macOS Keychain 或 CI Secret 注入凭据后生成；无签名 IPA 仅用于架构和包结构验证，不能上传 TestFlight。

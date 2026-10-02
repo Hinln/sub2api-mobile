@@ -12,8 +12,6 @@ jobs:
     timeout-minutes: 60
     env:
       CI: "1"
-      APP_VERSION: "1.0.1"
-      IPA_NAME: Vexlune-Mobile-Console-v1.0.1-ios-unsigned.ipa
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,6 +37,19 @@ jobs:
           pnpm run lint
           pnpm test
           pnpm dlx expo-doctor@1.20.4
+
+      - name: Read app metadata
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./app.json').expo.version")"
+          build_number="$(node -p "require('./app.json').expo.ios.buildNumber")"
+          {
+            echo "version=$version"
+            echo "build_number=$build_number"
+          } >> "$GITHUB_OUTPUT"
+          echo "Building Vexlune Mobile Console $version ($build_number)"
 
       - name: Generate iOS project
         run: pnpm exec expo prebuild --platform ios --clean --no-install
@@ -96,6 +107,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          ipa_name="Vexlune-Mobile-Console-v${{ steps.metadata.outputs.version }}-ios-unsigned.ipa"
+          app_zip_name="Vexlune-Mobile-Console-v${{ steps.metadata.outputs.version }}-ios-app.zip"
           app="$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 2 -name '*.app' -type d -print -quit)"
           if [[ -z "$app" ]]; then
             echo "Release iPhoneOS .app not found" >&2
@@ -109,10 +122,10 @@ jobs:
           find "$app" -name 'embedded.mobileprovision' -type f -delete
           mkdir -p dist/ios/Payload
           cp -R "$app" dist/ios/Payload/Vexlune.app
-          (cd dist/ios && zip -qry "$IPA_NAME" Payload)
-          (cd dist/ios && ditto -c -k --sequesterRsrc --keepParent Payload/Vexlune.app "Vexlune-Mobile-Console-v1.0.1-ios-app.zip")
+          (cd dist/ios && zip -qry "$ipa_name" Payload)
+          (cd dist/ios && ditto -c -k --sequesterRsrc --keepParent Payload/Vexlune.app "$app_zip_name")
 
-          unzip -t "dist/ios/$IPA_NAME"
+          unzip -t "dist/ios/$ipa_name"
           plutil -p dist/ios/Payload/Vexlune.app/Info.plist
           if codesign -dv --verbose=4 dist/ios/Payload/Vexlune.app 2>/tmp/codesign.txt; then
             echo "Unexpected signature found" >&2
@@ -120,7 +133,7 @@ jobs:
             exit 1
           fi
           test ! -e dist/ios/Payload/Vexlune.app/embedded.mobileprovision
-          shasum -a 256 "dist/ios/$IPA_NAME" "dist/ios/Vexlune-Mobile-Console-v1.0.1-ios-app.zip" > dist/ios/SHA256SUMS
+          shasum -a 256 "dist/ios/$ipa_name" "dist/ios/$app_zip_name" > dist/ios/SHA256SUMS
 
           bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' dist/ios/Payload/Vexlune.app/Info.plist)"
           version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' dist/ios/Payload/Vexlune.app/Info.plist)"
@@ -144,10 +157,10 @@ jobs:
       - name: Upload unsigned iOS artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: vexlune-ios-unsigned-v1.0.1
+          name: vexlune-ios-unsigned-v${{ steps.metadata.outputs.version }}-b${{ steps.metadata.outputs.build_number }}
           path: |
-            dist/ios/Vexlune-Mobile-Console-v1.0.1-ios-unsigned.ipa
-            dist/ios/Vexlune-Mobile-Console-v1.0.1-ios-app.zip
+            dist/ios/Vexlune-Mobile-Console-v${{ steps.metadata.outputs.version }}-ios-unsigned.ipa
+            dist/ios/Vexlune-Mobile-Console-v${{ steps.metadata.outputs.version }}-ios-app.zip
             dist/ios/SHA256SUMS
             dist/ios/*.md
           if-no-files-found: error

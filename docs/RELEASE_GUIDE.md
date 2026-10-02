@@ -25,7 +25,7 @@ gh run download <RUN_ID> --dir dist/ios
 
 工作流动态发现 Workspace/Scheme，执行 Expo Prebuild、CocoaPods、原生 `xcodebuild` 的 `iphoneos` Release 编译并关闭签名，校验主程序包含 arm64，最后打包 `Payload/Vexlune.app`。
 
-Artifact 名称：`vexlune-ios-unsigned-v1.0.1`。
+Artifact 名称：`vexlune-ios-unsigned-v<version>-b<build>`（版本和 build number 从 `app.json` 自动读取；例如当前版本为 `vexlune-ios-unsigned-v1.0.1-b2`）。IPA 与 `.app.zip` 文件名也会随版本自动生成。
 
 ## GitHub Ubuntu 原生 Android 构建
 
@@ -36,7 +36,7 @@ gh run watch <RUN_ID> --exit-status
 gh run download <RUN_ID> --dir dist/android
 ```
 
-工作流在 Ubuntu Runner 安装 Java 17、Android SDK 和 Gradle 依赖，执行 `expo prebuild --platform android` 生成原生工程，再运行 `./gradlew :app:assembleDebug`、`:app:assembleRelease` 或 `:app:bundleRelease`。生产 AAB/签名 APK 需要在受控 CI 或本机配置 Android keystore，并通过环境变量/密钥存储注入，禁止提交 keystore。
+工作流在 Ubuntu Runner 安装 Java 17、Android SDK 和 Gradle 依赖，执行 `expo prebuild --platform android` 生成原生工程，再运行 `./gradlew :app:assembleDebug`、`:app:assembleRelease` 或 `:app:bundleRelease`。APK artifact 来自 `android/app/build/outputs/apk/<variant>/`，AAB artifact 来自 `android/app/build/outputs/bundle/release/`；工作流会按所选类型上传对应目录。生产 AAB/签名 APK 需要在受控 CI 或本机配置 Android keystore，并通过环境变量/密钥存储注入，禁止提交 keystore。
 
 ## 本机原生构建
 
