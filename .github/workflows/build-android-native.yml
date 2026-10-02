@@ -88,12 +88,28 @@ jobs:
           esac
           (cd android && ./gradlew ":app:${task}" --no-daemon --stacktrace)
 
+      - name: Resolve native artifact path
+        id: artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ inputs.artifact }}" == "aab" ]]; then
+            path='android/app/build/outputs/bundle/release/*'
+          else
+            path="android/app/build/outputs/apk/${{ inputs.variant }}/*"
+          fi
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+          compgen -G "$path" >/dev/null || {
+            echo "No native artifact matched $path" >&2
+            exit 1
+          }
+
       - name: Upload native Android artifact
         uses: actions/upload-artifact@v4
         with:
           name: vexlune-android-${{ inputs.artifact }}-${{ inputs.variant }}-${{ github.sha }}
           # Gradle writes APKs under outputs/apk and bundles under
           # outputs/bundle. Keep the upload path aligned with the task above.
-          path: ${{ inputs.artifact == 'aab' && 'android/app/build/outputs/bundle/release/*' || format('android/app/build/outputs/apk/{0}/*', inputs.variant) }}
+          path: ${{ steps.artifact.outputs.path }}
           if-no-files-found: error
           retention-days: 30
