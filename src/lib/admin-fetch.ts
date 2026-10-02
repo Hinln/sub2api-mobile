@@ -130,7 +130,7 @@ function payloadData<T>(payload: ApiEnvelope<T> | T | undefined) {
   return payload as T;
 }
 
-function authPayload(value: unknown): AuthResponse {
+function authPayload(value: unknown): AuthResponse & { access_token: string } {
   const candidate = isEnvelope(value) ? value.data : value;
   if (!candidate || typeof candidate !== 'object') throw new ApiError('刷新令牌响应无效', { code: 'INVALID_REFRESH_RESPONSE' });
   const item = candidate as Record<string, unknown>;
@@ -142,7 +142,7 @@ function authPayload(value: unknown): AuthResponse {
     access_token: accessToken,
     refresh_token: typeof item.refresh_token === 'string' ? item.refresh_token : undefined,
     expires_in: typeof item.expires_in === 'number' ? item.expires_in : undefined,
-  } as AuthResponse;
+  } as AuthResponse & { access_token: string };
 }
 
 /** Refreshes at most once when several requests observe an expired access token. */
