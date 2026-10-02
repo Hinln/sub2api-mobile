@@ -152,7 +152,7 @@ jobs:
           - Version: $version ($build)
           - Signing: unsigned; CODE_SIGNING_ALLOWED=NO
           EOF
-          cp docs/SIGNING_GUIDE.md docs/TEST_REPORT.md docs/SECURITY_REVIEW.md docs/BILLING_FIELD_AUDIT.md docs/API_AUDIT.md docs/BACKEND_GAPS.md docs/CHANGELOG.md dist/ios/
+          cp docs/SIGNING_GUIDE.md docs/TEST_REPORT.md docs/SECURITY_REVIEW.md docs/BILLING_FIELD_AUDIT.md docs/API_AUDIT.md docs/BACKEND_GAPS.md docs/CHANGELOG.md docs/mobile/APP_STORE_CONNECT_CHECKLIST.md docs/mobile/RELEASE_RUNBOOK.md docs/mobile/ROLLBACK_RUNBOOK.md dist/ios/
 
       - name: Upload unsigned iOS artifacts
         uses: actions/upload-artifact@v4
