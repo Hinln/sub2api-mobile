@@ -6,6 +6,7 @@
 - Added a read-only exception center and current-page account selection mode.
 - Clarified dashboard billing semantics and introduced the billing-field audit.
 - Updated the unsigned iOS workflow and artifact naming for version 1.0.1 / build 2.
+- Added a fail-closed native App Store Connect upload command that accepts only an external API key and `.p8` path.
 
 ## 1.0.0 - 2026-08-02
 

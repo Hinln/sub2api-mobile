@@ -20,8 +20,20 @@ pnpm test
 pnpm run web:build
 pnpm run test:visual
 pnpm run native:build:ios      # 需要 Xcode、CocoaPods；默认构建 iOS Simulator
-pnpm run native:build:android # 需要 Android SDK、Java 17；默认构建 Release APK
+# 当前版本范围暂缓 Android；重新开放后再运行 Android 原生构建
 ```
+
+本机签名 iOS 归档和 App Store Connect 上传使用 Apple 原生工具链：
+
+```bash
+pnpm run native:build:ios
+sh scripts/export-ios-appstore.sh
+ASC_API_KEY_ID='YOUR_KEY_ID' ASC_ISSUER_ID='YOUR_ISSUER_ID' \
+ASC_API_PRIVATE_KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_YOUR_KEY_ID.p8" \
+  pnpm run native:upload:ios
+```
+
+`.p8` 私钥必须保存在仓库外；上传脚本不会接受 Apple 密码，也不会把私钥写入日志。详见 `docs/mobile/RELEASE_RUNBOOK.md`。
 
 登录和注册只使用邮箱与密码；登录后由服务端识别普通用户或管理员并进入对应工作台。Cloudflare 挑战通过第一方 WebView 获取一次性 token，APP 不保存 secret。会话令牌仅写入系统 SecureStore；Web 验收不持久化凭据。
 

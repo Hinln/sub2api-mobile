@@ -19,6 +19,7 @@
 | iOS Simulator Release | 通过 | Xcode 26.6 生成 `build/ios-crypto/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`；arm64/x86_64，Bundle ID `com.vexlune.mobile`，版本 `1.0.1 (2)`；ExpoCrypto `getRandomValues` 已静态链接 |
 | iOS Simulator install/launch | 通过 | 将当前 Release `.app` 安装到 iPhone 17 Pro Max Simulator（UDID `1453B2BD-6F79-4861-9090-03284CF7E859`）并启动；登录首屏可见，Turnstile 原生随机源按设计 fail-closed |
 | iOS signed archive | 通过 | 原生 `xcodebuild -exportArchive` 已按当前移动端交付头重新生成并签名 `build/appstore-export/VexluneMobileConsole.ipa`；`codesign --verify --deep --strict` 通过，Team `6KW552MWV6`，Bundle ID `com.vexlune.mobile`，SHA-256 `48a9867d874f1869c7f75ee4a287e1de6282b248a57e22e4586855b85609dd5d` |
+| ASC 上传脚本凭据保护 | 通过 | `scripts/upload-ios-appstore.sh` 在缺少 `ASC_API_KEY_ID`/`ASC_ISSUER_ID`/`.p8` 时以退出码 2 fail-closed；不会调用 Apple 上传接口或打印私钥内容 |
 | Live Hub Turnstile bridge | 未通过部署验收 | 当前 `https://hub.vexlune.com` TLS 已可建立且公共设置返回 JSON；但非法 action 仍返回 SPA `200`，有效 bridge 也返回嵌入式 SPA HTML。需部署 backend `933e91ccb`（含 `/mobile/captcha/*` SPA bypass）并修正 Cloudflare/origin 路由后再做真实 Turnstile 验收。 |
 | GitHub native iOS workflow | 环境阻塞 | run `37051524996` 在步骤前因 billing issue 失败（steps=0），未产生 IPA/.app artifact |
 | Android | 暂缓 | 按当前范围不开发 Android；恢复范围时再配置 Android SDK/Java/签名并补充 APK/AAB 证据 |

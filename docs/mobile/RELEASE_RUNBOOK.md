@@ -28,9 +28,15 @@ IOS_SDK=iphoneos CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES \
   CODE_SIGN_IDENTITY='Apple Development' pnpm run native:build:ios
 # App Store Connect/TestFlight（本机钥匙串必须已有 Apple Distribution 私钥）
 sh scripts/export-ios-appstore.sh
+# App Store Connect API key must be stored outside the repository.
+ASC_API_KEY_ID='YOUR_KEY_ID' ASC_ISSUER_ID='YOUR_ISSUER_ID' \
+ASC_API_PRIVATE_KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_YOUR_KEY_ID.p8" \
+  pnpm run native:upload:ios
 ```
 
 `export-ios-appstore.sh` 先用 `CODE_SIGNING_ALLOWED=NO` 编译本地 iPhoneOS archive，避免把 App Store profile 错误应用到 CocoaPods 静态库；`xcodebuild -exportArchive` 再使用已安装的 App Store profile 和 Apple Distribution identity 完成签名。脚本会在缺少 Distribution 私钥或 profile 时 fail-closed，不会生成伪成功的 IPA。
+
+`upload-ios-appstore.sh` 只接受 App Store Connect API key ID、issuer ID 和仓库外的 `.p8` 路径，调用 Xcode 自带 `altool` 上传已经签名的 IPA。它不会读取 Apple 密码、把私钥写入仓库或把私钥内容打印到日志；缺少任何凭据时会在上传前失败。
 
 ## 上线顺序
 
