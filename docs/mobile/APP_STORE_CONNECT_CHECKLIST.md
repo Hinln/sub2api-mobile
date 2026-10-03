@@ -15,8 +15,8 @@
 
 ## App 记录
 
-- [ ] App Store Connect 中的 App 名称为 `Vexlune Hub`。
-- [ ] Bundle ID 为 `com.vexlune.mobile`，与 `app.json` 和 Xcode 工程一致。
+- [x] App Store Connect 中的 App 名称为 `Vexlune Hub`。
+- [x] Bundle ID 为 `com.vexlune.mobile`，与 `app.json` 和 Xcode 工程一致。
 - [ ] 主语言、SKU、价格/税务类别与业务资料已确认。
 - [ ] 隐私政策 URL 和技术支持 URL 使用可公开访问的 HTTPS 第一方页面。
 - [ ] 描述、关键词、宣传文本和年龄分级已由产品负责人确认。

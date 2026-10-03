@@ -70,4 +70,4 @@ All /api/v1/admin/* routes use AdminAuthMiddleware, global panel limiting, audit
 | Response envelope | Private backend uses {code,message,reason?,metadata?,data?}; paginated data is data:{items,total,page,page_size,pages} (internal/pkg/response/response.go). | PRIVATE_SOURCE_VERIFIED |
 | Auth cache isolation | Query keys are user workspace scoped and logout/401 clears the QueryClient; staging must verify account-switch isolation. | PRIVATE_SOURCE_VERIFIED_WITH_GAP |
 | No mock/dead controls | User API key, usage, announcement, subscription and payment controls map to source-verified rows and expose server errors; source scan has no product mock fallback. | PRIVATE_SOURCE_VERIFIED_WITH_GAP |
-| iOS staging/release build | Native simulator/device builds are verified; Distribution private key, staging origin and test accounts are not present. Android APK/AAB is deferred for this release. | PRIVATE_BLOCKED |
+| iOS staging/release build | Native simulator/device builds and a locally signed App Store IPA are verified; staging origin, TestFlight upload and test accounts remain pending. Android APK/AAB is deferred for this release. | PRIVATE_BLOCKED |
