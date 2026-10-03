@@ -21,7 +21,7 @@
 | Live Hub Turnstile bridge | 未通过部署验收 | 当前 `https://hub.vexlune.com` TLS 已可建立且公共设置返回 JSON；但非法 action 仍返回 SPA `200`，有效 bridge 也返回嵌入式 SPA HTML。需部署 backend `933e91ccb`（含 `/mobile/captcha/*` SPA bypass）并修正 Cloudflare/origin 路由后再做真实 Turnstile 验收。 |
 | GitHub native iOS workflow | 环境阻塞 | run `37051524996` 在步骤前因 billing issue 失败（steps=0），未产生 IPA/.app artifact |
 | Android | 暂缓 | 按当前范围不开发 Android；恢复范围时再配置 Android SDK/Java/签名并补充 APK/AAB 证据 |
-| Go 后端测试 | 通过（存在独立时序重试） | 在隔离 Go 1.27.1 darwin/arm64 工具链中执行 `GOPROXY=https://goproxy.cn,direct GOTOOLCHAIN=local make test-unit`；后端 Draft PR 头 `933e91ccb` 的 handler、迁移和插件包通过，Turnstile bridge 回归测试通过；完整套件首次出现一个既有 service 时序失败，单测重跑通过，需在 CI 再观察 |
+| Go 后端测试 | 通过 | 在隔离 Go 1.27.1 darwin/arm64 工具链中以 `GOPROXY=https://goproxy.cn,direct GOTOOLCHAIN=local go test -p 1 ./...` 完整串行通过；后端 Draft PR 头 `933e91ccb` 的 handler、迁移、插件和 Turnstile bridge 回归测试均通过 |
 
 ## 必测真实链路
 
