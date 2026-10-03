@@ -1,9 +1,15 @@
 #!/bin/sh
 set -eu
 
-# Generate the native project from app.json, then use Apple's native toolchain.
-# Set IOS_SDK=iphoneos and CODE_SIGNING_ALLOWED=YES for a signed device build.
-pnpm exec expo prebuild --platform ios --clean --no-install
+# The iOS project is checked into this repository and is the source of truth for
+# native builds.  Do not run `expo prebuild` here: it rewrites the Xcode project
+# from app.json and can silently discard native signing/build changes.  Expo
+# runtime modules remain supported by the Podfile, while project generation is
+# intentionally removed from the release path.
+if [ ! -f ios/Podfile ] || [ ! -f ios/VexluneMobileConsole.xcworkspace/contents.xcworkspacedata ]; then
+  echo "Checked-in iOS project is missing. Restore ios/ from the repository before building." >&2
+  exit 1
+fi
 
 # CocoaPods may be installed with `gem install --user-install`, which places
 # the executable outside the default non-login PATH used by Codex/Xcode.
@@ -36,7 +42,7 @@ RUBYOPT="$pod_rubyopt" pod install --project-directory=ios
 workspace="$(find ios -maxdepth 1 -name '*.xcworkspace' -not -path '*/Pods/*' -print -quit)"
 project="$(find ios -maxdepth 1 -name '*.xcodeproj' -print -quit)"
 if [ -z "$workspace" ] || [ -z "$project" ]; then
-  echo "Generated iOS workspace/project could not be found." >&2
+  echo "Checked-in iOS workspace/project could not be found." >&2
   exit 1
 fi
 

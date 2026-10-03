@@ -51,8 +51,11 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "Building Vexlune Mobile Console $version ($build_number)"
 
-      - name: Generate iOS project
-        run: pnpm exec expo prebuild --platform ios --clean --no-install
+      - name: Verify checked-in iOS project
+        run: |
+          test -f ios/Podfile
+          test -f ios/VexluneMobileConsole.xcworkspace/contents.xcworkspacedata
+          test -f ios/VexluneMobileConsole.xcodeproj/project.pbxproj
 
       - name: Install CocoaPods
         run: pod install --project-directory=ios

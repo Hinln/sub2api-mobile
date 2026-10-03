@@ -69,8 +69,8 @@ skills-lock.json
 # typescript
 *.tsbuildinfo
 
-# generated native folders
-/ios
+# Android is still generated on demand while the iOS project is versioned so
+# Xcode/CocoaPods builds do not depend on Expo prebuild.
 /android
 
 # Playwright transient output (accepted screenshots live under artifacts/)

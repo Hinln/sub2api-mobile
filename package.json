@@ -6,10 +6,9 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
-    "ios": "expo run:ios",
+    "ios": "pnpm run native:build:ios",
     "web": "expo start --web",
     "start:dev-client": "expo start --dev-client",
-    "native:prebuild:ios": "expo prebuild --platform ios --clean --no-install",
     "native:prebuild:android": "expo prebuild --platform android --clean --no-install",
     "native:build:ios": "sh ./scripts/native-build-ios.sh",
     "native:upload:ios": "sh ./scripts/upload-ios-appstore.sh",
@@ -24,8 +23,10 @@
     "serve:web": "serve -s dist -l 4173 --no-clipboard"
   },
   "dependencies": {
+    "@babel/runtime": "7.29.7",
     "@expo/vector-icons": "^15.1.1",
     "@hookform/resolvers": "^5.2.2",
+    "@react-native/assets-registry": "0.81.5",
     "@tanstack/react-query": "^5.90.21",
     "expo": "~54.0.36",
     "expo-clipboard": "~8.0.8",
@@ -60,6 +61,8 @@
   "devDependencies": {
     "@expo/config-plugins": "~54.0.5",
     "@playwright/test": "^1.62.1",
+    "@react-native-community/cli": "20.2.0",
+    "@react-native/metro-config": "0.81.5",
     "@types/react": "~19.1.0",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~10.0.0",
