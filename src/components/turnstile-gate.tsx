@@ -181,7 +181,10 @@ export function TurnstileGate({ action, resetKey, consentRequestKey = 0, onToken
   }
 
   return <View style={{ marginTop: 14 }}>
-    {!widgetVisible ? <View style={{ minHeight: 56, borderRadius: 14, borderWidth: 1, borderColor: agreementRequired ? theme.primary : theme.border, backgroundColor: theme.cardRaised, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 10 }}><ActivityIndicator color={theme.primary} /><Text style={{ flex: 1, color: error ? theme.danger : theme.subtext, fontSize: 12, lineHeight: 18 }}>{error || (agreementRequired ? '点击登录或注册即表示同意服务条款' : '正在加载官方安全验证…')}</Text></View> : null}
+    {/* Agreement is communicated by the native footer. Keep the first-party
+        WebView mounted but quiet until the user submits the form; showing a
+        second in-form consent card makes the auth surface feel blocked. */}
+    {!widgetVisible && !agreementRequired ? <View style={{ minHeight: 56, borderRadius: 14, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.cardRaised, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 10 }}><ActivityIndicator color={theme.primary} /><Text style={{ flex: 1, color: error ? theme.danger : theme.subtext, fontSize: 12, lineHeight: 18 }}>{error || '正在加载官方安全验证…'}</Text></View> : null}
     {error && widgetVisible ? <Text style={{ color: theme.danger, fontSize: 12, lineHeight: 18, marginTop: 10 }}>{error}</Text> : null}
     <View style={{ marginTop: widgetVisible ? 10 : 1, height: widgetVisible ? 110 : 1, overflow: 'hidden', borderRadius: 12, borderWidth: widgetVisible ? 1 : 0, borderColor: theme.border, opacity: widgetVisible ? 1 : 0.01 }}><WebView key={`${action}-${resetKey ?? 0}`} ref={webViewRef} style={{ height: widgetVisible ? 110 : 1 }} source={{ uri: pageUrl }} originWhitelist={[origin, 'https://challenges.cloudflare.com', 'about:blank']} javaScriptEnabled domStorageEnabled injectedJavaScriptBeforeContentLoaded={TURNSTILE_PAGE_CAPTURE_SCRIPT} onLoadEnd={onLoadEnd} onMessage={onMessage} onShouldStartLoadWithRequest={allowNavigation} onError={() => { widgetVisibleRef.current = false; setWidgetVisible(false); setError('安全验证页面加载失败，请检查网络'); }} onHttpError={() => { widgetVisibleRef.current = false; setWidgetVisible(false); setError('安全验证页面返回了无效内容，请联系管理员。'); }} accessibilityLabel="turnstile-webview" /></View>
   </View>;
