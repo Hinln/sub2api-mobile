@@ -10,8 +10,8 @@ const ALLOWED_ACTIONS = new Set(['login', 'register', 'forgot_password']);
 
 function createNonce() {
   const bytes = new Uint8Array(24);
-  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') crypto.getRandomValues(bytes);
-  else for (let i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+  if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') return '';
+  crypto.getRandomValues(bytes);
   return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
 }
 
@@ -37,10 +37,20 @@ export function TurnstileGate({ action, resetKey, onToken }: { action: 'login' |
   if (Platform.OS === 'web' || !ALLOWED_ACTIONS.has(action)) return null;
   if (loading) return <View style={{ minHeight: 72, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={theme.primary} /></View>;
   if (error) return <Text style={{ color: theme.danger, fontSize: 12, lineHeight: 18, marginTop: 12 }}>{error}</Text>;
+  if (!nonce) return <Text style={{ color: theme.danger, fontSize: 12, lineHeight: 18, marginTop: 12 }}>当前设备无法生成安全验证随机数，请更新系统后重试。</Text>;
   if (!siteKey) return null;
 
   const bridgeUrl = `${origin}/mobile/captcha/turnstile?nonce=${encodeURIComponent(nonce)}&action=${encodeURIComponent(action)}`;
   function onMessage(event: WebViewMessageEvent) {
+    try {
+      if (new URL(event.nativeEvent.url).origin !== origin) {
+        setError('安全验证消息来源无效，请重试。');
+        return;
+      }
+    } catch {
+      setError('安全验证消息来源无效，请重试。');
+      return;
+    }
     const message = parseTurnstileBridgeMessage(event.nativeEvent.data, origin, nonce, action);
     if (!message) return;
     if (message.kind === 'bridge_error') {
