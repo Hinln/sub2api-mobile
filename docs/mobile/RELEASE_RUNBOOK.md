@@ -1,5 +1,7 @@
 # Vexlune Hub 发布运行手册
 
+部署前先执行 [STAGING_DEPLOYMENT_CHECKLIST.md](./STAGING_DEPLOYMENT_CHECKLIST.md)，确认后端 commit、Cloudflare 路由和真实 Turnstile 探针全部通过。
+
 原生包构建只使用本机或 GitHub Actions 的 Xcode/Gradle 工具链。Expo 仅负责生成原生工程（prebuild）和 Web 资源；禁止使用 Expo 云构建、云更新或托管签名。
 
 ## 发布前
