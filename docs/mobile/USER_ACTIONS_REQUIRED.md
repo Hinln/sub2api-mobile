@@ -4,7 +4,7 @@
 
 ## 当前必须由产品方完成
 
-1. **后端上线**：合并并部署 `Hinln/sub2api` Draft PR #1 的 `bf7d58925`（含 `/mobile/captcha/*` 路由修复），配置服务端 Turnstile secret，并修正 Cloudflare 到 origin 的路由；secret 不进入 APP、仓库或日志。
+1. **后端上线**：合并并部署 `Hinln/sub2api` Draft PR #1 的 `933e91ccb`（含 `/mobile/captcha/*` 路由修复和 CSP nonce），配置服务端 Turnstile secret，并修正 Cloudflare 到 origin 的路由；secret 不进入 APP、仓库或日志。
 2. **staging 验收账号**：提供可撤销的普通用户和管理员账号，在 staging 上完成真实登录、Turnstile、支付幂等和管理员权限验收。
 3. **数据库集成环境**：提供可运行 PostgreSQL 的 staging/CI 环境，执行 migration integration tests。
 4. **App Store Connect 版本与上传**：决定使用现有 ASC `1.0` 还是新建 `1.0.1` 版本；配置 ASC API key（`.p8`、issuer、key ID）或由产品方用 Transporter/Xcode 上传已验证 IPA。
