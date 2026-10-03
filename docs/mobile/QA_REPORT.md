@@ -26,7 +26,7 @@
 | 官方 v0.2.13 合同审计 | 通过（源码审计） | 已核对 `/api/v1/settings/public`、认证 provider proof 字段、Bearer/2FA 路由；官方 tag 不含 `/mobile/captcha/*`。 |
 | iOS Simulator Release | 通过 | 使用仓库内已提交的 `ios/VexluneMobileConsole.xcworkspace` 和 Xcode 26.6 `xcodebuild` 生成 arm64/x86_64 `.app`；没有 Expo/EAS 云构建。 |
 | iPhoneOS Release unsigned | 通过 | 使用原生 Xcode 工具链生成 arm64 archive/app；未签名包不能安装真机。 |
-| iOS signed archive/IPA | 通过（本机） | `xcodebuild archive`/`-exportArchive` 完成签名并通过 `codesign --verify --deep --strict`；这是本地原生证据，不等于 TestFlight 处理或线上 API 验收。 |
+| iOS signed archive/IPA | 通过（本机） | `xcodebuild archive`/`-exportArchive` 完成签名并通过 `codesign --verify --deep --strict`；当前源码提交 `66ca5f45194981519780a4afbed5e2f83675ae19` 的 IPA SHA-256 为 `319046b2b8e2019f981b17f7351ab590ce0d44325fc79dcf12106c24591283b1`。这是本地原生证据，不等于 TestFlight 处理或线上 API 验收。 |
 | Production API / private bridge probe | 未执行（按边界） | 没有调用生产 `/mobile/captcha/*`，没有为移动端部署私有 bridge，也没有把生产响应当作非生产证据；当前实现只打开官方 first-party auth 页面。 |
 | Android | 暂缓 | 当前范围不开发、不构建、不签名 Android；恢复范围后另行补齐证据。 |
 

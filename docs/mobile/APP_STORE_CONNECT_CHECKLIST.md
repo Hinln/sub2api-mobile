@@ -26,7 +26,7 @@
 
 - [x] Xcode 中选择 Team `6KW552MWV6`，Bundle ID 与 App ID 匹配，受控 provisioning profile 与签名身份已验证。
 - [x] ASC 版本与工程 `CFBundleShortVersionString=1.0.1` 已对齐；build number 为 `2`，上传前仍需保持两者一致。
-- [x] 本机原生 `archive` 和 `-exportArchive` 已完成；解包后的 `Payload/VexluneMobileConsole.app` 通过 `codesign --verify --deep --strict`，IPA SHA-256 为 `48a9867d874f1869c7f75ee4a287e1de6282b248a57e22e4586855b85609dd5d`。不使用 Expo/EAS 云构建或托管签名。
+- [x] 本机原生 `archive` 和 `-exportArchive` 已完成；解包后的 `Payload/VexluneMobileConsole.app` 通过 `codesign --verify --deep --strict`，当前源码提交 `66ca5f45194981519780a4afbed5e2f83675ae19` 导出的 IPA SHA-256 为 `319046b2b8e2019f981b17f7351ab590ce0d44325fc79dcf12106c24591283b1`。不使用 Expo/EAS 云构建或托管签名。
 - [x] 导出包内的 App 已通过 `codesign --verify --deep --strict`，并已记录 IPA SHA-256；上传后补充 archive UUID、构建 commit 和 App Store Connect build ID。
 - [ ] 上传完成后记录 App Store Connect build ID、处理状态和导出日志摘要。
 
