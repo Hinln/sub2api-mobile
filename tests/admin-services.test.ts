@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { listAccounts, listUsageLogs, listUsers } from '@/src/services/admin';
+import { listAlertEvents } from '@/src/services/admin-extended';
 import { adminConfigState } from '@/src/store/admin-config';
 
 vi.mock('expo-secure-store', () => ({
@@ -43,5 +44,17 @@ describe('admin service query contracts', () => {
     await listUsageLogs({ search: 'gpt-5', sort: 'model', order: 'asc' });
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/v1/admin/usage?page=1&page_size=30&search=gpt-5&sort_by=model&sort_order=asc');
     expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain('status=');
+  });
+
+  it('uses the official alert event limit contract and accepts a bare array', async () => {
+    const events = [{ id: 7, description: '上游错误率过高', fired_at: '2026-10-03T01:02:03Z', status: 'firing' }];
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(events), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    }));
+
+    await expect(listAlertEvents({ limit: 50, status: 'firing' })).resolves.toEqual(events);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/v1/admin/ops/alert-events?limit=50&status=firing');
+    expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain('page_size=');
   });
 });

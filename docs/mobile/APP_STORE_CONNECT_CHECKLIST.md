@@ -34,7 +34,7 @@
 
 - [ ] 内部测试组已加入，测试账号分别覆盖普通用户和管理员角色。
 - [ ] 真机完成邮箱密码登录、角色路由、401 刷新、退出和 SecureStore 清理。
-- [ ] 第一方 Turnstile WebView 在真实 staging 域名返回一次性 token；错误 action/origin、过期和重放均被拒绝。
+- [ ] 官方 Sub2API v0.2.13 provider widget/SDK 在批准的非生产域名返回 token；过期或无效 token 被服务端拒绝。官方合同不包含私有 mobile captcha bridge。
 - [ ] 用户侧 API Key、usage、公告、订阅与订单读取成功；订单幂等键重试不会重复下单。
 - [ ] 管理员侧用户、账号、分组、日志与设置权限和审计事件符合后端结果。
 - [ ] 崩溃、401/403/429、Turnstile、支付幂等冲突和 API p95 监控已开启，日志不含 token/secret。

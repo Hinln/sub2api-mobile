@@ -1,6 +1,8 @@
 # 发布与构建指南
 
-移动端原生包始终由本机或 GitHub Actions 的 Xcode/Gradle 工具链构建。Expo 只用于生成 `ios/`、`android/` 原生工程和 Web 开发资源，不使用 Expo 云构建或托管签名服务。
+API 基线为官方 Sub2API `v0.2.13`；本轮不修改或部署后端。首版只发布 iOS，
+Android 暂缓。iOS 工程已提交到 `ios/`，由本机 Xcode/CocoaPods 直接构建；Expo
+只用于 Web 开发资源和运行时模块，不使用 Expo/EAS 构建或托管签名服务。
 
 ## 本地质量门
 
@@ -14,7 +16,7 @@ pnpm run web:build
 pnpm run test:visual
 ```
 
-## GitHub macOS 无签名构建
+## GitHub macOS 无签名构建（非发布门槛）
 
 ```bash
 gh workflow run build-ios-unsigned.yml --ref codex/vexlune-hub
@@ -23,27 +25,22 @@ gh run watch <RUN_ID> --exit-status
 gh run download <RUN_ID> --dir dist/ios
 ```
 
-工作流动态发现 Workspace/Scheme，执行 Expo Prebuild、CocoaPods、原生 `xcodebuild` 的 `iphoneos` Release 编译并关闭签名，校验主程序包含 arm64，最后打包 `Payload/Vexlune.app`。
+该 workflow 只执行 CocoaPods 与 `xcodebuild` 的无签名诊断构建；其 artifact 只能作
+辅助诊断，不能作为本次原生 iOS 发布证据。接受的发布路径使用已提交 workspace
+和本机 CocoaPods/Xcode，直接调用 `xcodebuild`，不运行 Expo prebuild。
 
 Artifact 名称：`vexlune-ios-unsigned-v<version>-b<build>`（版本和 build number 从 `app.json` 自动读取；例如当前版本为 `vexlune-ios-unsigned-v1.0.1-b2`）。IPA 与 `.app.zip` 文件名也会随版本自动生成。
 
-## GitHub Ubuntu 原生 Android 构建
+## Android（暂缓）
 
-```bash
-gh workflow run build-android-native.yml --ref codex/vexlune-hub -f variant=debug -f artifact=apk
-gh run list --workflow build-android-native.yml --limit 1
-gh run watch <RUN_ID> --exit-status
-gh run download <RUN_ID> --dir dist/android
-```
-
-工作流在 Ubuntu Runner 安装 Java 17、Android SDK 和 Gradle 依赖，执行 `expo prebuild --platform android` 生成原生工程，再运行 `./gradlew :app:assembleDebug`、`:app:assembleRelease` 或 `:app:bundleRelease`。APK artifact 来自 `android/app/build/outputs/apk/<variant>/`，AAB artifact 来自 `android/app/build/outputs/bundle/release/`；工作流会按所选类型上传对应目录。生产 AAB/签名 APK 需要在受控 CI 或本机配置 Android keystore，并通过环境变量/密钥存储注入，禁止提交 keystore。
+当前版本不触发 Android workflow，不生成 APK/AAB，也不配置 Android SDK、Java 或
+签名。恢复 Android 范围后另行建立构建和验收记录。
 
 ## 本机原生构建
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm run native:build:ios      # 默认 iOS Simulator / Release
-pnpm run native:build:android # 默认 Android Release APK
 ```
 
-本机 iOS 真机签名构建需要先接受 Xcode 许可、安装 CocoaPods、在 Xcode 登录开发者账号并配置证书/profile；随后设置 `IOS_SDK=iphoneos`、`IOS_DESTINATION='generic/platform=iOS'` 和 `CODE_SIGNING_ALLOWED=YES`，由 `xcodebuild` 完成 archive/export。Android 发布构建需要 `ANDROID_GRADLE_TASK=:app:bundleRelease` 与本机 keystore 配置。
+本机 iOS 真机签名构建需要先接受 Xcode 许可、安装 CocoaPods、在 Xcode 登录开发者账号并配置证书/profile；随后设置 `IOS_SDK=iphoneos`、`IOS_DESTINATION='generic/platform=iOS'` 和 `CODE_SIGNING_ALLOWED=YES`，由 `xcodebuild` 完成 archive/export。

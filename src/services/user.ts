@@ -11,6 +11,22 @@ export type UserSubscription = Record<string, unknown> & { id: number; status?: 
 export type CheckoutPlan = { id: number; group_id: number; name: string; description?: string; price: number; original_price?: number | null; currency?: string; validity_days?: number; validity_unit?: string; features?: string | string[]; product_name?: string };
 export type CheckoutInfo = { methods?: Record<string, { enabled?: boolean; min?: number; max?: number }>; global_min?: number; global_max?: number; plans: CheckoutPlan[]; balance_disabled?: boolean; help_text?: string; stripe_publishable_key?: string };
 export type PaymentOrder = { id?: number; order_id?: number; amount: number; pay_amount?: number; currency?: string; payment_type: string; out_trade_no: string; status: string; order_type?: string; plan_id?: number | null; created_at?: string; expires_at?: string; paid_at?: string | null; completed_at?: string | null };
+export type PaymentOAuthInfo = {
+  authorize_url?: string;
+  app_id?: string;
+  scope?: string;
+  state?: string;
+  openid?: string;
+  redirect_url?: string;
+};
+export type PaymentJSAPIPayload = {
+  appId?: string;
+  timeStamp?: string;
+  nonceStr?: string;
+  package?: string;
+  signType?: string;
+  paySign?: string;
+};
 /** Response returned by POST /api/v1/payment/orders. */
 export type PaymentCreateResponse = PaymentOrder & {
   fee_rate?: number;
@@ -25,9 +41,51 @@ export type PaymentCreateResponse = PaymentOrder & {
   payment_mode?: string;
   payment_env?: string;
   resume_token?: string;
+  oauth?: PaymentOAuthInfo;
+  jsapi?: PaymentJSAPIPayload;
+  jsapi_payload?: PaymentJSAPIPayload;
+  /** Set by the official server when qr_code is an Alipay precreate payload. */
+  alipay_mobile_precreate_deep_link?: boolean;
 };
 
-export type PaymentAction = { url: string; source: 'pay_url' | 'checkout_url' | 'payment_url' | 'redirect_url' | 'qr_code' };
+export type PaymentAction = { url: string; source: 'pay_url' | 'checkout_url' | 'payment_url' | 'redirect_url' | 'qr_code' | 'alipay_deep_link' };
+
+export type PaymentOAuthAction = { url: string; source: 'oauth_required' };
+
+const ALIPAY_DEEP_LINK_PREFIX = 'alipays://platformapi/startapp?saId=10000007&qrcode=';
+
+/**
+ * Converts the official mobile Alipay precreate payload into the app deep link
+ * understood by the Alipay iOS/Android client. The payload itself is not a
+ * URL and must never be passed directly to Linking.openURL.
+ */
+export function buildAlipayDeepLink(qrCode: string) {
+  const payload = qrCode.trim();
+  return payload ? `${ALIPAY_DEEP_LINK_PREFIX}${encodeURIComponent(payload)}` : '';
+}
+
+function isAlipayPaymentType(paymentType: unknown) {
+  return typeof paymentType === 'string' && paymentType.toLowerCase().includes('alipay');
+}
+
+/**
+ * Resolves the server OAuth continuation URL. Official responses normally
+ * return a root-relative path; absolute HTTP(S) URLs are accepted for
+ * deployments that put the OAuth callback behind a separate first-party host.
+ */
+export function resolvePaymentOAuthURL(value: PaymentCreateResponse, baseUrl: string): PaymentOAuthAction | undefined {
+  if (value.result_type !== 'oauth_required') return undefined;
+  const raw = value.oauth?.authorize_url?.trim();
+  if (!raw || /^javascript:/i.test(raw)) return undefined;
+  if (raw.startsWith('//')) return undefined;
+  try {
+    const parsed = new URL(raw, `${baseUrl.trim().replace(/\/+$/, '')}/`);
+    if (!new Set(['http:', 'https:']).has(parsed.protocol)) return undefined;
+    return { url: parsed.toString(), source: 'oauth_required' };
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Selects an actionable URL returned by the payment provider. A Stripe
@@ -40,7 +98,6 @@ export function resolvePaymentAction(value: PaymentCreateResponse): PaymentActio
     ['checkout_url', value.checkout_url],
     ['payment_url', value.payment_url],
     ['redirect_url', value.redirect_url],
-    ['qr_code', value.qr_code],
   ];
   for (const [source, candidate] of candidates) {
     if (typeof candidate !== 'string') continue;
@@ -55,6 +112,25 @@ export function resolvePaymentAction(value: PaymentCreateResponse): PaymentActio
       return { url, source };
     } catch {
       continue;
+    }
+  }
+  // The official server marks this response when qr_code contains the
+  // dynamic Alipay precreate payload. It is intentionally handled after
+  // ordinary URLs so a provider checkout URL remains the preferred action.
+  if (value.alipay_mobile_precreate_deep_link && isAlipayPaymentType(value.payment_type) && typeof value.qr_code === 'string') {
+    const url = buildAlipayDeepLink(value.qr_code);
+    if (url) return { url, source: 'alipay_deep_link' };
+  }
+  const qrCode = typeof value.qr_code === 'string' ? value.qr_code.trim() : '';
+  if (qrCode) {
+    try {
+      const parsed = new URL(qrCode);
+      if (new Set(['http:', 'https:', 'alipay:', 'alipays:', 'weixin:', 'wxp:', 'upi:', 'intent:']).has(parsed.protocol)) {
+        return { url: qrCode, source: 'qr_code' };
+      }
+    } catch {
+      // Opaque QR payloads require a scanner and are deliberately unsupported
+      // by this native client.
     }
   }
   return undefined;

@@ -1,5 +1,9 @@
 # Current Architecture Audit
 
+Release contract: official Sub2API `v0.2.13`
+(`3040209f205472038c1ba745a1bedd2edd9053b1`). The private backend checkout is
+audit material only; this release does not change production.
+
 ## Mobile snapshot
 
 - Expo SDK `~54.0.36`, React Native `0.81.5`, Expo Router `~6.0.24`, TanStack Query v5, Valtio, SecureStore, React Hook Form, Zod and Lucide.
@@ -9,7 +13,7 @@
 - Existing theme uses a purple palette and page-local `V` text mark. It must move to one SVG Vexlune brand component and blue design tokens.
 - Existing API wrapper has timeout/retry/error handling and API envelope parsing, but it has no Bearer token, refresh single-flight, Cloudflare HTML detection, or role validation.
 - Tests cover Bearer storage/fetch, refresh and Cloudflare boundary behavior, theme/config, and the user service contracts; staging still must prove real role routing and Turnstile.
-- Native iOS and Android workflows generate projects with Expo prebuild and compile them with `xcodebuild`/Gradle. Unsigned iOS and Android workflows are present; signed release evidence still requires a configured macOS/Android signing environment.
+- The iOS Xcode workspace and Podfile are versioned under `ios/` and compile directly with CocoaPods and `xcodebuild`; the release path does not run Expo prebuild, Expo run, or EAS Build. Expo Router and Expo native modules remain runtime dependencies for the current feature set. Android is out of the current release scope and its Gradle workflow is not a release gate.
 
 ## Public upstream comparison
 
@@ -21,4 +25,4 @@ The public upstream snapshot uses Gin routes under `/api/v1`, response envelope 
 - Server `/auth/me` is the source of role truth on boot and after refresh.
 - Admin APIs require server-side admin middleware; client routing is UX only.
 - API client treats `cf-mitigated: challenge` and unexpected `text/html` as a dedicated error.
-- Turnstile proof is one-shot and scoped to login/register/reset; no Cloudflare secret or bypass credential ships in the app.
+- Captcha proof follows the official v0.2.13 public settings and provider fields. The native gate opens the official first-party auth page and captures its provider callback; no Cloudflare secret, nonce, private mobile bridge or bypass credential ships in the app.

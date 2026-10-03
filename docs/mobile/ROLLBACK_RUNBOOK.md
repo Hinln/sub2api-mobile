@@ -2,17 +2,18 @@
 
 ## 触发条件
 
-出现登录大面积失败、Turnstile 绕过或误拒绝、重复支付订单、余额审计不一致、管理员越权、崩溃率显著升高或 Cloudflare challenge 无法完成时，停止扩大 APP 发布并进入回滚评估。
+出现登录大面积失败、provider captcha 误拒绝、重复支付订单、余额审计不一致、
+管理员越权、崩溃率显著升高或 Cloudflare challenge 无法完成时，停止扩大 iOS
+发布并进入回滚评估。生产后端和 Cloudflare 配置不在本轮移动回滚范围内。
 
 ## 操作顺序
 
-1. 记录当前 APP 构建、后端 commit、迁移版本、Cloudflare 规则版本和错误样本。
+1. 记录当前 iOS 构建、官方 Sub2API v0.2.13 合同版本、非生产环境和错误样本。
 2. 先暂停有问题的 APP 渠道或 CI 发布流水线，保留可审计的服务端日志。
-3. 后端优先回滚到已验证的兼容 commit；数据库迁移只执行向前兼容的修复迁移，禁止直接覆盖生产账务表或删除幂等记录。
-4. 若仅 APP 有问题，恢复上一个已签名的 Android APK/AAB 或 iOS archive/TestFlight build；旧 APP 必须仍能使用 Bearer JWT、刷新和当前后端响应契约。
-5. 支付或余额异常时暂停自动重试，按 `Idempotency-Key`、订单号和审计事件逐笔核对后再恢复写操作。
-6. Cloudflare 规则回滚到最近一次已验证的配置，保持 WAF/TLS/速率限制和服务端 Turnstile 校验，不使用全局关闭挑战作为临时方案。
-7. 回滚后用 staging 和只读生产探针验证登录、角色路由、API key、usage、订单查询和管理员审计，再恢复发布。
+3. 若仅 APP 有问题，恢复上一个已签名的 iOS archive/TestFlight build；旧 APP 必须仍能使用 Bearer JWT、刷新和官方 v0.2.13 响应契约。
+4. 支付或余额异常时暂停自动重试，按官方服务端返回的订单号和审计事件逐笔核对后再恢复写操作。
+5. 不通过部署私有 captcha bridge、修改生产 API 或放宽 Cloudflare 规则来修复客户端回归。
+6. 回滚后用批准的非生产环境验证登录、角色路由、API key、usage、订单查询和管理员审计，再恢复分发。
 
 ## 数据安全
 

@@ -27,5 +27,5 @@
 - Bundle ID：`com.vexlune.mobile`
 - Scheme：`vexlunemobile`
 - Updates：禁用
-- 云构建项目绑定：无；原生包不依赖云构建服务，CI 直接执行 Expo prebuild 后使用 Xcode/Gradle 编译
+- 云构建项目绑定：无；iOS 使用版本化原生工程并由 CI 直接执行 CocoaPods/Xcode，Android 仍按后续范围使用原生 Gradle 工作流；原生包不依赖 Expo/EAS 云构建
 - 图标：全新黑紫几何 V，RGB、无 Alpha

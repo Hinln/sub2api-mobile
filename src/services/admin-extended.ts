@@ -39,11 +39,24 @@ export type AuditLogEntry = Record<string, unknown> & {
 
 export type AlertEvent = Record<string, unknown> & {
   id: number;
+  rule_id?: number;
   status?: string;
   severity?: string;
   title?: string;
+  description?: string;
+  /** Kept for compatibility with older/private Hub responses. */
   message?: string;
+  metric_value?: number | null;
+  threshold_value?: number | null;
+  dimensions?: Record<string, unknown>;
+  fired_at?: string;
+  resolved_at?: string | null;
+  email_sent?: boolean;
   created_at?: string;
+};
+
+export type AlertEventStatusUpdate = {
+  updated?: boolean;
 };
 
 export function listAdminAnnouncements(params: { page?: number; page_size?: number; search?: string; status?: string } = {}) {
@@ -86,12 +99,18 @@ export function listAuditLogs(params: { page?: number; page_size?: number; q?: s
   return adminFetch<PaginatedData<AuditLogEntry>>(`/api/v1/admin/audit-logs${buildQuery({ page: params.page ?? 1, page_size: params.page_size ?? 30, q: params.q, action: params.action, success: params.success })}`);
 }
 
-export function listAlertEvents(params: { page?: number; page_size?: number; status?: string } = {}) {
-  return adminFetch<PaginatedData<AlertEvent>>(`/api/v1/admin/ops/alert-events${buildQuery({ page: params.page ?? 1, page_size: params.page_size ?? 30, status: params.status })}`);
+/**
+ * The official Sub2API ops endpoint returns an array of events (inside the
+ * standard response envelope when envelopes are enabled), not PaginatedData.
+ * It uses cursor/limit pagination; the mobile console currently only needs the
+ * first batch, so expose the server's `limit` contract directly.
+ */
+export function listAlertEvents(params: { limit?: number; page_size?: number; status?: string; severity?: string } = {}) {
+  return adminFetch<AlertEvent[]>(`/api/v1/admin/ops/alert-events${buildQuery({ limit: params.limit ?? params.page_size ?? 30, status: params.status, severity: params.severity })}`);
 }
 
 export function updateAlertEventStatus(id: number, status: string) {
-  return adminFetch<AlertEvent>(`/api/v1/admin/ops/alert-events/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }, { idempotencyKey: `mobile-admin-alert-status-${id}-${status}` });
+  return adminFetch<AlertEventStatusUpdate>(`/api/v1/admin/ops/alert-events/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }, { idempotencyKey: `mobile-admin-alert-status-${id}-${status}` });
 }
 
 export function getComplianceStatus() {

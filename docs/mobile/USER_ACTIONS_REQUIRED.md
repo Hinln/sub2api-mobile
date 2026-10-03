@@ -1,23 +1,22 @@
 # Vexlune Hub 仍需人工完成的事项
 
-本文只记录不能由代码代理安全代办的外部操作。代码、后端改造、测试、模拟器构建和仓库提交由自动化流程继续完成。
+本文只记录不能由代码代理安全代办的外部操作。API 合同固定为官方 Sub2API
+`v0.2.13`（`3040209f205472038c1ba745a1bedd2edd9053b1`）；本轮不修改或部署
+后端，不执行生产迁移或 Cloudflare 变更。
 
 ## 当前必须由产品方完成
 
-1. **后端上线**：合并并部署 `Hinln/sub2api` PR #1 的 `91a1b7f36`（含 `/mobile/captcha/*` 路由修复和 CSP nonce），配置服务端 Turnstile secret，并让 OpenResty/源站把 `/mobile/captcha/turnstile` 与 `/mobile/captcha/turnstile/health` 优先反代到 Go 后端；本次 Cloudflare zone audit 未发现需要新增 Worker 或 API Skip 规则。secret 不进入 APP、仓库或日志。
-2. **staging 验收账号**：提供可撤销的普通用户和管理员账号，在 staging 上完成真实登录、Turnstile、支付幂等和管理员权限验收。
-3. **数据库集成环境**：提供可运行 PostgreSQL 的 staging/CI 环境，执行 migration integration tests。
-4. **App Store Connect 上传**：ASC iOS 版本已对齐为 `1.0.1`；仍需配置 ASC API key（`.p8`、issuer、key ID）。配置后可运行 `scripts/upload-ios-appstore.sh` 上传已验证 IPA，也可由产品方用 Transporter/Xcode 上传。
-5. **真机验收**：连接并信任一台已加入 provisioning profile 的实体 iPhone，完成登录、Turnstile、支付、注销和权限路径验收。
-6. **App Store Connect 资料**：补齐截图、隐私政策 URL、支持 URL、描述/关键词、年龄分级、税务与价格、审核账号、出口合规，并选择发布方式。
+1. **非生产验收环境**：提供可撤销的普通用户和管理员账号及已批准的非生产 origin，按官方 provider widget/SDK 完成登录、验证码、支付结果和管理员权限验收。不要部署私有 `/mobile/captcha/*` bridge。
+2. **App Store Connect 上传**：ASC iOS 版本已对齐为 `1.0.1`；仍需配置 ASC API key（`.p8`、issuer、key ID）。配置后可运行 `scripts/upload-ios-appstore.sh` 上传已验证 IPA，也可由产品方用 Transporter/Xcode 上传。
+3. **真机验收**：连接并信任一台已加入 provisioning profile 的实体 iPhone，完成登录、provider captcha、支付、注销和权限路径验收。
+4. **App Store Connect 资料**：补齐截图、隐私政策 URL、支持 URL、描述/关键词、年龄分级、税务与价格、审核账号、出口合规，并选择发布方式。
 
 ## 不需要产品方处理
 
 - GitHub CLI 已配置，两个仓库是独立仓库，开发分支和提交可以继续由本流程管理。
-- GitHub Actions 暂不启用不会阻止本机 Xcode 构建；当前失败原因是 GitHub billing，而不是代码或签名配置。
+- GitHub Actions 暂不启用不会阻止本机 Xcode 构建；原生 iOS 直接使用已提交 workspace 和 Xcode，不使用 Expo/EAS 构建。
 - Apple Developer 法律协议已由产品方完成；后续只剩签名凭据、真机和商店资料门槛。
-- Android 按当前范围暂缓。
-- 不需要 Expo/EAS 云构建；原生 iOS 工程使用本机 Xcode 工具链。
+- Android 按当前范围暂缓；不配置 Android SDK、签名或 APK/AAB 发布。
 
 ## 当前本机证据
 

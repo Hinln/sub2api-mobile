@@ -1,5 +1,9 @@
 # 管理 API 审计
 
+API 合同基线：官方 Sub2API `v0.2.13`（tag commit
+`3040209f205472038c1ba745a1bedd2edd9053b1`）。本轮不修改或部署后端，生产
+配置保持不变；私有 checkout 只作审计参考。
+
 ## 认证与响应
 
 - 管理基地址：`https://hub.vexlune.com`
@@ -50,4 +54,7 @@
 
 ## 版本差异风险
 
-Vexlune 私有后端源快照为 `5ea52f8`（分支 `codex/backend-hardening`），当前后端改造交付头由 PR #1 维护；移动端初始实现基线为 `cf04b61`，当前交付分支为 `codex/vexlune-hub`（PR #1 当前 head）。接口和 Turnstile/幂等改造以 `Hinln/sub2api` 为源。APP 对不支持的字段使用空状态，不伪造数据；真实 staging 管理员联调仍需账号和 Cloudflare 环境凭据。
+移动端初始实现基线为 `cf04b61`，当前交付分支为 `codex/vexlune-hub`。认证验证码
+按 v0.2.13 的 `/api/v1/settings/public` 和 provider proof 字段工作；官方版本
+没有 `/mobile/captcha/*` 私有 bridge，也没有 `turnstile_nonce` 合同。APP 对不支持
+的字段使用空状态，不伪造数据；真实非生产管理员联调仍需账号和 provider 环境凭据。

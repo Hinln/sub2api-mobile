@@ -1,89 +1,50 @@
-# Cloudflare rules for Vexlune Hub mobile API
+# Cloudflare notes for Vexlune Hub mobile API
 
 Updated: 2026-10-03 (Asia/Shanghai).
 
-This document is the deployable rule specification for the private Hinln/sub2api origin. It contains no Cloudflare API token, zone ID, Turnstile secret or shared bypass credential. The actual zone export and staging verification are still required before release.
+This is a client boundary note for the official Sub2API `v0.2.13` contract. It
+is not a production change request and contains no Cloudflare token, zone ID,
+Turnstile secret or bypass credential. The current mobile release does not add
+or modify Cloudflare rules.
 
-## Origin and trust boundary
+## API boundary
 
-- Public first-party host: hub.vexlune.com.
-- Keep the origin private; allow ingress only from Cloudflare egress or the private load balancer.
-- Keep TLS, WAF managed rules, bot signals, DDoS controls, Sub2API JWT/admin authorization and application rate limits enabled.
-- Do not trust an app User-Agent, a custom app header or a shared secret as an API bypass.
-- Forward the real client IP only from trusted reverse proxies; configure Sub2API server.trusted_proxies accordingly.
+The app calls the normal HTTPS `/api/v1/*` API and expects the official JSON
+response envelope. The transport must:
 
-## API challenge policy
+1. Treat `cf-mitigated: challenge` as a dedicated challenge error.
+2. Treat unexpected `text/html` on an API request as a challenge/configuration
+   error before parsing JSON.
+3. Record only request path, timestamp and `cf-ray` for diagnostics.
+4. Avoid infinite retries and ask the user to retry through the approved auth
+   surface.
 
-The native client must receive JSON from /api/v1/* and must not depend on a browser interstitial or cf_clearance.
+This handling does not authorize an app header, `cf_clearance` cookie, shared
+secret or User-Agent bypass. Do not weaken WAF, DDoS, TLS, bot, rate-limit or
+application authorization controls.
 
-Create a narrowly scoped Cloudflare custom rule or Skip action for browser-interactive Managed Challenge products:
+## Captcha contract
 
-    http.host eq "hub.vexlune.com"
-    and starts_with(http.request.uri.path, "/api/v1/")
+Official v0.2.13 exposes captcha configuration through
+`GET /api/v1/settings/public`. Depending on the selected provider, the web or
+native UI obtains a provider token and submits `turnstile_token`, or the
+documented Tencent/Aliyun fields, to the auth endpoint. The official release
+does not define `/mobile/captcha/turnstile`, `/mobile/captcha/turnstile/health`,
+a nonce ledger or a native WebView postMessage bridge.
 
-The Skip action may cover only the browser-interactive challenge products that would replace JSON with HTML. It must not skip:
+Do not add a Cloudflare exception for a private bridge path. If an approved
+non-production environment returns HTML for an API request, report the origin
+or edge configuration to its operator and keep the client error visible. Do
+not change production to make a mobile test pass.
 
-- WAF managed rules or custom WAF rules;
-- DDoS protection;
-- TLS/origin controls;
-- rate limiting or bot signals used for abuse detection;
-- application authentication, authorization or audit logging.
+## Verification evidence
 
-If the zone cannot isolate the challenge product this way, change the Bot Fight/Managed Challenge configuration instead of bypassing it in the app. Never ship cf_clearance, a Cloudflare secret or a hard-coded bypass header in Vexlune Hub.
+For a separately approved non-production environment, record:
 
-Keep normal browser protection for HTML pages. The first-party Turnstile page is a controlled exception:
+- `/api/v1/settings/public` is JSON 200 and exposes only public provider values;
+- a valid provider token is accepted once and expired/invalid tokens fail;
+- HTML challenges remain classified before JSON decoding;
+- iOS reaches the API over HTTPS and preserves the official response envelope.
 
-    http.host eq "hub.vexlune.com"
-    and http.request.uri.path eq "/mobile/captcha/turnstile"
-
-That path must still pass WAF/TLS/rate limits and must be served by the backend with a strict CSP and an allowlisted Turnstile origin.
-
-## Auth and public API limits
-
-Apply Cloudflare rate limits and the backend Redis fail-close limits together. At minimum cover:
-
-- POST /api/v1/auth/login
-- POST /api/v1/auth/register
-- POST /api/v1/auth/send-verify-code
-- POST /api/v1/auth/forgot-password
-- POST /api/v1/auth/refresh
-- GET /api/v1/settings/public
-
-Use IP and behavior signals as inputs, never as the sole trust decision. Keep the server-side Turnstile verification enabled when the public setting requires it.
-
-## Native challenge diagnostics
-
-The mobile transport must:
-
-1. Treat cf-mitigated: challenge as a dedicated Cloudflare challenge error.
-2. Treat an expected JSON response with Content-Type: text/html as a challenge/configuration error.
-3. Detect Cloudflare challenge markers without exposing raw HTML.
-4. Record only request path, timestamp and cf-ray for diagnostics.
-5. Avoid infinite retries and direct the user to the first-party WebView gate when a Turnstile proof is required.
-
-The backend has challenge heuristics in backend/internal/util/httputil/httputil.go; the mobile client implements the same boundary in src/lib/admin-fetch.ts and covers HTML challenge handling in tests.
-
-## Turnstile WebView requirements
-
-GET /mobile/captcha/turnstile must be hosted on this first-party origin and must:
-
-- render only the configured public site key;
-- load Cloudflare resources over HTTPS;
-- generate and bind a nonce to the WebView session;
-- send a structured postMessage containing type, nonce, origin and one token;
-- reject replayed, expired, malformed or foreign-origin messages;
-- verify the token server-side against the configured hostname/action before accepting it;
-- never return or embed the Turnstile secret.
-
-## Verification evidence required before release
-
-Attach a sanitized Cloudflare rules export and staging test results covering:
-
-- API requests return JSON without a Managed Challenge interstitial;
-- browser HTML pages still retain the intended challenge/WAF posture;
-- login/register/refresh/public settings are rate limited;
-- a Turnstile success token is accepted once and rejected on replay/expiry;
-- wrong origin, nonce and message type cannot trigger a token handoff;
-- Android and iOS can reach the API over HTTPS and receive the same response envelope.
-
-Current status: source rule specification complete; zone-specific deployment and staging evidence are blocked by missing Cloudflare access/configuration.
+Android is deferred for this release. No Android network or build evidence is a
+release requirement.

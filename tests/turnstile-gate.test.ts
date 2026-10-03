@@ -1,46 +1,24 @@
-import { describe, expect, it, vi } from 'vitest';
-vi.mock('expo-crypto', () => ({ getRandomValues: vi.fn() }));
-import * as ExpoCrypto from 'expo-crypto';
-import { createTurnstileNonce, parseTurnstileBridgeMessage, TURNSTILE_BRIDGE_PROBE_SCRIPT } from '@/src/lib/turnstile';
+import { describe, expect, it } from 'vitest';
+import { parseTurnstilePageMessage, TURNSTILE_PAGE_CAPTURE_SCRIPT, TURNSTILE_PAGE_FOCUS_SCRIPT } from '@/src/lib/turnstile';
 
-describe('turnstile bridge contract', () => {
+describe('official Turnstile WebView contract', () => {
   const origin = 'https://hub.vexlune.com';
-  const nonce = 'abc123';
 
-  it('accepts only the matching one-shot token envelope', () => {
-    expect(parseTurnstileBridgeMessage(JSON.stringify({ type: 'turnstile_token', origin, nonce, action: 'login', token: 'x'.repeat(20) }), origin, nonce, 'login')).toEqual({ kind: 'token', token: 'x'.repeat(20) });
-    expect(parseTurnstileBridgeMessage(JSON.stringify({ type: 'turnstile_token', origin, nonce, action: 'register', token: 'x'.repeat(20) }), origin, nonce, 'login')).toBeNull();
-    expect(parseTurnstileBridgeMessage(JSON.stringify({ type: 'turnstile_token', origin: 'https://evil.example', nonce, action: 'login', token: 'x'.repeat(20) }), origin, nonce, 'login')).toBeNull();
+  it('accepts only a token posted by the expected first-party page', () => {
+    expect(parseTurnstilePageMessage(JSON.stringify({ type: 'turnstile_token', origin, token: 'x'.repeat(20) }), origin)).toEqual({ kind: 'token', token: 'x'.repeat(20) });
+    expect(parseTurnstilePageMessage(JSON.stringify({ type: 'turnstile_token', origin: 'https://evil.example', token: 'x'.repeat(20) }), origin)).toBeNull();
+    expect(parseTurnstilePageMessage(JSON.stringify({ type: 'turnstile_token', origin, token: 'short' }), origin)).toBeNull();
   });
 
-  it('fails closed when the origin returns its SPA instead of the bridge', () => {
-    expect(parseTurnstileBridgeMessage(JSON.stringify({ type: 'turnstile_bridge_error' }), origin, nonce, 'login')).toEqual({ kind: 'bridge_error' });
-    expect(TURNSTILE_BRIDGE_PROBE_SCRIPT).toContain('turnstile_bridge_error');
-    expect(TURNSTILE_BRIDGE_PROBE_SCRIPT).toContain("getElementById('widget')");
-    expect(TURNSTILE_BRIDGE_PROBE_SCRIPT).toContain('setInterval');
+  it('fails closed when the official widget is unavailable', () => {
+    expect(parseTurnstilePageMessage(JSON.stringify({ type: 'turnstile_unavailable' }), origin)).toEqual({ kind: 'unavailable' });
+    expect(TURNSTILE_PAGE_CAPTURE_SCRIPT).toContain('window.turnstile');
+    expect(TURNSTILE_PAGE_CAPTURE_SCRIPT).toContain('ReactNativeWebView.postMessage');
+    expect(TURNSTILE_PAGE_FOCUS_SCRIPT).toContain('challenges.cloudflare.com');
   });
 
-  it('creates a fixed-length nonce from the secure random source', () => {
-    const generated = createTurnstileNonce((bytes) => {
-      bytes.fill(0xab);
-      return bytes;
-    });
-    expect(generated).toBe('ab'.repeat(24));
-  });
-
-  it('fails closed when the random source throws', () => {
-    expect(createTurnstileNonce(() => { throw new Error('unavailable'); })).toBe('');
-  });
-
-  it('uses the native Expo secure random source when Web Crypto is unavailable', () => {
-    const getRandomValues = vi.spyOn(ExpoCrypto, 'getRandomValues').mockImplementation((bytes) => {
-      bytes.fill(0x5a);
-      return bytes;
-    });
-    vi.stubGlobal('crypto', undefined);
-    expect(createTurnstileNonce()).toBe('5a'.repeat(24));
-    expect(getRandomValues).toHaveBeenCalledOnce();
-    vi.unstubAllGlobals();
-    getRandomValues.mockRestore();
+  it('rejects malformed messages', () => {
+    expect(parseTurnstilePageMessage('not-json', origin)).toBeNull();
+    expect(parseTurnstilePageMessage(JSON.stringify({ type: 'turnstile_token', origin }), origin)).toBeNull();
   });
 });

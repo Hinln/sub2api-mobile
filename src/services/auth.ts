@@ -80,7 +80,7 @@ export async function getPublicSettings(): Promise<PublicSettings> {
   return parsed.data;
 }
 
-export async function login(input: { email: string; password: string; turnstile_token?: string; turnstile_nonce?: string }) {
+export async function login(input: { email: string; password: string; turnstile_token?: string }) {
   const response = parseAuthResponse(await request<unknown>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify(input) }, { auth: false }));
   if (response.requires_2fa) {
     // A challenge response is not a session yet. Treat a malformed response
@@ -113,7 +113,7 @@ export async function completeTwoFactor(tempToken: string, totpCode: string) {
   }
 }
 
-export async function register(input: { email: string; password: string; verify_code?: string; turnstile_token?: string; turnstile_nonce?: string }) {
+export async function register(input: { email: string; password: string; verify_code?: string; turnstile_token?: string }) {
   const response = parseAuthResponse(await request<unknown>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify(input) }, { auth: false }));
   if (!response.access_token || !response.user) throw new AuthApiError('注册响应缺少会话信息', 502);
   await saveSession({ accessToken: response.access_token, refreshToken: response.refresh_token, expiresIn: response.expires_in, user: parseUser(response.user) });
@@ -126,7 +126,7 @@ export async function register(input: { email: string; password: string; verify_
   }
 }
 
-export async function sendVerifyCode(input: { email: string; turnstile_token?: string; turnstile_nonce?: string }) {
+export async function sendVerifyCode(input: { email: string; turnstile_token?: string }) {
   return request<{ message: string; countdown: number }>('/api/v1/auth/send-verify-code', { method: 'POST', body: JSON.stringify(input) }, { auth: false });
 }
 

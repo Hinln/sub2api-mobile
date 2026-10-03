@@ -1,74 +1,55 @@
-# Vexlune Hub staging deployment checklist
+# Vexlune Hub non-production QA checklist
 
-This checklist is the operator handoff for the private `Hinln/sub2api` backend and
-the `hub.vexlune.com` Cloudflare zone. It contains no Turnstile secret, API token,
-zone ID, database password or user credentials.
+This is a test handoff for an already approved non-production Sub2API
+environment. It is not an instruction to deploy `Hinln/sub2api`, change
+production, run migrations, or add Cloudflare routes. The API baseline is
+official Sub2API `v0.2.13` (`3040209f205472038c1ba745a1bedd2edd9053b1`).
 
-## 1. Pin and test the backend
+## 1. Environment and accounts
 
-Deploy backend PR #1 at commit `91a1b7f36` (source branch
-`codex/backend-hardening-pr`). Confirm the deployed binary reports the expected
-commit before exposing it to the mobile client.
+- Record the non-production base URL and the exact server release. Production
+  `hub.vexlune.com` is outside this checklist.
+- Use disposable ordinary-user and administrator accounts. Revoke them after
+  testing; do not use real customer/payment data.
+- Keep captcha secrets, provider credentials and API keys out of the mobile
+  repository, app bundle and logs.
 
-Run the repository's backend unit tests and migration checks in the same build
-context used by staging. The migration must create `idempotency_records` and its
-scope/key, expiry and status indexes before payment writes are enabled.
+## 2. Official API smoke test
 
-The server environment must provide the Turnstile secret through the existing
-private settings mechanism. Never put it in the mobile repository, an app build,
-Cloudflare client code, a WebView URL, or logs. Keep the public site key and the
-configured hostname/action in the server's public settings response.
-
-## 2. Cloudflare rules
-
-Keep the origin private and retain WAF managed rules, DDoS protection, TLS/origin
-validation, rate limits and bot signals. Add only the narrowly scoped browser
-challenge exception required for JSON API clients:
+Verify with a read-only request:
 
 ```text
-http.host eq "hub.vexlune.com"
-and starts_with(http.request.uri.path, "/api/v1/")
+GET /api/v1/settings/public
 ```
 
-This exception may skip only the browser-interactive challenge product that would
-replace an API response with HTML. It must not skip WAF, DDoS, TLS, rate limiting,
-bot signals or application authentication. Keep the first-party bridge path
-explicitly routed to the backend:
+The response must be JSON 200 and expose only public feature flags and captcha
+configuration. Verify the auth payloads against the official v0.2.13 fields:
+`turnstile_token`, or Tencent `tencent_captcha_ticket` plus
+`tencent_captcha_randstr`; Aliyun uses its documented `turnstile_token` field.
 
-```text
-http.host eq "hub.vexlune.com"
-and http.request.uri.path eq "/mobile/captcha/turnstile"
-```
+There is no official `/mobile/captcha/*` endpoint. Do not run the historical
+`verify-mobile-origin.sh` bridge probe as a release check, and do not route a
+private WebView bridge through production.
 
-Do not use a User-Agent, custom mobile header, shared bypass secret or
-`cf_clearance` cookie as an API bypass.
+## 3. Mobile acceptance
 
-## 3. Origin smoke test
+On a native iOS build, verify:
 
-From a machine that can reach the staging hostname, run:
+- provider widget/SDK proof is accepted by login, register and password reset;
+- invalid or expired proof returns a visible auth error;
+- `/auth/me` routes ordinary users and administrators correctly;
+- 401 refresh is single-flight and failed refresh clears SecureStore/query data;
+- user reads and administrator reads/writes reflect server responses, audit and
+  confirmation requirements;
+- API HTML challenges are classified before JSON parsing.
 
-```bash
-BASE_URL=https://hub.vexlune.com ./scripts/verify-mobile-origin.sh
-```
+Do not perform balance, refund, key deletion, model probing or destructive tests
+against production. Android is deferred and is not part of this checklist.
 
-The command must pass all of these checks:
+## 4. Stop/rollback
 
-- `GET /api/v1/settings/public` is JSON `200` and exposes only public Turnstile settings.
-- `GET /mobile/captcha/turnstile/health` is JSON `200` with `status=ok`, `Cache-Control: no-store`, and no secret, site key or nonce context.
-- An invalid bridge action returns `400` with `INVALID_TURNSTILE_CONTEXT`.
-- A valid `login`, `register` or `forgot_password` bridge returns the minimal HTML bridge, not the SPA shell.
-- The bridge HTML contains the native `ReactNativeWebView` handoff and no secret.
-- `cf-mitigated: challenge` and unexpected HTML from API requests remain classified as challenge/configuration errors by the mobile client.
-
-Then run device/staging tests with disposable ordinary-user and administrator
-accounts. Verify one-time Turnstile token use, wrong action/origin rejection,
-401 refresh, payment idempotency replay/conflict, audited administrator writes
-and logout. Revoke the accounts after QA.
-
-## 4. Rollback
-
-If the probe fails or mobile traffic receives HTML from an API path, stop the
-mobile rollout, restore the previous backend image and Cloudflare rules, and rerun
-the probe before reopening traffic. Do not disable Cloudflare challenges globally
-to hide a routing problem. Preserve the database migration and idempotency audit
-records unless a separately reviewed rollback migration is required.
+Stop the mobile rollout if the environment returns a private-only route,
+unexpected DTO, captcha secret, HTML API envelope, or unverified write result.
+Restore the last verified iOS build through TestFlight distribution. Escalate
+server or Cloudflare issues to the environment owner; do not patch production
+to bypass the failed check.

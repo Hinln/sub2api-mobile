@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminConfigState } from '@/src/store/admin-config';
-import { cancelPaymentOrder, createPaymentOrder, getCheckoutInfo, listPaymentOrders, resolvePaymentAction, verifyPaymentOrder, type CheckoutPlan, type PaymentCreateResponse, type PaymentOrder } from '@/src/services/user';
+import { cancelPaymentOrder, createPaymentOrder, getCheckoutInfo, listPaymentOrders, resolvePaymentAction, resolvePaymentOAuthURL, verifyPaymentOrder, type CheckoutPlan, type PaymentCreateResponse, type PaymentOrder } from '@/src/services/user';
 import { humanizeApiError } from '@/src/lib/admin-fetch';
 import { newIdempotencyKey } from '@/src/lib/idempotency';
 import { theme } from '@/src/theme';
@@ -16,13 +16,43 @@ export default function UserBilling() {
   const orders = useQuery({ queryKey: ['payment-orders'], queryFn: () => listPaymentOrders(), enabled: Boolean(config.accessToken) });
   const create = useMutation({ mutationFn: () => { if (!plan) throw new Error('请选择一个套餐'); const paymentType = methods[0]; if (!paymentType) throw new Error('当前没有可用的支付方式'); if (!createKey.current) createKey.current = newIdempotencyKey('payment-order-create'); setPaymentError(''); setStatusMessage(''); return createPaymentOrder({ amount: plan.price, plan_id: plan.id, order_type: 'subscription', payment_type: paymentType }, createKey.current); }, onSuccess: async (order: PaymentCreateResponse) => {
     await client.invalidateQueries({ queryKey: ['payment-orders'] });
+    const resultType = String(order.result_type || 'order_created').trim().toLowerCase();
+    if (resultType === 'oauth_required') {
+      const oauth = resolvePaymentOAuthURL(order, String(config.baseUrl));
+      if (!oauth) {
+        setPaymentError('服务端要求微信授权，但没有返回有效的授权地址，无法继续付款。请刷新订单并联系管理员检查官方支付配置。');
+        setPaymentUnavailable(true);
+        return;
+      }
+      try {
+        await Linking.openURL(oauth.url);
+        setPaymentUnavailable(true);
+        setStatusMessage('微信授权页面已打开。完成授权后返回 APP，刷新订单列表查看服务端状态；在确认结果前请勿重复创建订单。');
+      } catch {
+        setPaymentError('微信授权页面无法打开，请在微信或系统浏览器中完成授权；未确认付款，请勿重复创建订单。');
+        setPaymentUnavailable(true);
+      }
+      return;
+    }
+    if (resultType === 'jsapi_ready') {
+      // JSAPI requires the WeChat JS SDK and an in-WeChat browser. The native
+      // client has no JSAPI bridge, so never claim that this order was paid.
+      const payload = order.jsapi || order.jsapi_payload;
+      setPaymentError(payload ? '服务端已准备微信 JSAPI 支付，但该流程只能在微信内置浏览器完成。请在微信内打开站点后重试；订单仍未支付。' : '服务端返回了不完整的微信 JSAPI 支付数据，无法安全继续付款。请联系管理员检查官方支付配置。');
+      setPaymentUnavailable(true);
+      return;
+    }
     const action = resolvePaymentAction(order);
     const orderLabel = order.out_trade_no || String(order.order_id ?? order.id ?? '');
     if (!action) {
       // A created order without a provider URL cannot be completed by this
       // client. Surface a hard error instead of claiming that payment started
       // or asking the user to guess a provider action.
-      setPaymentError(`订单 ${orderLabel || '已创建'} 未返回可打开的支付地址，无法继续付款。请先刷新订单状态并联系管理员检查支付通道；请勿重复创建订单。`);
+      if (order.client_secret || order.intent_id || /stripe/i.test(order.payment_type || '')) {
+        setPaymentError(`订单 ${orderLabel || '已创建'} 已由官方 Stripe 接口创建 PaymentIntent，但 APP 当前没有 Stripe 原生支付组件，无法安全确认付款。请使用官方网页端完成支付或联系管理员；请勿重复创建订单。`);
+      } else {
+        setPaymentError(`订单 ${orderLabel || '已创建'} 未返回可打开的支付地址，无法继续付款。请先刷新订单状态并联系管理员检查支付通道；请勿重复创建订单。`);
+      }
       setPaymentUnavailable(true);
       return;
     }
