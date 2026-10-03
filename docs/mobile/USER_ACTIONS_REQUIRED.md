@@ -4,7 +4,7 @@
 
 ## 当前必须由产品方完成
 
-1. **后端上线**：合并并部署 `Hinln/sub2api` PR #1 的 `91a1b7f36`（含 `/mobile/captcha/*` 路由修复和 CSP nonce），配置服务端 Turnstile secret，并修正 Cloudflare 到 origin 的路由；secret 不进入 APP、仓库或日志。
+1. **后端上线**：合并并部署 `Hinln/sub2api` PR #1 的 `91a1b7f36`（含 `/mobile/captcha/*` 路由修复和 CSP nonce），配置服务端 Turnstile secret，并让 OpenResty/源站把 `/mobile/captcha/turnstile` 与 `/mobile/captcha/turnstile/health` 优先反代到 Go 后端；本次 Cloudflare zone audit 未发现需要新增 Worker 或 API Skip 规则。secret 不进入 APP、仓库或日志。
 2. **staging 验收账号**：提供可撤销的普通用户和管理员账号，在 staging 上完成真实登录、Turnstile、支付幂等和管理员权限验收。
 3. **数据库集成环境**：提供可运行 PostgreSQL 的 staging/CI 环境，执行 migration integration tests。
 4. **App Store Connect 上传**：ASC iOS 版本已对齐为 `1.0.1`；仍需配置 ASC API key（`.p8`、issuer、key ID）。配置后可运行 `scripts/upload-ios-appstore.sh` 上传已验证 IPA，也可由产品方用 Transporter/Xcode 上传。
