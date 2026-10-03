@@ -1,6 +1,6 @@
 # Vexlune Hub QA 报告
 
-检查日期：2026-10-03（Asia/Shanghai）。
+检查日期：2026-10-04（Asia/Shanghai）。
 
 ## 版本与环境边界
 
@@ -19,7 +19,7 @@
 | 检查 | 结果 | 说明 |
 |---|---|---|
 | TypeScript | 通过 | `pnpm exec tsc --noEmit` |
-| Vitest | 通过（49/49） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP、支付/用户服务契约和官方页面 WebView token capture。测试不证明生产可用性。 |
+| Vitest | 通过（50/50） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP、支付/用户服务契约和官方页面 WebView token capture。测试不证明生产可用性。 |
 | 生产路径占位扫描 | 通过 | `pnpm run verify:production-scan`；扫描 `app/` 与 `src/`，拒绝 mock/fixture/fake/sample、伪请求定时器、嵌入式 secret 和空 `onPress`。 |
 | ESLint | 通过 | `pnpm exec expo lint`；0 error、0 warning。 |
 | Web export | 通过 | `pnpm exec expo export --platform web`；只作静态路由/类型烟测，不是原生发布构建。 |

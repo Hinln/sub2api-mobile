@@ -1,6 +1,6 @@
 # Cloudflare notes for Vexlune Hub mobile API
 
-Updated: 2026-10-03 (Asia/Shanghai).
+Updated: 2026-10-04 (Asia/Shanghai).
 
 This is a client boundary note for the official Sub2API `v0.2.13` contract. It
 is not a production change request and contains no Cloudflare token, zone ID,

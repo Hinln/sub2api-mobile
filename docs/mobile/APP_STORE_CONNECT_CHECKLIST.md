@@ -4,7 +4,7 @@
 
 ## 当前外部状态证据
 
-检查日期：2026-10-03（Asia/Shanghai）。
+检查日期：2026-10-04（Asia/Shanghai）。
 
 - [x] App Store Connect 已存在 `Vexlune Hub` App 记录（App ID `6818636344`），iOS 版本已更新为 `1.0.1` 并处于“准备提交”。
 - [x] Apple Developer App ID `Vexlune Mobile Console` / `com.vexlune.mobile` 已存在。

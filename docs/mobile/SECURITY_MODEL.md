@@ -1,6 +1,6 @@
 # Vexlune Hub 安全模型
 
-更新日期：2026-10-03（Asia/Shanghai）。
+更新日期：2026-10-04（Asia/Shanghai）。
 
 本文以官方 Sub2API `v0.2.13`（tag commit
 `3040209f205472038c1ba745a1bedd2edd9053b1`）为 API 合同。生产后端和
