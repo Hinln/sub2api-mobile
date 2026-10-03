@@ -1,6 +1,6 @@
 # API Gap Report
 
-Updated: 2026-10-03 (Asia/Shanghai).
+Updated: 2026-10-04 (Asia/Shanghai).
 
 ## Authority and release boundary
 
@@ -9,6 +9,13 @@ The mobile release contract is the official Sub2API `v0.2.13` tag from
 `3040209f205472038c1ba745a1bedd2edd9053b1`. The private `Hinln/sub2api`
 checkout and any local hardening branch are audit material only; none of those
 changes are part of this release contract.
+
+Repository identity is separate from the API authority: `Hinln/sub2api` is an
+independent repository, and GitHub currently reports `Hinln/sub2api-mobile` as a
+fork of `ckken/sub2api-mobile`, not as a fork of the official `Wei-Shaw/sub2api`
+project. Neither repository relationship grants permission to deploy the
+private backend checkout. The mobile release continues to target only the
+official v0.2.13 API surface described below.
 
 Production is deliberately unchanged for this work. Do not deploy a backend
 branch, run a production migration, change production settings, add a
@@ -44,7 +51,7 @@ secret.
 
 | ID | Gap | Why it blocks | Required closure |
 |---|---|---|---|
-| OFFICIAL_CAPTCHA_001 | The current source captures the provider token from the official first-party login/register/password-reset page. The official contract has no private mobile endpoint or nonce field. | The capture must stay on the same first-party origin and submit only the provider proof fields accepted by v0.2.13. | Keep the official-page WebView capture bounded to the three auth pages; do not send a nonce at all and never add a private bridge route. |
+| OFFICIAL_CAPTCHA_001 | The current source captures the provider token from the official first-party login/register/password-reset page and presents agreement content in a native bottom notice. The official contract has no private mobile endpoint or nonce field. | The capture must stay on the same first-party origin and submit only the provider proof fields accepted by v0.2.13; agreement is synchronized only after the user submits login or registration. | Keep the official-page WebView capture bounded to the three auth pages; do not auto-accept agreement, send a nonce, or add a private bridge route. |
 | OFFICIAL_CONTRACT_002 | Private backend additions (nonce validation, payment idempotency coordinator, bridge health endpoint and related migrations) are not part of v0.2.13. | Source inspection of a private checkout cannot prove behavior on the unchanged production server. | Re-audit every enabled route and DTO against v0.2.13; mark unsupported controls unavailable rather than guessing. |
 | STAGING_003 | No approved non-production origin and disposable QA accounts are recorded for this release. | Real role routing, captcha, refresh, payment and audited admin writes cannot be proven end to end. | Obtain a separately approved staging environment and revoke test accounts after QA. Never use production for destructive or payment tests. |
 | IOS_004 | TestFlight/App Store Connect processing and physical-device acceptance are external gates. | A local native archive/IPA does not prove TestFlight installation or live API behavior. | Upload the Xcode-exported IPA through the approved Apple account and record processing/device evidence. |
