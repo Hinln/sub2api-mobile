@@ -15,11 +15,11 @@ archive_path="${IOS_ARCHIVE_PATH:-$repo_root/build/VexluneMobileConsole-appstore
 export_path="${IOS_EXPORT_PATH:-$repo_root/build/appstore-export}"
 team_id="${APPLE_TEAM_ID:-6KW552MWV6}"
 bundle_id="${IOS_BUNDLE_ID:-com.vexlune.mobile}"
-profile_name="${IOS_PROFILE_NAME:-Vexlune Mobile Console App Store 20261003}"
+profile_name="${IOS_PROFILE_NAME:-Vexlune Mobile Console App Store 20261003 Distribu}"
 profile_dir="${HOME}/Library/MobileDevice/Provisioning Profiles"
 
-if ! security find-identity -v -p codesigning 2>/dev/null | grep -q 'Apple Distribution'; then
-  echo "Apple Distribution certificate/private key is not available in the login keychain." >&2
+if ! security find-identity -v -p codesigning 2>/dev/null | grep -Eq 'Apple Distribution|iPhone Distribution'; then
+  echo "Apple Distribution/iPhone Distribution certificate and private key are not available in the login keychain." >&2
   echo "Import the matching .p12, then rerun this script." >&2
   exit 2
 fi
@@ -66,7 +66,7 @@ cat > "$export_options" <<PLIST
 <key>method</key><string>app-store-connect</string>
 <key>signingStyle</key><string>manual</string>
 <key>teamID</key><string>$team_id</string>
-<key>signingCertificate</key><string>Apple Distribution</string>
+<key>signingCertificate</key><string>iPhone Distribution</string>
 <key>provisioningProfiles</key><dict>
 <key>$bundle_id</key><string>$profile_name</string>
 </dict>
