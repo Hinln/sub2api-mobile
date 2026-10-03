@@ -56,7 +56,7 @@ export function TurnstileGate({ action, resetKey, onToken }: { action: 'login' |
     try {
       const url = new URL(request.url);
       if (url.protocol === 'about:' && url.href === 'about:blank') return true;
-      return url.origin === origin || url.origin === 'https://challenges.cloudflare.com' || url.protocol === 'about:';
+      return url.origin === origin || url.origin === 'https://challenges.cloudflare.com';
     } catch { return false; }
   }
 
