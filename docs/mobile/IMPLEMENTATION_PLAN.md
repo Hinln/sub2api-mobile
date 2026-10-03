@@ -12,7 +12,7 @@ Updated: 2026-10-03 (Asia/Shanghai)
 ## Evidence baseline
 
 - Mobile source: `Hinln/sub2api-mobile`, downloaded from public `main` ZIP. GitHub page reported latest commit `8431c44fc1f288aa01653aa10edfe8c2df19906f` on 2026-10-02. ZIP snapshots do not include `.git`, so local history is initialized from the snapshot and the source commit is recorded in `.codex-meta/SNAPSHOT.md`.
-- Private backend: authenticated access to `Hinln/sub2api` is configured through GitHub CLI/keyring and the `main` snapshot is loaded at `repos/sub2api`. The local snapshot is the target baseline; its remote remains `https://github.com/Hinln/sub2api.git`.
+- Private backend: authenticated access to `Hinln/sub2api` is configured through GitHub CLI/keyring and the target branch is pinned at `5ea52f8` (`codex/backend-hardening`). The local snapshot is the target baseline; its remote remains `https://github.com/Hinln/sub2api.git`.
 - Public comparison: `Wei-Shaw/sub2api` snapshot is available at `repos/sub2api-upstream` for contract and security reference only. It is not the private target and will not be treated as the production backend.
 - Prompt package omissions: `prompts/06` and `prompts/07`, plus the merged prompt file named by `MANIFEST.md`, are absent. Goal 6/7 requirements are taken from `prompts/08` and `prompts/09` and recorded in the gap report.
 
@@ -23,7 +23,7 @@ Updated: 2026-10-03 (Asia/Shanghai)
 | 0 | Snapshot, branch, dependency/build baseline | independent Git branches, lockfiles and environment audit | Complete locally |
 | 1 | Real route and DTO audit | `API_COVERAGE_MATRIX.md`, `API_GAP_REPORT.md` | Complete from authenticated private checkout |
 | 2 | Shared design system, logo, API client, query/session boundaries | unified V Logo, Bearer client, cache clearing, tests | Complete locally |
-| 3 | Email/password auth, role routing, refresh, Turnstile WebView | source changes + 39 mobile tests + backend policy tests | Complete in source; staging pending |
+| 3 | Email/password auth, role routing, refresh, Turnstile WebView | source changes + 41 mobile tests + backend policy tests | Complete in source; staging pending |
 | 4 | User workspace and real payment/usage/key flows | real endpoint screens + stable payment/key idempotency | Complete in source; provider sandbox pending |
 | 5 | Admin workspace and audited high-risk operations | existing admin routes migrated to Bearer JWT; no API-key UI | Complete in source; staging role/step-up pending |
 | 6 | Private backend gaps, migrations, idempotency, audit | backend commits through `5ea52f8`, Redis nonce ledger, payment coordinator, Go 1.27.1 `make test-unit` | Complete and locally verified |
@@ -43,7 +43,7 @@ Updated: 2026-10-03 (Asia/Shanghai)
 ## Required proof before completion
 
 - Private backend commit and migration/test evidence.
-- Contract tests against the private response envelope and error codes.
+- Contract tests against the private response envelope and error codes (mobile `cf04b61`, backend `5ea52f8`).
 - iOS development/preview build evidence; Android preview/production artifacts are deferred until that scope is reopened.
 - Real Cloudflare configuration and Turnstile device flow evidence.
 - QA, security, release and rollback documents with no unresolved rows.

@@ -4,13 +4,13 @@ Updated: 2026-10-03 (Asia/Shanghai).
 
 ## Repository authority
 
-The delivery targets are the two Hinln repositories. GitHub metadata reports Hinln/sub2api as a private standalone repository (isFork=false, no parent) and Hinln/sub2api-mobile as a public fork of ckken/sub2api-mobile; the latter is still the requested delivery repository and is unrelated to the public Wei-Shaw/sub2api reference. The authenticated backend checkout is repos/sub2api at final commit `37f1606` on branch `codex/backend-hardening`, with remote https://github.com/Hinln/sub2api.git.
+The delivery targets are the two Hinln repositories. GitHub metadata reports Hinln/sub2api as a private standalone repository (isFork=false, no parent) and Hinln/sub2api-mobile as a public fork of ckken/sub2api-mobile; the latter is still the requested delivery repository and is unrelated to the public Wei-Shaw/sub2api reference. The authenticated backend checkout is repos/sub2api at final commit `5ea52f8` on branch `codex/backend-hardening`, with remote https://github.com/Hinln/sub2api.git. The mobile branch is `codex/vexlune-hub` at `cf04b61`.
 
 ## Audit conclusion
 
 The private backend already provides the required email/password authentication primitives, role discovery, JWT/refresh rotation, TOTP, user/admin route families, response envelope, server-side audit middleware and server-side Cloudflare Turnstile verification. The mobile contract can be implemented against these source-verified paths.
 
-The private backend now serves the first-party Turnstile WebView page required by the mobile brief. The bridge issues a Redis-backed five-minute nonce, accepts only the `login`, `register`, and `forgot_password` auth actions, binds action and request host, verifies Cloudflare action/hostname, and atomically consumes the nonce. Payment order creation now uses the shared durable idempotency coordinator with request-fingerprint conflicts and replay headers; the final hardening is in backend commit `37f1606`. Staging/device evidence is still required.
+The private backend now serves the first-party Turnstile WebView page required by the mobile brief. The bridge issues a Redis-backed five-minute nonce, accepts only the `login`, `register`, and `forgot_password` auth actions, binds action and request host, verifies Cloudflare action/hostname, and atomically consumes the nonce. Payment order creation now uses the shared durable idempotency coordinator with request-fingerprint conflicts and replay headers; the final hardening is in backend commit `5ea52f8`. Staging/device evidence is still required.
 
 ## Cloudflare rule specification
 
