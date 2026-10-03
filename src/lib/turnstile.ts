@@ -16,6 +16,11 @@ export type TurnstilePageMessage = {
 
 export type ParsedTurnstileMessage =
   | { kind: 'token'; token: string }
+  | { kind: 'agreement-required' }
+  | { kind: 'agreement-accepted' }
+  | { kind: 'agreement-accept-failed' }
+  | { kind: 'widget-ready' }
+  | { kind: 'expired' }
   | { kind: 'unavailable' }
   | null;
 
@@ -32,12 +37,35 @@ export const TURNSTILE_PAGE_CAPTURE_SCRIPT = `
 (function () {
   var patched = [];
   var sent = false;
+  var agreementSent = false;
+  var widgetSent = false;
   function wasPatched(api) { return patched.indexOf(api) !== -1; }
   function postToken(token) {
     if (sent || typeof token !== 'string' || token.length < 20) return;
     sent = true;
     if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'turnstile_token', origin: window.location.origin, token: token }));
+    }
+  }
+  function detectAgreement() {
+    if (agreementSent || window.__vexluneAgreementAccepted || !document.body) return;
+    var dialogs = Array.prototype.slice.call(document.querySelectorAll('[role="dialog"], [aria-modal="true"], dialog'));
+    var scope = dialogs.length ? dialogs[dialogs.length - 1] : document.body;
+    var text = (scope.innerText || '').replace(/\\s+/g, ' ');
+    if (!/(服务条款|terms of service|terms & conditions)/i.test(text)) return;
+    var controls = Array.prototype.slice.call(scope.querySelectorAll('button, a, [role="button"]'));
+    if (!controls.some(function (node) { return /^(同意(?:并继续)?|接受(?:并继续)?|agree(?: and continue)?|accept(?: and continue)?)$/i.test((node.innerText || node.textContent || '').replace(/\\s+/g, ' ').trim()); })) return;
+    agreementSent = true;
+    if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'agreement_required', origin: window.location.origin }));
+    }
+  }
+  function detectWidget() {
+    if (widgetSent || (agreementSent && !window.__vexluneAgreementAccepted) || !document.body) return;
+    if (!document.querySelector('iframe[src*="challenges.cloudflare.com"]')) return;
+    widgetSent = true;
+    if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'widget_ready', origin: window.location.origin }));
     }
   }
   function patch(api) {
@@ -47,10 +75,22 @@ export const TURNSTILE_PAGE_CAPTURE_SCRIPT = `
       api.render = function (container, options) {
         options = options || {};
         var originalCallback = options.callback;
+        var originalExpiredCallback = options['expired-callback'];
+        var originalErrorCallback = options['error-callback'];
         var wrappedOptions = Object.assign({}, options, {
           callback: function (token) {
             postToken(token);
             if (typeof originalCallback === 'function') originalCallback(token);
+          },
+          'expired-callback': function () {
+            sent = false;
+            if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'turnstile_expired', origin: window.location.origin }));
+            if (typeof originalExpiredCallback === 'function') originalExpiredCallback();
+          },
+          'error-callback': function () {
+            sent = false;
+            if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'turnstile_unavailable', origin: window.location.origin }));
+            if (typeof originalErrorCallback === 'function') originalErrorCallback();
           }
         });
         return originalRender.call(this, container, wrappedOptions);
@@ -61,7 +101,7 @@ export const TURNSTILE_PAGE_CAPTURE_SCRIPT = `
       // the page remains open, and the native side will fail closed otherwise.
     }
   }
-  function observe() { patch(window.turnstile); }
+  function observe() { patch(window.turnstile); detectAgreement(); detectWidget(); }
   try {
     var current = window.turnstile;
     Object.defineProperty(window, 'turnstile', {
@@ -119,9 +159,50 @@ export const TURNSTILE_PAGE_FOCUS_SCRIPT = `
 true;
 `;
 
+/**
+ * The native bottom notice is the user-facing consent surface. After the user
+ * presses the login or registration action, this script clicks the equivalent
+ * control in the official first-party page so that the page records the same
+ * consent and can continue rendering Turnstile. It is never injected before
+ * that action.
+ */
+export const TURNSTILE_PAGE_ACCEPT_AGREEMENT_SCRIPT = `
+(function () {
+  function accept() {
+    var dialogs = Array.prototype.slice.call(document.querySelectorAll('[role="dialog"], [aria-modal="true"], dialog'));
+    var roots = dialogs.length ? dialogs : [document.body];
+    var nodes = roots.reduce(function (all, root) { return all.concat(Array.prototype.slice.call(root.querySelectorAll('button, a, [role="button"]'))); }, []);
+    var target = nodes.find(function (node) {
+      var text = (node.innerText || node.textContent || '').replace(/\\s+/g, ' ').trim();
+      return /^(同意(?:并继续)?|接受(?:并继续)?|agree(?: and continue)?|accept(?: and continue)?)$/i.test(text);
+    });
+    if (!target) return false;
+    target.click();
+    window.__vexluneAgreementAccepted = true;
+    if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'agreement_accepted', origin: window.location.origin }));
+    return true;
+  }
+  var attempts = 0;
+  var timer = setInterval(function () {
+    attempts += 1;
+    if (accept()) clearInterval(timer);
+    else if (attempts >= 150) {
+      clearInterval(timer);
+      if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'agreement_accept_failed', origin: window.location.origin }));
+    }
+  }, 100);
+})();
+true;
+`;
+
 export function parseTurnstilePageMessage(raw: string, expectedOrigin: string): ParsedTurnstileMessage {
   try {
     const value = JSON.parse(raw) as TurnstilePageMessage;
+    if (value.type === 'agreement_required' && value.origin === expectedOrigin) return { kind: 'agreement-required' };
+    if (value.type === 'agreement_accepted' && value.origin === expectedOrigin) return { kind: 'agreement-accepted' };
+    if (value.type === 'agreement_accept_failed' && value.origin === expectedOrigin) return { kind: 'agreement-accept-failed' };
+    if (value.type === 'widget_ready' && value.origin === expectedOrigin) return { kind: 'widget-ready' };
+    if (value.type === 'turnstile_expired' && value.origin === expectedOrigin) return { kind: 'expired' };
     if (value.type === 'turnstile_unavailable') return { kind: 'unavailable' };
     if (value.type !== 'turnstile_token' || value.origin !== expectedOrigin || typeof value.token !== 'string' || value.token.length < 20) return null;
     return { kind: 'token', token: value.token };

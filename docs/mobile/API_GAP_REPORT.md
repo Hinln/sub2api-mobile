@@ -64,12 +64,12 @@ secret.
 - A row is `VERIFIED` only after a real non-production endpoint/device test.
   Local tests and a private checkout do not establish production evidence.
 
-## Historical artifacts
+## Origin probe boundary
 
-`scripts/verify-mobile-origin.sh` still probes `/mobile/captcha/*`, which is a
-private extension absent from official v0.2.13. It is a historical deployment
-probe and must not be run as a release gate. The current
-`src/components/turnstile-gate.tsx` instead opens the official first-party auth
-page and captures the provider widget callback; its output is valid only when
+`scripts/verify-mobile-origin.sh` probes only the public settings endpoint and
+the first-party `/login`, `/register`, and `/forgot-password` HTML pages. It
+does not call `/mobile/captcha/*`, invent a nonce, or validate a private bridge.
+The current `src/components/turnstile-gate.tsx` opens the same first-party auth
+pages and captures the provider widget callback; its output is valid only when
 the token is submitted using the official fields above. This report does not
 authorize changing the backend or production to add a bridge route.

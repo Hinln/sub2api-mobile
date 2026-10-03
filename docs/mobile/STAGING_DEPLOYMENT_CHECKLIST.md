@@ -27,9 +27,9 @@ configuration. Verify the auth payloads against the official v0.2.13 fields:
 `turnstile_token`, or Tencent `tencent_captcha_ticket` plus
 `tencent_captcha_randstr`; Aliyun uses its documented `turnstile_token` field.
 
-There is no official `/mobile/captcha/*` endpoint. Do not run the historical
-`verify-mobile-origin.sh` bridge probe as a release check, and do not route a
-private WebView bridge through production.
+There is no official `/mobile/captcha/*` endpoint. The repository's
+`verify-mobile-origin.sh` probe checks only public settings and the three
+first-party auth pages; it does not route or validate a private WebView bridge.
 
 ## 3. Mobile acceptance
 

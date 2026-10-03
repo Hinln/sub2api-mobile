@@ -25,6 +25,7 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
   const [turnstileReset, setTurnstileReset] = useState(0);
+  const [agreementSubmitAttempt, setAgreementSubmitAttempt] = useState(0);
   const [registrationEnabled, setRegistrationEnabled] = useState<boolean | null>(null);
   const [passwordResetEnabled, setPasswordResetEnabled] = useState<boolean | null>(null);
 
@@ -48,6 +49,7 @@ export default function LoginScreen() {
     setError('');
     if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) return setError('请输入有效邮箱');
     if (!password) return setError('请输入密码');
+    setAgreementSubmitAttempt((value) => value + 1);
     setBusy(true);
     try {
       const result = await login({ email: email.trim().toLowerCase(), password, turnstile_token: turnstileToken || undefined });
@@ -84,7 +86,7 @@ export default function LoginScreen() {
               <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 19, marginBottom: 7 }}>邮箱</Text><TextInput accessibilityLabel="email" value={email} onChangeText={(value) => { setEmail(value); setError(''); }} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" textContentType="username" placeholder="name@example.com" placeholderTextColor={theme.faint} style={{ color: theme.text, backgroundColor: theme.cardRaised, borderRadius: 14, borderWidth: 1, borderColor: error ? theme.danger : theme.border, paddingHorizontal: 15, paddingVertical: 14 }} />
               <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 15, marginBottom: 7 }}>密码</Text><View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.cardRaised, borderRadius: 14, borderWidth: 1, borderColor: error ? theme.danger : theme.border }}><TextInput accessibilityLabel="password" value={password} onChangeText={(value) => { setPassword(value); setError(''); }} secureTextEntry={!showPassword} autoCapitalize="none" autoCorrect={false} textContentType="password" placeholder="请输入密码" placeholderTextColor={theme.faint} onSubmitEditing={() => void submit()} style={{ flex: 1, color: theme.text, paddingHorizontal: 15, paddingVertical: 14 }} /><Pressable accessibilityLabel="toggle-password" onPress={() => setShowPassword((value) => !value)} style={{ padding: 13 }}>{showPassword ? <EyeOff color={theme.subtext} size={19} /> : <Eye color={theme.subtext} size={19} />}</Pressable></View>
               {passwordResetEnabled ? <View style={{ alignItems: 'flex-end', marginTop: 9 }}><Link href="/forgot-password" asChild><Pressable accessibilityRole="link"><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '800' }}>忘记密码？</Text></Pressable></Link></View> : null}
-              <TurnstileGate action="login" resetKey={turnstileReset} onToken={setTurnstileToken} />
+              <TurnstileGate action="login" resetKey={turnstileReset} consentRequestKey={agreementSubmitAttempt} onToken={setTurnstileToken} />
               {error ? <Text style={{ color: theme.danger, fontSize: 13, lineHeight: 19, marginTop: 13 }}>{error}</Text> : null}
               <Pressable accessibilityRole="button" disabled={busy} onPress={() => void submit()} style={{ marginTop: 17, minHeight: 50, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: busy ? theme.muted : theme.primary }}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '900' }}>登录</Text>}</Pressable>
               {registrationEnabled ? <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 5, marginTop: 18 }}><Text style={{ color: theme.subtext, fontSize: 13 }}>还没有账号？</Text><Link href="/register" asChild><Pressable><Text style={{ color: theme.primary, fontSize: 13, fontWeight: '900' }}>注册</Text></Pressable></Link></View> : null}
