@@ -4,19 +4,12 @@ import { WebView, type WebView as WebViewInstance, type WebViewMessageEvent, typ
 import { getPublicSettings } from '@/src/services/auth';
 import { sessionState } from '@/src/auth/session';
 import { theme } from '@/src/theme';
-import { parseTurnstileBridgeMessage, TURNSTILE_BRIDGE_PROBE_SCRIPT } from '@/src/lib/turnstile';
+import { createTurnstileNonce, parseTurnstileBridgeMessage, TURNSTILE_BRIDGE_PROBE_SCRIPT } from '@/src/lib/turnstile';
 
 const ALLOWED_ACTIONS = new Set(['login', 'register', 'forgot_password']);
 
-function createNonce() {
-  const bytes = new Uint8Array(24);
-  if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') return '';
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
-}
-
 export function TurnstileGate({ action, resetKey, onToken }: { action: 'login' | 'register' | 'forgot_password'; resetKey?: number; onToken: (token: string, nonce: string) => void }) {
-  const nonce = useMemo(createNonce, [resetKey]);
+  const nonce = useMemo(createTurnstileNonce, [resetKey]);
   const [siteKey, setSiteKey] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

@@ -12,6 +12,23 @@ export type ParsedTurnstileMessage =
   | null;
 
 /**
+ * Creates a one-shot bridge nonce using the runtime's secure random source.
+ * Returning an empty string deliberately fails closed when the native runtime
+ * does not expose Web Crypto; callers must not fall back to Math.random().
+ */
+export function createTurnstileNonce(randomValues?: (bytes: Uint8Array) => Uint8Array): string {
+  const fill = randomValues ?? globalThis.crypto?.getRandomValues?.bind(globalThis.crypto);
+  if (!fill) return '';
+  const bytes = new Uint8Array(24);
+  try {
+    fill(bytes);
+  } catch {
+    return '';
+  }
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
+}
+
+/**
  * The bridge page is first-party HTML. If an origin serves its SPA shell at
  * this path, the WebView must fail closed instead of showing that shell as a
  * security control.

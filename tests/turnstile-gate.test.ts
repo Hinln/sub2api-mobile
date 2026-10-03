@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseTurnstileBridgeMessage, TURNSTILE_BRIDGE_PROBE_SCRIPT } from '@/src/lib/turnstile';
+import { createTurnstileNonce, parseTurnstileBridgeMessage, TURNSTILE_BRIDGE_PROBE_SCRIPT } from '@/src/lib/turnstile';
 
 describe('turnstile bridge contract', () => {
   const origin = 'https://hub.vexlune.com';
@@ -16,5 +16,17 @@ describe('turnstile bridge contract', () => {
     expect(TURNSTILE_BRIDGE_PROBE_SCRIPT).toContain('turnstile_bridge_error');
     expect(TURNSTILE_BRIDGE_PROBE_SCRIPT).toContain("getElementById('widget')");
     expect(TURNSTILE_BRIDGE_PROBE_SCRIPT).toContain('setInterval');
+  });
+
+  it('creates a fixed-length nonce from the secure random source', () => {
+    const generated = createTurnstileNonce((bytes) => {
+      bytes.fill(0xab);
+      return bytes;
+    });
+    expect(generated).toBe('ab'.repeat(24));
+  });
+
+  it('fails closed when the random source throws', () => {
+    expect(createTurnstileNonce(() => { throw new Error('unavailable'); })).toBe('');
   });
 });
