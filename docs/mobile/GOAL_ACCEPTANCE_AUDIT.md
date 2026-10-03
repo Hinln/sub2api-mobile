@@ -9,13 +9,13 @@
 
 | Goal | 必须证明的结果 | 当前证据 | 状态 |
 |---|---|---|---|
-| 0 | 两个目标仓库有可回退分支、依赖/构建基线及已记录失败 | `Hinln/sub2api-mobile` 分支 `codex/vexlune-hub`，HEAD `0fa4cf0`；`Hinln/sub2api` 分支 `codex/backend-hardening-pr`，HEAD `933e91ccb`；构建限制记录在 `QA_REPORT.md`/`BUILD_BLOCKERS.md` | 源码已完成 |
+| 0 | 两个目标仓库有可回退分支、依赖/构建基线及已记录失败 | `Hinln/sub2api-mobile` 分支 `codex/vexlune-hub`，HEAD `be365f9`；`Hinln/sub2api` 分支 `codex/backend-hardening-pr`，HEAD `d38d3ccce`；构建限制记录在 `QA_REPORT.md`/`BUILD_BLOCKERS.md` | 源码已完成 |
 | 1 | 路由、DTO、权限、错误和缺口进入真实矩阵 | `API_COVERAGE_MATRIX.md`、`API_GAP_REPORT.md`、`CURRENT_ARCHITECTURE.md`，并注明私有仓库与 public reference 的边界 | 源码已完成 |
 | 2 | 一个正式 V Logo、共享设计系统、会话/API/query 基础设施 | `src/components/vexlune-logo.tsx`、`src/theme.ts`、`src/lib/admin-fetch.ts`、SecureStore/query 清理测试 | 源码已完成 |
 | 3 | 邮箱密码登录/注册、`/auth/me` 角色路由、refresh/logout、TOTP/Turnstile | `src/services/auth.ts`、`src/components/turnstile-gate.tsx`；Vitest 覆盖 401/refresh、TOTP、HTML challenge、nonce/origin/action 校验 | 源码完成；真实环境待验 |
 | 4 | 普通用户工作台每个可见控件连接真实接口且写操作可重试 | `src/services/user.ts` 与 `app/user*.tsx`；API key、usage、公告、订阅和订单测试/幂等测试 | 源码完成；支付 sandbox 待验 |
 | 5 | 管理员工作台、渐进披露和高风险操作的权限/审计/幂等 | `src/services/admin*.ts`、管理员路由、后端 AdminAuth/audit/step-up；管理员服务测试 | 源码完成；管理员 staging 待验 |
-| 6 | 后端缺口以 service/迁移/权限/审计/测试方式补齐 | backend `933e91ccb`：Turnstile nonce/bridge/CSP 与支付幂等协调器；`go test -p 1 ./...` 通过 | 源码完成；部署待验 |
+| 6 | 后端缺口以 service/迁移/权限/审计/测试方式补齐 | backend `d38d3ccce`：Turnstile nonce/bridge/CSP 与支付幂等协调器；`go test -p 1 ./...` 通过 | 源码完成；部署待验 |
 | 7 | 逐行真实联调、无占位扫描、安全和错误路径证据 | `QA_REPORT.md`、`SECURITY_MODEL.md`、`scripts/verify-mobile-origin.sh`、Vitest 47/47；线上 bridge 当前被 SPA 路由截获 | 本地完成；staging 阻塞 |
 | 8 | 可安装 iOS/Android 构建、CI、发布和回滚资料 | iOS 原生 archive/IPA 已签名且 codesign 通过；发布/回滚/ASC 清单已建立；Android 暂缓 | iOS 本地完成；发布外部门槛待验 |
 
@@ -42,7 +42,7 @@ GOPROXY=https://goproxy.cn,direct GOTOOLCHAIN=local go test -p 1 ./...
 
 ## 完成前必须补齐的外部证据
 
-1. 部署 backend `933e91ccb`、执行迁移并将 `/mobile/captcha/turnstile` 从线上
+1. 部署 backend `d38d3ccce`、执行迁移并将 `/mobile/captcha/turnstile` 从线上
    SPA 路由切换到第一方 bridge；保存脱敏 Cloudflare 规则和 `verify-mobile-origin.sh`
    的通过输出。
 2. 使用可撤销的普通用户/管理员 staging 账号验证角色、Turnstile 一次性消费、

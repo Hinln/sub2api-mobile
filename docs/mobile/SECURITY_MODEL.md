@@ -66,7 +66,7 @@ OpenAI 兼容接入信息展示，不能被移动端 API client 当作管理 API
 staging/设备上验证：
 
 - `hub.vexlune.com/mobile/captcha/turnstile` 已由目标 backend 提供最小 bridge，
-  但线上当前仍返回 SPA shell，需部署 backend `933e91ccb` 并核对 Cloudflare
+  但线上当前仍返回 SPA shell，需部署 backend `d38d3ccce` 并核对 Cloudflare
   路由。
 - 需要可撤销的普通用户与管理员 staging 账号完成 role、TOTP、审计和支付幂等
   联调。
