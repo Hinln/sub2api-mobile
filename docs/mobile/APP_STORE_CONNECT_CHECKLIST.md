@@ -10,7 +10,7 @@
 - [x] Apple Developer App ID `Vexlune Mobile Console` / `com.vexlune.mobile` 已存在。
 - [x] Apple Developer 已有有效 Distribution certificates；本机钥匙串当前仅发现 Apple Development 身份。
 - [x] 已有有效 Ad Hoc profile `Vexlune Mobile Console Ad Hoc 20260907`，绑定 `com.vexlune.mobile`。
-- [ ] 尚无绑定 `com.vexlune.mobile` 的 App Store provisioning profile；当前 App Store profile 属于 `com.vexlune.yubai`。
+- [x] 已创建并下载绑定 `com.vexlune.mobile` 的 App Store profile `Vexlune Mobile Console App Store 20261003`，有效期至 2027-09-07。
 - [ ] App Store Connect 尚无上传构建，iPhone 截图当前为 0/10。
 
 ## App 记录
@@ -26,7 +26,7 @@
 
 - [ ] Xcode 中选择 Team `6KW552MWV6`，Bundle ID 与 App ID 匹配，自动签名或受控 provisioning profile 已验证。
 - [ ] `CFBundleShortVersionString` 与 App Store Connect 版本一致；每次上传都递增 `CFBundleVersion`。
-- [ ] 通过本机或受控 macOS Runner 执行 `archive` 和 `-exportArchive`；不使用 Expo/EAS 云构建或托管签名。
+- [ ] 通过本机或受控 macOS Runner 执行签名 `archive` 和 `-exportArchive`；无签名 iPhoneOS archive 已生成，当前机器仍缺少与该 profile 对应的 Apple Distribution 私钥。不使用 Expo/EAS 云构建或托管签名。
 - [ ] 导出包通过 `codesign --verify --deep --strict`，并记录 archive UUID、构建 commit 和 SHA-256。
 - [ ] 上传完成后记录 App Store Connect build ID、处理状态和导出日志摘要。
 
