@@ -9,7 +9,7 @@
 
 | Goal | 必须证明的结果 | 当前证据 | 状态 |
 |---|---|---|---|
-| 0 | 两个目标仓库有可回退分支、依赖/构建基线及已记录失败 | `Hinln/sub2api-mobile` 分支 `codex/vexlune-hub`，HEAD `b7be0d1`；`Hinln/sub2api` 分支 `codex/backend-hardening-pr`，HEAD `d38d3ccce`；构建限制记录在 `QA_REPORT.md`/`BUILD_BLOCKERS.md` | 源码已完成 |
+| 0 | 两个目标仓库有可回退分支、依赖/构建基线及已记录失败 | `Hinln/sub2api-mobile` 分支 `codex/vexlune-hub`（PR #1 当前 head）；`Hinln/sub2api` 分支 `codex/backend-hardening-pr`，HEAD `d38d3ccce`；构建限制记录在 `QA_REPORT.md`/`BUILD_BLOCKERS.md` | 源码已完成 |
 | 1 | 路由、DTO、权限、错误和缺口进入真实矩阵 | `API_COVERAGE_MATRIX.md`、`API_GAP_REPORT.md`、`CURRENT_ARCHITECTURE.md`，并注明私有仓库与 public reference 的边界 | 源码已完成 |
 | 2 | 一个正式 V Logo、共享设计系统、会话/API/query 基础设施 | `src/components/vexlune-logo.tsx`、`src/theme.ts`、`src/lib/admin-fetch.ts`、SecureStore/query 清理测试 | 源码已完成 |
 | 3 | 邮箱密码登录/注册、`/auth/me` 角色路由、refresh/logout、TOTP/Turnstile | `src/services/auth.ts`、`src/components/turnstile-gate.tsx`；Vitest 覆盖 401/refresh、TOTP、HTML challenge、nonce/origin/action 校验 | 源码完成；真实环境待验 |
