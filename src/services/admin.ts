@@ -21,6 +21,28 @@ import type {
   UserUsageSummary,
 } from '@/src/types/admin';
 
+export type AdminRequestError = {
+  id: number;
+  created_at?: string;
+  phase?: string;
+  type?: string;
+  error_owner?: string;
+  error_source?: string;
+  severity?: string;
+  status_code?: number;
+  platform?: string;
+  model?: string;
+  resolved?: boolean;
+  client_request_id?: string;
+  request_id?: string;
+  message?: string;
+  user_email?: string;
+  account_name?: string;
+  request_path?: string;
+  inbound_endpoint?: string;
+  upstream_endpoint?: string;
+};
+
 export function buildQuery(params: Record<string, string | number | boolean | null | undefined>) {
   const query = new URLSearchParams();
 
@@ -92,7 +114,7 @@ export function getUsageStats(params: {
 
 export function listUsers(search = '', pagination: PaginationParams = {}) {
   return adminFetch<PaginatedData<AdminUser>>(
-    `/api/v1/admin/users${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 20, search: search.trim(), status: pagination.status, sort: pagination.sort, order: pagination.order })}`
+    `/api/v1/admin/users${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 20, search: search.trim(), status: pagination.status, sort_by: pagination.sort, sort_order: pagination.order })}`
   );
 }
 
@@ -139,7 +161,7 @@ export function updateUserStatus(userId: number, status: 'active' | 'disabled', 
 
 export function listGroups(search = '', pagination: PaginationParams = {}) {
   return adminFetch<PaginatedData<AdminGroup>>(
-    `/api/v1/admin/groups${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 50, search: search.trim(), status: pagination.status })}`
+    `/api/v1/admin/groups${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 50, search: search.trim(), status: pagination.status, sort_by: pagination.sort, sort_order: pagination.order })}`
   );
 }
 
@@ -149,7 +171,7 @@ export function getGroup(groupId: number) {
 
 export function listAccounts(search = '', pagination: PaginationParams = {}) {
   return adminFetch<PaginatedData<AdminAccount>>(
-    `/api/v1/admin/accounts${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 50, search: search.trim(), status: pagination.status, sort: pagination.sort, order: pagination.order })}`
+    `/api/v1/admin/accounts${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 50, search: search.trim(), status: pagination.status, sort_by: pagination.sort, sort_order: pagination.order })}`
   );
 }
 
@@ -235,12 +257,24 @@ export function listUsageLogs(params: PaginationParams & { user_id?: number; acc
     page: params.page ?? 1,
     page_size: params.page_size ?? 30,
     search: params.search,
-    status: params.status,
     user_id: params.user_id,
     account_id: params.account_id,
     model: params.model,
-    sort: params.sort ?? 'created_at',
-    order: params.order ?? 'desc',
+    sort_by: params.sort ?? 'created_at',
+    sort_order: params.order ?? 'desc',
+  })}`);
+}
+
+/** Lists persisted client-visible request errors from the audited ops store. */
+export function listRequestErrors(params: { page?: number; page_size?: number; q?: string; model?: string; resolved?: boolean } = {}) {
+  return adminFetch<PaginatedData<AdminRequestError>>(`/api/v1/admin/ops/request-errors${buildQuery({
+    page: params.page ?? 1,
+    page_size: params.page_size ?? 30,
+    q: params.q,
+    model: params.model,
+    resolved: params.resolved,
+    sort_by: 'created_at',
+    sort_order: 'desc',
   })}`);
 }
 

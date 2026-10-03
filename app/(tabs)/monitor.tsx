@@ -6,7 +6,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { Badge, Card, Metric, Page, SectionTitle, StateCard } from '@/src/components/ui';
 import { formatTokenValue } from '@/src/lib/formatters';
-import { getAdminSettings, getDashboardStats, getDashboardTrend, getSystemVersion, listAccounts, listUsageLogs } from '@/src/services/admin';
+import { getAdminSettings, getDashboardStats, getDashboardTrend, getSystemVersion, listAccounts, listRequestErrors } from '@/src/services/admin';
 import { theme } from '@/src/theme';
 
 function money(value?: number) { return typeof value === 'number' ? `$${value.toFixed(2)}` : '--'; }
@@ -30,7 +30,7 @@ export default function MonitorScreen() {
   const version = useQuery({ queryKey: ['system-version'], queryFn: getSystemVersion, staleTime: 300_000 });
   const accounts = useQuery({ queryKey: ['dashboard-accounts'], queryFn: () => listAccounts('', { page_size: 50 }), staleTime: 30_000 });
   const trend = useQuery({ queryKey: ['dashboard-trend-24h'], queryFn: () => getDashboardTrend(range), staleTime: 30_000 });
-  const failures = useQuery({ queryKey: ['dashboard-failures'], queryFn: () => listUsageLogs({ status: 'error', page_size: 5 }), staleTime: 30_000 });
+  const failures = useQuery({ queryKey: ['dashboard-failures'], queryFn: () => listRequestErrors({ page_size: 5, resolved: false }), staleTime: 30_000 });
 
   const queries = [stats, settings, version, accounts, trend, failures];
   const loading = stats.isLoading || accounts.isLoading;
@@ -74,7 +74,7 @@ export default function MonitorScreen() {
         </Card>
 
         <SectionTitle title={'\u6700\u8fd1\u5931\u8d25'} action={<Pressable onPress={() => router.push('/logs')}><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '800' }}>{'\u67e5\u770b\u5168\u90e8'}</Text></Pressable>} />
-        {(failures.data?.items ?? []).length ? <View style={{ gap: 9 }}>{failures.data!.items.map((item) => <Card key={item.id}><View style={{ flexDirection: 'row', gap: 10 }}><AlertTriangle color={theme.danger} size={18} /><View style={{ flex: 1 }}><Text numberOfLines={1} style={{ color: theme.text, fontWeight: '700' }}>{item.model || item.request_type || `Request #${item.id}`}</Text><Text numberOfLines={2} style={{ color: theme.subtext, fontSize: 12, lineHeight: 18, marginTop: 5 }}>{item.error_message || `HTTP ${item.status_code ?? '--'}`}</Text></View><Badge label={String(item.status_code ?? 'ERR')} tone="danger" /></View></Card>)}</View> : <Card><Text style={{ color: theme.subtext, textAlign: 'center' }}>{'\u6682\u65e0\u5931\u8d25\u8bb0\u5f55'}</Text></Card>}
+        {(failures.data?.items ?? []).length ? <View style={{ gap: 9 }}>{failures.data!.items.map((item) => <Card key={item.id}><View style={{ flexDirection: 'row', gap: 10 }}><AlertTriangle color={theme.danger} size={18} /><View style={{ flex: 1 }}><Text numberOfLines={1} style={{ color: theme.text, fontWeight: '700' }}>{item.model || item.request_path || `Request #${item.id}`}</Text><Text numberOfLines={2} style={{ color: theme.subtext, fontSize: 12, lineHeight: 18, marginTop: 5 }}>{item.message || `HTTP ${item.status_code ?? '--'}`}</Text></View><Badge label={String(item.status_code ?? 'ERR')} tone="danger" /></View></Card>)}</View> : <Card><Text style={{ color: theme.subtext, textAlign: 'center' }}>{'\u6682\u65e0\u5931\u8d25\u8bb0\u5f55'}</Text></Card>}
       </> : null}
     </Page>
   );

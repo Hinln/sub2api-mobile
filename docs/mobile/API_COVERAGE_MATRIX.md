@@ -60,6 +60,7 @@ All /api/v1/admin/* routes use AdminAuthMiddleware, global panel limiting, audit
 | Settings | GET/PUT /api/v1/admin/settings; email templates, rate limits, web-search, admin-key compatibility endpoints | Admin JWT + audit/compliance; selected sensitive settings step-up | server/routes/admin.go:564-607; handler/admin/setting_handler_update.go:24-80 | PRIVATE_SOURCE_VERIFIED |
 | Turnstile admin config | Fields turnstile_enabled, turnstile_site_key, write-only turnstile_secret_key; GET exposes only turnstile_secret_key_configured | Admin-only; secret remains server-side. | handler/admin/setting_handler.go:92-180; handler/dto/settings.go:32-75 | PRIVATE_SOURCE_VERIFIED |
 | Audit/compliance/risk | /api/v1/admin/audit-logs*, /compliance*, /risk-control*, /prompt-audit* | Immutable/redacted audit controls and compliance acceptance | server/routes/admin.go:136-190 | PRIVATE_SOURCE_VERIFIED |
+| Request logs search | GET /api/v1/admin/usage?search=... | Admin JWT; bounded server-side lookup by exact request ID or model substring; no client-only status/error filter is exposed because usage-log DTO has no such fields. | backend/internal/handler/admin/usage_handler.go; backend/internal/repository/usage_log_repo_query.go | PRIVATE_SOURCE_VERIFIED |
 | Admin API key compatibility | /api/v1/admin/settings/admin-api-key* and x-api-key middleware | Legacy compatibility remains in backend; prohibited in Vexlune Hub product UX. | server/routes/admin.go:577-579; server/middleware/admin_auth.go:24-79 | PRIVATE_SOURCE_VERIFIED_WITH_GAP |
 
 ## Cross-cutting acceptance

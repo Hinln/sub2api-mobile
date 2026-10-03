@@ -59,6 +59,7 @@ fail-closed response.
 - User/admin role routing and the user workspace are implemented. API key CRUD, usage, announcements/read receipts, subscriptions and payment orders are connected to real endpoints; payment writes carry stable idempotency keys.
 - Mobile transport must classify cf-mitigated: challenge and Cloudflare HTML before JSON parsing, then direct the user to the first-party WebView challenge.
 - Every mutating payment/admin control must surface server errors, audit requirements, step-up requirements and idempotency outcomes; no optimistic success is allowed.
+- Admin request-log search now uses the backend `search` contract (exact request ID or case-insensitive model substring). The mobile log screen no longer presents success/error chips or status-code/error-message fields that are absent from the real `AdminUsageLog` DTO; standard cost is read from `total_cost`.
 
 ## Prompt package gaps
 
