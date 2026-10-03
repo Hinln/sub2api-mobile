@@ -6,7 +6,7 @@ zone ID, database password or user credentials.
 
 ## 1. Pin and test the backend
 
-Deploy backend PR #1 at commit `d38d3ccce` (source branch
+Deploy backend PR #1 at commit `91a1b7f36` (source branch
 `codex/backend-hardening-pr`). Confirm the deployed binary reports the expected
 commit before exposing it to the mobile client.
 
