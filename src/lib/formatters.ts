@@ -24,6 +24,25 @@ export function formatTokenValue(value: number) {
   return formatCompactNumber(value, 1);
 }
 
+/** Format an optional server metric without inventing a zero for missing data. */
+export function formatOptionalNumber(value: unknown) {
+  if (value === null || value === undefined || value === '') return '--';
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toLocaleString('zh-CN') : '--';
+}
+
+export function formatOptionalTokenValue(value: unknown) {
+  if (value === null || value === undefined || value === '') return '--';
+  const number = Number(value);
+  return Number.isFinite(number) ? formatTokenValue(number) : '--';
+}
+
+export function formatOptionalMoney(value: unknown, digits = 4) {
+  if (value === null || value === undefined || value === '') return '--';
+  const number = Number(value);
+  return Number.isFinite(number) ? `$${number.toFixed(digits)}` : '--';
+}
+
 export function formatDisplayTime(value?: string | null) {
   if (!value) {
     return '--';

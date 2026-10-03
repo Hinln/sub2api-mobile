@@ -12,22 +12,21 @@ vi.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
 import { adminConfigState, hasAuthenticatedAdminSession, logoutAdminAccount, saveAdminConfig, secureStoreAdapter } from '@/src/store/admin-config';
 
 describe('SecureStore adapter', () => {
-  beforeEach(() => { vi.clearAllMocks(); adminConfigState.adminApiKey = ''; adminConfigState.baseUrl = 'https://hub.vexlune.com'; });
+  beforeEach(() => { vi.clearAllMocks(); adminConfigState.accessToken = ''; adminConfigState.refreshToken = ''; adminConfigState.user = null; adminConfigState.baseUrl = 'https://hub.vexlune.com'; });
 
   it('stores credentials using device-only accessibility', async () => {
-    await saveAdminConfig({ adminApiKey: 'admin-secret' });
-    expect(secure.set).toHaveBeenCalledWith('vexlune_admin_api_key_v1', 'admin-secret', { keychainAccessible: 'device-only' });
+    await saveAdminConfig({ accessToken: 'access-secret', refreshToken: 'refresh-secret', expiresIn: 3600, user: { id: 1, email: 'admin@example.com', role: 'admin' } });
+    expect(secure.set).toHaveBeenCalledWith('vexlune_access_token_v2', 'access-secret', { keychainAccessible: 'device-only' });
     expect(hasAuthenticatedAdminSession(adminConfigState)).toBe(true);
   });
 
   it('clears credentials on logout without clearing ordinary preferences', async () => {
-    adminConfigState.adminApiKey = 'admin-secret';
+    adminConfigState.accessToken = 'access-secret';
+    adminConfigState.user = { id: 1, email: 'admin@example.com', role: 'admin' };
     adminConfigState.biometricEnabled = true;
     await logoutAdminAccount();
-    expect(secure.del).toHaveBeenCalledWith('vexlune_admin_api_key_v1');
-    expect(secure.del).toHaveBeenCalledWith('vexlune_biometric_lock_v1');
-    expect(adminConfigState.adminApiKey).toBe('');
-    expect(adminConfigState.biometricEnabled).toBe(false);
+    expect(secure.del).toHaveBeenCalledWith('vexlune_access_token_v2');
+    expect(adminConfigState.accessToken).toBe('');
   });
 
   it('exposes a safe adapter with idempotent deletion', async () => {

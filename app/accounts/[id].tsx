@@ -1,9 +1,11 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { useRef } from 'react';
 
 import { Badge, Card, Metric, SectionTitle, StateCard } from '@/src/components/ui';
 import { humanizeApiError } from '@/src/lib/admin-fetch';
+import { newIdempotencyKey } from '@/src/lib/idempotency';
 import { queryClient } from '@/src/lib/query-client';
 import { clearAccountError, getAccount, getAccountTodayStats, recoverAccountState, refreshAccount, setAccountSchedulable, testAccount } from '@/src/services/admin';
 import { theme } from '@/src/theme';
@@ -13,20 +15,21 @@ export default function AccountDetailScreen() {
   const accountId = Number(params.id);
   const account = useQuery({ queryKey: ['account', accountId], queryFn: () => getAccount(accountId), enabled: Number.isFinite(accountId) });
   const today = useQuery({ queryKey: ['account-today', accountId], queryFn: () => getAccountTodayStats(accountId), enabled: Number.isFinite(accountId) });
+  const actionKeys = useRef<Record<string, string>>({});
   const invalidate = () => { void queryClient.invalidateQueries({ queryKey: ['account', accountId] }); void queryClient.invalidateQueries({ queryKey: ['accounts'] }); };
-  const action = useMutation({ mutationFn: async (name: 'test' | 'refresh' | 'recover' | 'clear' | 'toggle') => {
-    if (name === 'test') return testAccount(accountId);
-    if (name === 'refresh') return refreshAccount(accountId);
-    if (name === 'recover') return recoverAccountState(accountId);
-    if (name === 'clear') return clearAccountError(accountId);
-    return setAccountSchedulable(accountId, account.data?.schedulable === false);
-  }, onSuccess: invalidate });
+  const action = useMutation({ mutationFn: async (input: { name: 'test' | 'refresh' | 'recover' | 'clear' | 'toggle'; idempotencyKey: string }) => {
+    if (input.name === 'test') return testAccount(accountId, input.idempotencyKey);
+    if (input.name === 'refresh') return refreshAccount(accountId, input.idempotencyKey);
+    if (input.name === 'recover') return recoverAccountState(accountId, input.idempotencyKey);
+    if (input.name === 'clear') return clearAccountError(accountId, input.idempotencyKey);
+    return setAccountSchedulable(accountId, account.data?.schedulable === false, input.idempotencyKey);
+  }, onSuccess: (_result, input) => { delete actionKeys.current[input.name]; invalidate(); } });
   const item = account.data;
   const isError = Boolean(item?.error_message || item?.status === 'error');
   const paused = item?.schedulable === false;
 
   function run(name: 'test' | 'refresh' | 'recover' | 'clear' | 'toggle', title: string, description: string, destructive = false) {
-    Alert.alert(title, `${item?.name}\n${description}`, [{ text: '\u53d6\u6d88', style: 'cancel' }, { text: '\u786e\u8ba4', style: destructive ? 'destructive' : 'default', onPress: () => action.mutate(name) }]);
+    Alert.alert(title, `${item?.name}\n${description}`, [{ text: '\u53d6\u6d88', style: 'cancel' }, { text: '\u786e\u8ba4', style: destructive ? 'destructive' : 'default', onPress: () => { if (!actionKeys.current[name]) actionKeys.current[name] = newIdempotencyKey(`admin-account-${accountId}-${name}`); action.mutate({ name, idempotencyKey: actionKeys.current[name] }); } }]);
   }
 
   return (

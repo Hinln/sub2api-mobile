@@ -1,125 +1,61 @@
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
-import { normalizeHubUrl, VEXLUNE_HUB_URL } from '@/src/config/vexlune';
+import { isAdmin, isAuthenticated, saveSession, setBaseUrl as setSessionBaseUrl, sessionState } from '@/src/auth/session';
+import type { SessionState } from '@/src/auth/session';
+import type { AuthUser } from '@/src/types/auth';
 
-// CommonJS entry avoids import.meta in Expo Metro's classic web bundle.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { proxy } = require('valtio');
+// Compatibility module for the existing admin feature screens. Authentication is
+// now email/password + Bearer JWT; no API-key credential is stored or accepted.
+export {
+  sessionState as adminConfigState,
+  hydrateSession as hydrateAdminConfig,
+  clearSession as logoutAdminAccount,
+  setBiometricEnabled,
+  setBaseUrl,
+  secureStoreAdapter,
+} from '@/src/auth/session';
 
-const ADMIN_KEY_KEY = 'vexlune_admin_api_key_v1';
-const BIOMETRIC_KEY = 'vexlune_biometric_lock_v1';
-const ADVANCED_URL_KEY = 'vexlune_advanced_hub_url_v1';
-const IS_WEB = Platform.OS === 'web';
+export function hasAuthenticatedAdminSession(config: Pick<SessionState, 'accessToken' | 'user'>) {
+  return isAuthenticated(config) && isAdmin(config.user);
+}
 
-export type AdminConfig = {
-  baseUrl: string;
-  adminApiKey: string;
-  biometricEnabled: boolean;
-  advancedUrlEnabled: boolean;
-  hydrated: boolean;
-  saving: boolean;
-};
+export function hasAuthenticatedSession(config: Pick<SessionState, 'accessToken' | 'user'>) {
+  return isAuthenticated(config);
+}
 
-export const adminConfigState = proxy({
-  baseUrl: VEXLUNE_HUB_URL,
-  adminApiKey: '',
-  biometricEnabled: false,
-  advancedUrlEnabled: false,
-  hydrated: false,
-  saving: false,
-}) as AdminConfig;
-
-async function readSecure(key: string) {
-  if (IS_WEB) return null;
+/**
+ * Compatibility entry point for screens that still call the former admin
+ * settings action. New callers must provide the JWT returned by auth/login and
+ * the server user record. API-key credentials are deliberately rejected.
+ */
+export async function saveAdminConfig(input: {
+  accessToken?: string;
+  refreshToken?: string;
+  expiresIn?: number;
+  user?: AuthUser;
+  baseUrl?: string;
+  /** @deprecated API-key authentication is removed; use accessToken. */
+  adminApiKey?: string;
+}) {
+  if (input.adminApiKey?.trim()) throw new Error('LEGACY_ADMIN_API_KEY_UNSUPPORTED');
+  sessionState.saving = true;
   try {
-    return await SecureStore.getItemAsync(key);
-  } catch {
-    return null;
-  }
-}
-
-async function writeSecure(key: string, value: string) {
-  if (IS_WEB) return;
-  await SecureStore.setItemAsync(key, value, {
-    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-  });
-}
-
-async function deleteSecure(key: string) {
-  if (IS_WEB) return;
-  try {
-    await SecureStore.deleteItemAsync(key);
-  } catch {
-    // Deleting an already missing credential is safe and idempotent.
-  }
-}
-
-export function hasAuthenticatedAdminSession(config: Pick<AdminConfig, 'baseUrl' | 'adminApiKey'>) {
-  return Boolean(config.baseUrl.trim() && config.adminApiKey.trim());
-}
-
-export async function hydrateAdminConfig() {
-  try {
-    const [key, biometric, advancedUrl] = await Promise.all([
-      readSecure(ADMIN_KEY_KEY),
-      readSecure(BIOMETRIC_KEY),
-      readSecure(ADVANCED_URL_KEY),
-    ]);
-
-    adminConfigState.adminApiKey = key ?? '';
-    adminConfigState.biometricEnabled = biometric === 'true';
-    if (advancedUrl) {
-      try {
-        adminConfigState.baseUrl = normalizeHubUrl(advancedUrl);
-        adminConfigState.advancedUrlEnabled = adminConfigState.baseUrl !== VEXLUNE_HUB_URL;
-      } catch {
-        adminConfigState.baseUrl = VEXLUNE_HUB_URL;
-      }
+    if (input.baseUrl) await setSessionBaseUrl(input.baseUrl);
+    if (input.accessToken) {
+      if (!input.user) throw new Error('AUTH_USER_REQUIRED');
+      await saveSession({
+        accessToken: input.accessToken,
+        refreshToken: input.refreshToken,
+        expiresIn: input.expiresIn,
+        user: input.user,
+        baseUrl: sessionState.baseUrl,
+      });
     }
   } finally {
-    adminConfigState.hydrated = true;
+    sessionState.saving = false;
   }
-}
-
-export async function saveAdminConfig(input: { adminApiKey: string; baseUrl?: string }) {
-  const adminApiKey = input.adminApiKey.trim();
-  const baseUrl = normalizeHubUrl(input.baseUrl || VEXLUNE_HUB_URL);
-  if (!adminApiKey) throw new Error('ADMIN_API_KEY_REQUIRED');
-
-  adminConfigState.saving = true;
-  try {
-    await Promise.all([
-      writeSecure(ADMIN_KEY_KEY, adminApiKey),
-      baseUrl === VEXLUNE_HUB_URL ? deleteSecure(ADVANCED_URL_KEY) : writeSecure(ADVANCED_URL_KEY, baseUrl),
-    ]);
-    adminConfigState.adminApiKey = adminApiKey;
-    adminConfigState.baseUrl = baseUrl;
-    adminConfigState.advancedUrlEnabled = baseUrl !== VEXLUNE_HUB_URL;
-  } finally {
-    adminConfigState.saving = false;
-  }
-}
-
-export async function setBiometricEnabled(enabled: boolean) {
-  if (enabled) await writeSecure(BIOMETRIC_KEY, 'true');
-  else await deleteSecure(BIOMETRIC_KEY);
-  adminConfigState.biometricEnabled = enabled;
 }
 
 export async function restoreDefaultHubUrl() {
-  await deleteSecure(ADVANCED_URL_KEY);
-  adminConfigState.baseUrl = VEXLUNE_HUB_URL;
-  adminConfigState.advancedUrlEnabled = false;
+  const { setBaseUrl } = await import('@/src/auth/session');
+  const { VEXLUNE_HUB_URL } = await import('@/src/config/vexlune');
+  await setBaseUrl(VEXLUNE_HUB_URL);
 }
-
-export async function logoutAdminAccount() {
-  await Promise.all([deleteSecure(ADMIN_KEY_KEY), deleteSecure(BIOMETRIC_KEY)]);
-  adminConfigState.adminApiKey = '';
-  adminConfigState.biometricEnabled = false;
-}
-
-export const secureStoreAdapter = {
-  getItem: readSecure,
-  setItem: writeSecure,
-  deleteItem: deleteSecure,
-};

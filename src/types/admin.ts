@@ -224,16 +224,13 @@ export type UsageLog = {
   api_key_id?: number;
   model?: string;
   request_type?: string;
-  status?: string;
-  status_code?: number;
   input_tokens?: number;
   output_tokens?: number;
   cache_read_tokens?: number;
   total_tokens?: number;
-  cost?: number;
+  total_cost?: number;
   actual_cost?: number;
   duration_ms?: number;
-  error_message?: string | null;
   created_at?: string;
   user?: Pick<AdminUser, 'id' | 'email' | 'username'>;
   account?: Pick<AdminAccount, 'id' | 'name' | 'platform'>;
