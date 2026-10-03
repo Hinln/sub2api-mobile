@@ -14,10 +14,10 @@
 | Expo Doctor | 18/18（临时 npm shim） | `pnpm dlx expo-doctor@1.20.4`；主机直接运行 15/18，差异仅为缺少 npm；仅作依赖审计 |
 | iOS prebuild | 通过 | 隔离目录生成 `VexluneMobileConsole.xcodeproj` |
 | iOS Simulator Release | 通过 | Xcode 26.6；arm64/x86_64 `.app` |
-| iPhoneOS Release unsigned | 通过 | Xcode 26.6 生成 `build/VexluneMobileConsole-unsigned.xcarchive`，包含 arm64 `VexluneMobileConsole.app`、`main.jsbundle` 和 ExpoCrypto 原生依赖；Bundle ID `com.vexlune.mobile`，版本 `1.0.1 (2)`；未签名不能安装真机 |
+| iPhoneOS Release unsigned | 通过 | Xcode 26.6 生成 `build/VexluneMobileConsole-unsigned.xcarchive`，并以 App Store 配置生成 `build/VexluneMobileConsole-appstore-unsigned.xcarchive`；均包含 arm64 `VexluneMobileConsole.app`、`main.jsbundle` 和 ExpoCrypto 原生依赖；Bundle ID `com.vexlune.mobile`，版本 `1.0.1 (2)`；未签名不能安装真机 |
 | iOS Simulator Release | 通过 | Xcode 26.6 生成 `build/ios-crypto/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`；arm64/x86_64，Bundle ID `com.vexlune.mobile`，版本 `1.0.1 (2)`；ExpoCrypto `getRandomValues` 已静态链接 |
 | iOS Simulator install/launch | 通过 | 将当前 Release `.app` 安装到 iPhone 17 Pro Max Simulator（UDID `1453B2BD-6F79-4861-9090-03284CF7E859`）并启动；登录首屏可见，Turnstile 原生随机源按设计 fail-closed |
-| iOS signed archive | 外部门槛 | Xcode 工程已由 config plugin 写入 Team `6KW552MWV6`、`CODE_SIGN_STYLE=Automatic` 和版本号；本机 `codesign` 仍在登录钥匙串授权阶段停滞，需完成一次钥匙串授权后重试 archive/export |
+| iOS signed archive | 外部门槛 | App Store profile `Vexlune Mobile Console App Store 20261003` 已创建并安装；本机 `security find-identity` 仍只有 Apple Development，缺少对应 Apple Distribution 私钥，因此签名 archive/export 仍需先导入 Distribution `.p12` 并完成钥匙串授权 |
 | Live Hub Turnstile bridge | 未通过部署验收 | 当前 `https://hub.vexlune.com` 的 TLS 证书已过期，`scripts/verify-mobile-origin.sh` 在到达应用路由前即失败；此前绕过 TLS 的探针还观察到非法 action 返回 SPA `200`、有效 action 返回 SPA HTML。需先续期证书，再部署 backend `5ea52f8`（含 `/mobile/captcha/*` SPA bypass）并修正 Cloudflare/origin 路由。 |
 | GitHub native iOS workflow | 环境阻塞 | run `37051524996` 在步骤前因 billing issue 失败（steps=0），未产生 IPA/.app artifact |
 | Android | 暂缓 | 按当前范围不开发 Android；恢复范围时再配置 Android SDK/Java/签名并补充 APK/AAB 证据 |
