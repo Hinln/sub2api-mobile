@@ -15,6 +15,8 @@ invalid_headers="$tmp_dir/invalid.headers"
 invalid_body="$tmp_dir/invalid.body"
 bridge_headers="$tmp_dir/bridge.headers"
 bridge_body="$tmp_dir/bridge.body"
+health_headers="$tmp_dir/health.headers"
+health_body="$tmp_dir/health.body"
 
 settings_status="$(curl -sS -o "$settings_body" -D "$settings_headers" -w '%{http_code}' "$base_url/api/v1/settings/public")"
 settings_type="$(awk 'tolower($0) ~ /^content-type:/ {print tolower($0); exit}' "$settings_headers")"
@@ -24,6 +26,17 @@ if [ "$settings_status" != "200" ] || ! printf '%s' "$settings_type" | grep -q '
 fi
 if ! grep -q '"turnstile_enabled"[[:space:]]*:[[:space:]]*true' "$settings_body"; then
   echo "turnstile_enabled is not true in public settings" >&2
+  exit 1
+fi
+
+health_status="$(curl -sS -o "$health_body" -D "$health_headers" -w '%{http_code}' "$base_url/mobile/captcha/turnstile/health")"
+health_type="$(awk 'tolower($0) ~ /^content-type:/ {print tolower($0); exit}' "$health_headers")"
+if [ "$health_status" != "200" ] || ! printf '%s' "$health_type" | grep -q 'application/json' || ! grep -q '"status"[[:space:]]*:[[:space:]]*"ok"' "$health_body"; then
+  echo "Turnstile bridge health probe failed (status=$health_status)" >&2
+  exit 1
+fi
+if grep -Eiq 'secret|site[_-]?key|nonce' "$health_body"; then
+  echo "Turnstile bridge health probe exposed sensitive context" >&2
   exit 1
 fi
 

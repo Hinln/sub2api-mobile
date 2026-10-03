@@ -54,6 +54,7 @@ BASE_URL=https://hub.vexlune.com ./scripts/verify-mobile-origin.sh
 The command must pass all of these checks:
 
 - `GET /api/v1/settings/public` is JSON `200` and exposes only public Turnstile settings.
+- `GET /mobile/captcha/turnstile/health` is JSON `200` with `status=ok`, `Cache-Control: no-store`, and no secret, site key or nonce context.
 - An invalid bridge action returns `400` with `INVALID_TURNSTILE_CONTEXT`.
 - A valid `login`, `register` or `forgot_password` bridge returns the minimal HTML bridge, not the SPA shell.
 - The bridge HTML contains the native `ReactNativeWebView` handoff and no secret.
