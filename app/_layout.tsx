@@ -88,8 +88,10 @@ export default function RootLayout() {
         {!config.hydrated || !appearance.hydrated ? <LoadingScreen /> : Platform.OS !== 'web' && config.biometricEnabled && Boolean(config.accessToken) && !unlocked ? <LockedScreen unlock={() => void unlock()} /> : (
           <Stack key={appearance.mode} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.page } }}>
             <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="login" />
-            <Stack.Screen name="register" />
+            {/* Auth tabs share one visual surface. Disable stack gestures and
+                push animations so switching does not expose a second page. */}
+            <Stack.Screen name="login" options={{ animation: 'none', gestureEnabled: false }} />
+            <Stack.Screen name="register" options={{ animation: 'none', gestureEnabled: false }} />
             <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
             <Stack.Screen name="reset-password" options={{ headerShown: false }} />
             <Stack.Screen name="user" />
