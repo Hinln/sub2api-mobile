@@ -15,7 +15,7 @@
 
 ## 尚未完成的发布条件
 
-1. 本机签名条件已满足；当前剩余发布条件是将 `1.0.1 (2)` IPA 上传到 App Store Connect，并在真实 iPhone/TestFlight 完成验收。App Store Connect 当前仍是 `1.0` 准备提交，版本号需要先对齐。
+1. 本机签名条件已满足，App Store Connect 版本已对齐为 `1.0.1`；当前剩余发布条件是上传 `1.0.1 (2)` IPA，并在真实 iPhone/TestFlight 完成验收。
 2. GitHub Actions run 37051524996 在执行步骤前因账号 billing issue 失败（steps=0、无日志和 artifact）；恢复计费后才可取得云端 artifact。该问题不影响本机原生构建。
 3. Cloudflare 生产区域规则、Turnstile secret、staging origin 和真实账号联调仍需在目标环境完成；secret 不能进入 APP 或仓库。
 4. Android 按当前范围暂缓；本机没有 Android SDK/Java/adb，build-android-native.yml 只保留后续使用的原生 Gradle 入口。
