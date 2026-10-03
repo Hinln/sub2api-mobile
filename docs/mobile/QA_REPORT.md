@@ -7,7 +7,7 @@
 | 检查 | 结果 | 说明 |
 |---|---|---|
 | TypeScript | 通过 | `pnpm exec tsc --noEmit` |
-| Vitest | 通过（44/44） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP challenge、畸形二次验证响应、支付 URL/幂等、用户安全、真实服务契约、Turnstile bridge fail-closed 和安全 nonce 生成 |
+| Vitest | 通过（47/47） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP challenge、畸形二次验证响应、支付 URL/幂等、用户安全、真实服务契约、Turnstile bridge fail-closed 和安全 nonce 生成 |
 | ESLint | 通过 | `pnpm exec expo lint`；0 error、0 warning |
 | Web export | 通过 | `pnpm exec expo export --platform web`；仅用于静态路由/类型烟测，不用于原生发布构建 |
 | Turnstile bridge fail-closed hardening | 通过 | `b5f7e02` rejects insecure nonce generation and validates the native WebView message's actual first-party URL before accepting the one-shot token |
