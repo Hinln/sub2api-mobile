@@ -7,14 +7,14 @@
 | 检查 | 结果 | 说明 |
 |---|---|---|
 | TypeScript | 通过 | `pnpm exec tsc --noEmit` |
-| Vitest | 通过（39/39） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP challenge、畸形二次验证响应、支付 URL/幂等、用户安全和真实服务契约 |
+| Vitest | 通过（41/41） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP challenge、畸形二次验证响应、支付 URL/幂等、用户安全、真实服务契约和 Turnstile bridge fail-closed |
 | ESLint | 通过 | `pnpm exec expo lint`；0 error、0 warning |
 | Web export | 通过 | `pnpm exec expo export --platform web`；仅用于静态路由/类型烟测，不用于原生发布构建 |
 | Expo Doctor | 18/18（临时 npm shim） | `pnpm dlx expo-doctor@1.20.4`；主机直接运行 15/18，差异仅为缺少 npm；仅作依赖审计 |
 | iOS prebuild | 通过 | 隔离目录生成 `VexluneMobileConsole.xcodeproj` |
 | iOS Simulator Release | 通过 | Xcode 26.6；arm64/x86_64 `.app` |
 | iPhoneOS Release unsigned | 通过 | arm64 `.app` 已打包并验证 IPA 完整性；未签名不能安装真机 |
-| iOS Simulator Release | 通过 | Xcode 26.6 生成 `build/ios-final/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`；arm64/x86_64，Bundle ID `com.vexlune.mobile`，版本 `1.0.1 (2)` |
+| iOS Simulator Release | 通过 | Xcode 26.6 生成 `build/ios-final-v4/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`；arm64/x86_64，Bundle ID `com.vexlune.mobile`，版本 `1.0.1 (2)`；包含 Turnstile bridge fail-closed 改动 |
 | iOS signed archive | 外部门槛 | Team/证书已识别，但本机 `codesign` 在登录钥匙串授权阶段停滞；需在 Xcode Signing & Capabilities 中完成一次授权后重试 archive/export |
 | Live Hub Turnstile bridge | 未通过部署验收 | `scripts/verify-mobile-origin.sh` 在 `https://hub.vexlune.com` 按预期拦截到当前部署缺口：非法 action 返回 SPA `200`，而不是后端 `400`；有效 action 也返回 SPA HTML。需部署 backend `5ea52f8`（含 `/mobile/captcha/*` SPA bypass）并修正 Cloudflare/origin 路由。 |
 | GitHub native iOS workflow | 环境阻塞 | run `37051524996` 在步骤前因 billing issue 失败（steps=0），未产生 IPA/.app artifact |

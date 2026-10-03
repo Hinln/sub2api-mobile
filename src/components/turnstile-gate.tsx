@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
-import { WebView, type WebViewMessageEvent, type WebViewNavigation } from 'react-native-webview';
+import { WebView, type WebView as WebViewInstance, type WebViewMessageEvent, type WebViewNavigation } from 'react-native-webview';
 import { getPublicSettings } from '@/src/services/auth';
 import { sessionState } from '@/src/auth/session';
 import { theme } from '@/src/theme';
+import { parseTurnstileBridgeMessage, TURNSTILE_BRIDGE_PROBE_SCRIPT } from '@/src/lib/turnstile';
 
 const ALLOWED_ACTIONS = new Set(['login', 'register', 'forgot_password']);
 
@@ -20,6 +21,7 @@ export function TurnstileGate({ action, resetKey, onToken }: { action: 'login' |
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const origin = sessionState.baseUrl;
+  const webViewRef = useRef<WebViewInstance>(null);
 
   useEffect(() => {
     let active = true;
@@ -39,12 +41,13 @@ export function TurnstileGate({ action, resetKey, onToken }: { action: 'login' |
 
   const bridgeUrl = `${origin}/mobile/captcha/turnstile?nonce=${encodeURIComponent(nonce)}&action=${encodeURIComponent(action)}`;
   function onMessage(event: WebViewMessageEvent) {
-    try {
-      const value = JSON.parse(event.nativeEvent.data) as { type?: string; nonce?: string; action?: string; token?: string; origin?: string };
-      const messageOrigin = typeof value.origin === 'string' ? value.origin : '';
-      if (messageOrigin !== origin || value.type !== 'turnstile_token' || value.nonce !== nonce || value.action !== action || typeof value.token !== 'string' || value.token.length < 20) return;
-      onToken(value.token, nonce);
-    } catch { /* Ignore messages that are not the bridge contract. */ }
+    const message = parseTurnstileBridgeMessage(event.nativeEvent.data, origin, nonce, action);
+    if (!message) return;
+    if (message.kind === 'bridge_error') {
+      setError('安全验证页面返回了无效内容，请联系管理员。');
+      return;
+    }
+    onToken(message.token, nonce);
   }
   function allowNavigation(request: WebViewNavigation) {
     try {
@@ -54,5 +57,5 @@ export function TurnstileGate({ action, resetKey, onToken }: { action: 'login' |
     } catch { return false; }
   }
 
-  return <View style={{ marginTop: 14, overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: theme.border, minHeight: 110 }}><WebView source={{ uri: bridgeUrl }} originWhitelist={[origin, 'https://challenges.cloudflare.com', 'about:blank']} javaScriptEnabled domStorageEnabled onMessage={onMessage} onShouldStartLoadWithRequest={allowNavigation} onError={() => setError('安全验证页面加载失败，请检查网络')} accessibilityLabel="turnstile-webview" /></View>;
+  return <View style={{ marginTop: 14, overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: theme.border, minHeight: 110 }}><WebView ref={webViewRef} source={{ uri: bridgeUrl }} originWhitelist={[origin, 'https://challenges.cloudflare.com', 'about:blank']} javaScriptEnabled domStorageEnabled injectedJavaScript={TURNSTILE_BRIDGE_PROBE_SCRIPT} onLoadEnd={() => webViewRef.current?.injectJavaScript(TURNSTILE_BRIDGE_PROBE_SCRIPT)} onMessage={onMessage} onShouldStartLoadWithRequest={allowNavigation} onError={() => setError('安全验证页面加载失败，请检查网络')} onHttpError={() => setError('安全验证页面返回了无效内容，请联系管理员。')} accessibilityLabel="turnstile-webview" /></View>;
 }
