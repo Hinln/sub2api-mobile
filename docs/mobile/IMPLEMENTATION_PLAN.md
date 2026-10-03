@@ -12,7 +12,7 @@ Updated: 2026-10-03 (Asia/Shanghai)
 ## Evidence baseline
 
 - Mobile source: `Hinln/sub2api-mobile`, downloaded from public `main` ZIP. GitHub page reported latest commit `8431c44fc1f288aa01653aa10edfe8c2df19906f` on 2026-10-02. ZIP snapshots do not include `.git`, so local history is initialized from the snapshot and the source commit is recorded in `.codex-meta/SNAPSHOT.md`.
-- Private backend: authenticated access to `Hinln/sub2api` is configured through GitHub CLI/keyring and the Draft PR #1 is on `codex/backend-hardening-pr` at `d38d3ccce`; it preserves the current `main` tree and carries the audited backend hardening. The local snapshot is the target baseline; its remote remains `https://github.com/Hinln/sub2api.git`.
+- Private backend: authenticated access to `Hinln/sub2api` is configured through GitHub CLI/keyring and PR #1 is ready for review on `codex/backend-hardening-pr` at `d38d3ccce`; it preserves the current `main` tree and carries the audited backend hardening. The local snapshot is the target baseline; its remote remains `https://github.com/Hinln/sub2api.git`.
 - Public comparison: `Wei-Shaw/sub2api` snapshot is available at `repos/sub2api-upstream` for contract and security reference only. It is not the private target and will not be treated as the production backend.
 - Prompt package omissions: `prompts/06` and `prompts/07`, plus the merged prompt file named by `MANIFEST.md`, are absent. Goal 6/7 requirements are taken from `prompts/08` and `prompts/09` and recorded in the gap report.
 

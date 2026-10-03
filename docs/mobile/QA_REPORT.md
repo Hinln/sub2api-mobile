@@ -23,7 +23,7 @@
 | Live Hub Turnstile bridge | 未通过部署验收 | `BASE_URL=https://hub.vexlune.com ./scripts/verify-mobile-origin.sh` 于 2026-10-03 通过 TLS/公开设置后，在 `/mobile/captcha/turnstile/health` 收到 SPA `200`（应为 JSON `status=ok`）；因此非法 action 和有效 bridge 仍被 SPA 截获。需部署 backend `d38d3ccce`（含 `/mobile/captcha/*` SPA bypass）并修正 Cloudflare/origin 路由后再做真实 Turnstile 验收。 |
 | GitHub native iOS workflow | 环境阻塞 | run `37051524996` 在步骤前因 billing issue 失败（steps=0），未产生 IPA/.app artifact |
 | Android | 暂缓 | 按当前范围不开发 Android；恢复范围时再配置 Android SDK/Java/签名并补充 APK/AAB 证据 |
-| Go 后端测试 | 通过 | 在隔离 Go 1.27.1 darwin/arm64 工具链中以 `GOPROXY=https://goproxy.cn,direct GOTOOLCHAIN=local go test -p 1 ./...` 完整串行通过；后端 Draft PR 头 `d38d3ccce` 的 handler、迁移、插件和 Turnstile bridge 回归测试均通过 |
+| Go 后端测试 | 通过 | 在隔离 Go 1.27.1 darwin/arm64 工具链中以 `GOPROXY=https://goproxy.cn,direct GOTOOLCHAIN=local go test -p 1 ./...` 完整串行通过；后端 PR 头 `d38d3ccce` 的 handler、迁移、插件和 Turnstile bridge 回归测试均通过 |
 
 ## 必测真实链路
 
