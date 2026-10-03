@@ -24,7 +24,11 @@ pnpm run native:build:ios
 # to be unlocked in the macOS Keychain and Automatic signing enabled in Xcode).
 IOS_SDK=iphoneos CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES \
   CODE_SIGN_IDENTITY='Apple Development' pnpm run native:build:ios
+# App Store Connect/TestFlight（本机钥匙串必须已有 Apple Distribution 私钥）
+./scripts/export-ios-appstore.sh
 ```
+
+`export-ios-appstore.sh` 先用 `CODE_SIGNING_ALLOWED=NO` 编译本地 iPhoneOS archive，避免把 App Store profile 错误应用到 CocoaPods 静态库；`xcodebuild -exportArchive` 再使用已安装的 App Store profile 和 Apple Distribution identity 完成签名。脚本会在缺少 Distribution 私钥或 profile 时 fail-closed，不会生成伪成功的 IPA。
 
 ## 上线顺序
 
