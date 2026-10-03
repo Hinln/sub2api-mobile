@@ -4,7 +4,7 @@ Updated: 2026-10-03 (Asia/Shanghai).
 
 ## Repository authority
 
-The delivery targets are the two Hinln repositories. GitHub metadata reports Hinln/sub2api as a private standalone repository (isFork=false, no parent) and Hinln/sub2api-mobile as a public fork of ckken/sub2api-mobile; the latter is still the requested delivery repository and is unrelated to the public Wei-Shaw/sub2api reference. The authenticated backend checkout is repos/sub2api at final commit `5ea52f8` on branch `codex/backend-hardening`, with remote https://github.com/Hinln/sub2api.git. The mobile branch is `codex/vexlune-hub` at `cf04b61`.
+The delivery targets are the two Hinln repositories. GitHub metadata reports Hinln/sub2api as a private standalone repository (isFork=false, no parent) and Hinln/sub2api-mobile as a public fork of ckken/sub2api-mobile; the latter is still the requested delivery repository and is unrelated to the public Wei-Shaw/sub2api reference. The authenticated backend checkout is repos/sub2api at final commit `5ea52f8` on branch `codex/backend-hardening`, with remote https://github.com/Hinln/sub2api.git. The mobile branch is `codex/vexlune-hub` at `7a399c0`.
 
 ## Audit conclusion
 
