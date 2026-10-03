@@ -17,6 +17,8 @@ team_id="${APPLE_TEAM_ID:-6KW552MWV6}"
 bundle_id="${IOS_BUNDLE_ID:-com.vexlune.mobile}"
 profile_name="${IOS_PROFILE_NAME:-Vexlune Mobile Console App Store 20261003 Distribu}"
 profile_dir="${HOME}/Library/MobileDevice/Provisioning Profiles"
+source_revision="$(git -C "$repo_root" rev-parse HEAD)"
+archive_revision_file="${archive_path}.source-revision"
 
 if ! security find-identity -v -p codesigning 2>/dev/null | grep -Eq 'Apple Distribution|iPhone Distribution'; then
   echo "Apple Distribution/iPhone Distribution certificate and private key are not available in the login keychain." >&2
@@ -43,7 +45,15 @@ if [ -z "$profile_path" ]; then
   exit 2
 fi
 
-if [ ! -d "$archive_path" ]; then
+reuse_archive=0
+if [ "${IOS_REUSE_ARCHIVE:-0}" = "1" ] && [ -d "$archive_path" ]; then
+  reuse_archive=1
+elif [ -d "$archive_path" ] && [ -f "$archive_revision_file" ] \
+  && [ "$(cat "$archive_revision_file")" = "$source_revision" ]; then
+  reuse_archive=1
+fi
+
+if [ "$reuse_archive" -eq 0 ]; then
   xcodebuild \
     -workspace "$workspace" \
     -scheme "$scheme" \
@@ -54,6 +64,10 @@ if [ ! -d "$archive_path" ]; then
     CODE_SIGNING_ALLOWED=NO \
     CODE_SIGNING_REQUIRED=NO \
     clean archive
+  # Keep provenance beside the archive so the archive itself remains a
+  # standard Xcode artifact. A failed archive never updates this marker and
+  # cannot make a stale archive look current on the next run.
+  printf '%s\n' "$source_revision" > "$archive_revision_file"
 fi
 
 # macOS mktemp requires the XXXXXX marker at the end of the template. Keep

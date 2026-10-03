@@ -57,7 +57,9 @@ sh scripts/export-ios-appstore.sh
 `native-build-ios.sh` 会校验已提交的 workspace，并调用 `xcodebuild`；它故意不
 运行 Expo prebuild。`export-ios-appstore.sh` 在本机完成 archive/export 和
 `codesign --verify --deep --strict`，凭据必须来自 macOS Keychain 或受控 CI secret，
-不能提交仓库或打印日志。
+不能提交仓库或打印日志。脚本会记录 archive 对应的源码 commit；默认只复用与
+当前 commit 匹配的 archive，源码变化后会自动重新归档。只有在确认 archive 已由
+其他方式审计过时，才可显式设置 `IOS_REUSE_ARCHIVE=1` 复用已有 archive。
 
 ## TestFlight 交付
 
