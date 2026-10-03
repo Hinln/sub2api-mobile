@@ -43,7 +43,7 @@ Updated: 2026-10-03 (Asia/Shanghai)
 ## Required proof before completion
 
 - Private backend commit and migration/test evidence.
-- Contract tests against the private response envelope and error codes (mobile `5d42c86`, backend PR head `933e91ccb`).
+- Contract tests against the private response envelope and error codes (mobile `959e403`, backend PR head `933e91ccb`).
 - iOS development/preview build evidence; Android preview/production artifacts are deferred until that scope is reopened.
 - Real Cloudflare configuration and Turnstile device flow evidence.
 - QA, security, release and rollback documents with no unresolved rows.

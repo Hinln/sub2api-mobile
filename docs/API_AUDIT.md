@@ -50,4 +50,4 @@
 
 ## 版本差异风险
 
-Vexlune 私有后端源快照为 `5ea52f8`（分支 `codex/backend-hardening`），当前后端改造交付头由 PR #1 维护；移动端初始实现基线为 `cf04b61`，当前交付头为 `5d42c86`（分支 `codex/vexlune-hub`）。接口和 Turnstile/幂等改造以 `Hinln/sub2api` 为源。APP 对不支持的字段使用空状态，不伪造数据；真实 staging 管理员联调仍需账号和 Cloudflare 环境凭据。
+Vexlune 私有后端源快照为 `5ea52f8`（分支 `codex/backend-hardening`），当前后端改造交付头由 PR #1 维护；移动端初始实现基线为 `cf04b61`，当前交付头为 `959e403`（分支 `codex/vexlune-hub`）。接口和 Turnstile/幂等改造以 `Hinln/sub2api` 为源。APP 对不支持的字段使用空状态，不伪造数据；真实 staging 管理员联调仍需账号和 Cloudflare 环境凭据。
