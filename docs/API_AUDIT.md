@@ -50,4 +50,4 @@
 
 ## 版本差异风险
 
-Vexlune 私有后端目标提交为 `5ea52f8`（分支 `codex/backend-hardening`）；移动端交付分支当前为 `7a399c0`。接口和 Turnstile/幂等改造以 `Hinln/sub2api` 为源。APP 对不支持的字段使用空状态，不伪造数据；真实 staging 管理员联调仍需账号和 Cloudflare 环境凭据。
+Vexlune 私有后端目标提交为 `5ea52f8`（分支 `codex/backend-hardening`）；移动端实现基线为 `cf04b61`（分支 `codex/vexlune-hub`），后续提交仅刷新审计与发布证据。接口和 Turnstile/幂等改造以 `Hinln/sub2api` 为源。APP 对不支持的字段使用空状态，不伪造数据；真实 staging 管理员联调仍需账号和 Cloudflare 环境凭据。
