@@ -82,6 +82,16 @@ xcodebuild \
   -exportOptionsPlist "$export_options"
 
 app_path="$export_path/Payload/VexluneMobileConsole.app"
+ipa_path="$export_path/VexluneMobileConsole.ipa"
+if [ ! -f "$ipa_path" ]; then
+  echo "App Store export did not produce an IPA: $ipa_path" >&2
+  exit 2
+fi
+verify_dir=$(mktemp -d "${TMPDIR:-/tmp}/vexlune-ipa-verify.XXXXXX")
+cleanup_verify() { rm -rf "$verify_dir"; }
+trap cleanup_verify EXIT INT TERM
+ditto -x -k "$ipa_path" "$verify_dir"
+app_path="$verify_dir/Payload/VexluneMobileConsole.app"
 codesign --verify --deep --strict --verbose=2 "$app_path"
-shasum -a 256 "$export_path/VexluneMobileConsole.ipa"
-echo "App Store export passed: $export_path/VexluneMobileConsole.ipa"
+shasum -a 256 "$ipa_path"
+echo "App Store export passed: $ipa_path"

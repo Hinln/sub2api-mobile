@@ -8,7 +8,7 @@
 
 - [x] App Store Connect 已存在 `Vexlune Hub` App 记录（App ID `6818636344`），iOS 版本 `1.0` 当前为“准备提交”。
 - [x] Apple Developer App ID `Vexlune Mobile Console` / `com.vexlune.mobile` 已存在。
-- [x] Apple Developer 已有有效 Distribution certificates；本机钥匙串已导入 iPhone Distribution 身份，首次 `codesign` 仍需 macOS 登录钥匙串授权。
+- [x] Apple Developer 已有有效 Distribution certificates；本机钥匙串已导入 iPhone Distribution 身份，签名验证已通过。
 - [x] 已有有效 Ad Hoc profile `Vexlune Mobile Console Ad Hoc 20260907`，绑定 `com.vexlune.mobile`。
 - [x] 已创建并下载绑定 `com.vexlune.mobile` 与新 iOS Distribution 证书的 App Store profile `Vexlune Mobile Console App Store 20261003 Distribu`，有效期至 2027-10-03。
 - [ ] App Store Connect 尚无上传构建，iPhone 截图当前为 0/10。
@@ -26,8 +26,8 @@
 
 - [ ] Xcode 中选择 Team `6KW552MWV6`，Bundle ID 与 App ID 匹配，自动签名或受控 provisioning profile 已验证。
 - [ ] `CFBundleShortVersionString` 与 App Store Connect 版本一致；每次上传都递增 `CFBundleVersion`。
-- [ ] 通过本机或受控 macOS Runner 执行签名 `archive` 和 `-exportArchive`；无签名 iPhoneOS archive 已生成；对应 iOS Distribution 私钥已存在，当前仅等待 macOS `codesign` 钥匙串授权。不使用 Expo/EAS 云构建或托管签名。
-- [ ] 导出包通过 `codesign --verify --deep --strict`，并记录 archive UUID、构建 commit 和 SHA-256。
+- [x] 本机原生 `archive` 和 `-exportArchive` 已完成；`build/appstore-export/VexluneMobileConsole.ipa` 通过 `codesign --verify --deep --strict`，SHA-256 为 `3209438e4d9b9b5c68ab44368a7a0a32aa953daede2385244195d4b6c023d55c`。不使用 Expo/EAS 云构建或托管签名。
+- [x] 导出包通过 `codesign --verify --deep --strict`，并已记录 SHA-256；上传后补充 archive UUID、构建 commit 和 App Store Connect build ID。
 - [ ] 上传完成后记录 App Store Connect build ID、处理状态和导出日志摘要。
 
 ## TestFlight 验收
