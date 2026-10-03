@@ -23,11 +23,11 @@ Updated: 2026-10-03 (Asia/Shanghai)
 | 0 | Snapshot, branch, dependency/build baseline | independent Git branches, lockfiles and environment audit | Complete locally |
 | 1 | Real route and DTO audit | `API_COVERAGE_MATRIX.md`, `API_GAP_REPORT.md` | Complete from authenticated private checkout |
 | 2 | Shared design system, logo, API client, query/session boundaries | unified V Logo, Bearer client, cache clearing, tests | Complete locally |
-| 3 | Email/password auth, role routing, refresh, Turnstile WebView | source changes + 44 mobile tests + backend policy tests | Complete in source; staging pending |
+| 3 | Email/password auth, role routing, refresh, Turnstile WebView | source changes + 47 mobile tests + backend policy tests | Complete in source; staging pending |
 | 4 | User workspace and real payment/usage/key flows | real endpoint screens + stable payment/key idempotency | Complete in source; provider sandbox pending |
 | 5 | Admin workspace and audited high-risk operations | existing admin routes migrated to Bearer JWT; no API-key UI | Complete in source; staging role/step-up pending |
 | 6 | Private backend gaps, migrations, idempotency, audit | backend PR #1 head `933e91ccb`; Redis nonce ledger, payment coordinator, Go 1.27.1 handler/repository tests | Complete and locally verified |
-| 7 | E2E, security and no-placeholder scan | QA/security reports and source scan | Complete locally; staging accounts pending |
+| 7 | E2E, security and no-placeholder scan | QA/security reports and `scripts/verify-production-scan.sh` | Complete locally; staging accounts pending |
 | 8 | iOS build, release and rollback | Native Xcode workflow and runbooks | iOS unsigned Simulator/device builds verified; Android is deferred by current scope; signing/TestFlight and Actions billing remain external gates |
 
 ## Immediate execution order
@@ -43,7 +43,7 @@ Updated: 2026-10-03 (Asia/Shanghai)
 ## Required proof before completion
 
 - Private backend commit and migration/test evidence.
-- Contract tests against the private response envelope and error codes (mobile `959e403`, backend PR head `933e91ccb`).
+- Contract tests against the private response envelope and error codes (mobile `0fa4cf0`, backend PR head `933e91ccb`).
 - iOS development/preview build evidence; Android preview/production artifacts are deferred until that scope is reopened.
 - Real Cloudflare configuration and Turnstile device flow evidence.
 - QA, security, release and rollback documents with no unresolved rows.

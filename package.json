@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "test": "vitest run",
+    "verify:production-scan": "sh ./scripts/verify-production-scan.sh",
     "test:watch": "vitest",
     "web:build": "expo export --platform web",
     "test:visual": "playwright test",
