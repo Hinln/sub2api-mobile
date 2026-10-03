@@ -48,7 +48,8 @@
           "faceIDPermission": "允许 Vexlune 使用 Face ID 解锁管理控制台。"
         }
       ],
-      "expo-font"
+      "expo-font",
+      "./plugins/with-ios-version"
     ],
     "extra": {
       "router": {}

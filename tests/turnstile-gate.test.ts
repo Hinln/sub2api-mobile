@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+vi.mock('expo-crypto', () => ({ getRandomValues: vi.fn() }));
+import * as ExpoCrypto from 'expo-crypto';
 import { createTurnstileNonce, parseTurnstileBridgeMessage, TURNSTILE_BRIDGE_PROBE_SCRIPT } from '@/src/lib/turnstile';
 
 describe('turnstile bridge contract', () => {
@@ -28,5 +30,17 @@ describe('turnstile bridge contract', () => {
 
   it('fails closed when the random source throws', () => {
     expect(createTurnstileNonce(() => { throw new Error('unavailable'); })).toBe('');
+  });
+
+  it('uses the native Expo secure random source when Web Crypto is unavailable', () => {
+    const getRandomValues = vi.spyOn(ExpoCrypto, 'getRandomValues').mockImplementation((bytes) => {
+      bytes.fill(0x5a);
+      return bytes;
+    });
+    vi.stubGlobal('crypto', undefined);
+    expect(createTurnstileNonce()).toBe('5a'.repeat(24));
+    expect(getRandomValues).toHaveBeenCalledOnce();
+    vi.unstubAllGlobals();
+    getRandomValues.mockRestore();
   });
 });

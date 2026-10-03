@@ -1,3 +1,5 @@
+import * as ExpoCrypto from 'expo-crypto';
+
 export type TurnstileBridgeMessage = {
   type?: string;
   nonce?: string;
@@ -17,7 +19,9 @@ export type ParsedTurnstileMessage =
  * does not expose Web Crypto; callers must not fall back to Math.random().
  */
 export function createTurnstileNonce(randomValues?: (bytes: Uint8Array) => Uint8Array): string {
-  const fill = randomValues ?? globalThis.crypto?.getRandomValues?.bind(globalThis.crypto);
+  const fill = randomValues
+    ?? globalThis.crypto?.getRandomValues?.bind(globalThis.crypto)
+    ?? ((bytes: Uint8Array) => ExpoCrypto.getRandomValues(bytes));
   if (!fill) return '';
   const bytes = new Uint8Array(24);
   try {

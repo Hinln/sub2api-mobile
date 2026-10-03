@@ -23,7 +23,7 @@ Updated: 2026-10-03 (Asia/Shanghai)
 | 0 | Snapshot, branch, dependency/build baseline | independent Git branches, lockfiles and environment audit | Complete locally |
 | 1 | Real route and DTO audit | `API_COVERAGE_MATRIX.md`, `API_GAP_REPORT.md` | Complete from authenticated private checkout |
 | 2 | Shared design system, logo, API client, query/session boundaries | unified V Logo, Bearer client, cache clearing, tests | Complete locally |
-| 3 | Email/password auth, role routing, refresh, Turnstile WebView | source changes + 43 mobile tests + backend policy tests | Complete in source; staging pending |
+| 3 | Email/password auth, role routing, refresh, Turnstile WebView | source changes + 44 mobile tests + backend policy tests | Complete in source; staging pending |
 | 4 | User workspace and real payment/usage/key flows | real endpoint screens + stable payment/key idempotency | Complete in source; provider sandbox pending |
 | 5 | Admin workspace and audited high-risk operations | existing admin routes migrated to Bearer JWT; no API-key UI | Complete in source; staging role/step-up pending |
 | 6 | Private backend gaps, migrations, idempotency, audit | backend commits through `5ea52f8`; shared-history PR head `77d4917`; Redis nonce ledger, payment coordinator, Go 1.27.1 `make test-unit` | Complete and locally verified |
