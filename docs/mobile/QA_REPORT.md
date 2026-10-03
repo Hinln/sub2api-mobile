@@ -16,6 +16,7 @@
 | iOS Simulator Release | 通过 | Xcode 26.6；arm64/x86_64 `.app` |
 | iPhoneOS Release unsigned | 通过 | arm64 `.app` 已打包并验证 IPA 完整性；未签名不能安装真机 |
 | iOS Simulator Release | 通过 | Xcode 26.6 生成 `build/ios-final-v4/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`；arm64/x86_64，Bundle ID `com.vexlune.mobile`，版本 `1.0.1 (2)`；包含 Turnstile bridge fail-closed 改动 |
+| iOS Simulator install/launch | 通过 | 将当前 Release `.app` 安装到 iPhone 17 Pro Max Simulator（UDID `1453B2BD-6F79-4861-9090-03284CF7E859`）并启动；登录首屏可见，模拟器安全随机源不足时按设计显示 Turnstile fail-closed 错误 |
 | iOS signed archive | 外部门槛 | Team/证书已识别，但本机 `codesign` 在登录钥匙串授权阶段停滞；需在 Xcode Signing & Capabilities 中完成一次授权后重试 archive/export |
 | Live Hub Turnstile bridge | 未通过部署验收 | `scripts/verify-mobile-origin.sh` 在 `https://hub.vexlune.com` 按预期拦截到当前部署缺口：非法 action 返回 SPA `200`，而不是后端 `400`；有效 action 也返回 SPA HTML。需部署 backend `5ea52f8`（含 `/mobile/captcha/*` SPA bypass）并修正 Cloudflare/origin 路由。 |
 | GitHub native iOS workflow | 环境阻塞 | run `37051524996` 在步骤前因 billing issue 失败（steps=0），未产生 IPA/.app artifact |
