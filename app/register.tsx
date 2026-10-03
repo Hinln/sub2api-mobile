@@ -5,6 +5,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthApiError, getPublicSettings, register, sendVerifyCode } from '@/src/services/auth';
 import { TurnstileGate } from '@/src/components/turnstile-gate';
+import { LoginAgreementNotice } from '@/src/components/login-agreement';
 import { theme } from '@/src/theme';
 import { VexluneLogo } from '@/src/components/vexlune-logo';
 
@@ -69,6 +70,7 @@ export default function RegisterScreen() {
       {registrationEnabled === false ? <Text style={{ color: theme.warning, fontSize: 13, lineHeight: 19, marginTop: 13 }}>{'当前已关闭公开注册，请返回登录或联系管理员。'}</Text> : null}{notice ? <Text style={{ color: theme.success, fontSize: 13, lineHeight: 19, marginTop: 13 }}>{notice}</Text> : null}{error ? <Text style={{ color: theme.danger, fontSize: 13, lineHeight: 19, marginTop: 13 }}>{error}</Text> : null}
       <Pressable accessibilityRole="button" disabled={busy || registrationEnabled !== true} onPress={() => void submit()} style={{ marginTop: 17, minHeight: 50, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: busy || registrationEnabled !== true ? theme.muted : theme.primary }}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '900' }}>{registrationEnabled === false ? '注册已关闭' : registrationEnabled === null ? '检查注册状态…' : verifyStep ? '完成注册' : '创建账号'}</Text>}</Pressable>
       <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 5, marginTop: 18 }}><Text style={{ color: theme.subtext, fontSize: 13 }}>已有账号？</Text><Link href="/login" asChild><Pressable><Text style={{ color: theme.primary, fontSize: 13, fontWeight: '900' }}>返回登录</Text></Pressable></Link></View>
+      <LoginAgreementNotice action="register" />
     </View>
   </ScrollView></KeyboardAvoidingView></SafeAreaView>;
 }

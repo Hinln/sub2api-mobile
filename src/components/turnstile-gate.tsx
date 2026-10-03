@@ -4,7 +4,6 @@ import { WebView, type WebView as WebViewInstance, type WebViewMessageEvent, typ
 import { getPublicSettings } from '@/src/services/auth';
 import { sessionState } from '@/src/auth/session';
 import { theme } from '@/src/theme';
-import { LoginAgreementCard } from '@/src/components/login-agreement';
 import { parseTurnstilePageMessage, TURNSTILE_PAGE_ACCEPT_AGREEMENT_SCRIPT, TURNSTILE_PAGE_CAPTURE_SCRIPT, TURNSTILE_PAGE_FOCUS_SCRIPT } from '@/src/lib/turnstile';
 import type { LoginAgreementDocument } from '@/src/types/auth';
 
@@ -18,8 +17,6 @@ export function TurnstileGate({ action, resetKey, consentRequestKey = 0, onToken
   const [agreementRequired, setAgreementRequired] = useState(false);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [agreementDocuments, setAgreementDocuments] = useState<LoginAgreementDocument[]>([]);
-  const [agreementUpdatedAt, setAgreementUpdatedAt] = useState<string>();
-  const [agreementRevision, setAgreementRevision] = useState<string>();
   const agreementAcceptedRef = useRef(false);
   const agreementRequiredRef = useRef(false);
   const widgetVisibleRef = useRef(false);
@@ -42,8 +39,6 @@ export function TurnstileGate({ action, resetKey, consentRequestKey = 0, onToken
       // the first-party WebView remains hidden until the user submits login
       // or registration, which is the consent action for this app.
       setAgreementDocuments(agreementEnabled ? documents : []);
-      setAgreementUpdatedAt(settings.login_agreement_updated_at);
-      setAgreementRevision(settings.login_agreement_revision);
       const accepted = agreementEnabled ? agreementAcceptedRef.current : true;
       agreementAcceptedRef.current = accepted;
       agreementRequiredRef.current = agreementEnabled && !accepted;
@@ -89,8 +84,7 @@ export function TurnstileGate({ action, resetKey, consentRequestKey = 0, onToken
 
   if (Platform.OS === 'web' || !ALLOWED_ACTIONS.has(action)) return null;
   if (loading) return <View style={{ minHeight: 72, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={theme.primary} /></View>;
-  const agreementCard = agreementDocuments.length > 0 ? <LoginAgreementCard documents={agreementDocuments} updatedAt={agreementUpdatedAt} revision={agreementRevision} required={agreementRequired} accepted={agreementAccepted && !agreementRequired} /> : null;
-  if (!siteKey) return <View>{agreementCard}<Text style={{ color: error ? theme.danger : theme.subtext, fontSize: 12, lineHeight: 18, marginTop: 12 }}>{error || '当前未启用安全验证。'}</Text></View>;
+  if (!siteKey) return <View><Text style={{ color: error ? theme.danger : theme.subtext, fontSize: 12, lineHeight: 18, marginTop: 12 }}>{error || '当前未启用安全验证。'}</Text></View>;
 
   // The official web client owns the Turnstile widget. Loading its auth page
   // keeps the challenge on the first-party hostname and avoids depending on a
@@ -187,7 +181,6 @@ export function TurnstileGate({ action, resetKey, consentRequestKey = 0, onToken
   }
 
   return <View style={{ marginTop: 14 }}>
-    {agreementCard}
     {!widgetVisible ? <View style={{ minHeight: 56, borderRadius: 14, borderWidth: 1, borderColor: agreementRequired ? theme.primary : theme.border, backgroundColor: theme.cardRaised, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 10 }}><ActivityIndicator color={theme.primary} /><Text style={{ flex: 1, color: error ? theme.danger : theme.subtext, fontSize: 12, lineHeight: 18 }}>{error || (agreementRequired ? '点击登录或注册即表示同意服务条款' : '正在加载官方安全验证…')}</Text></View> : null}
     {error && widgetVisible ? <Text style={{ color: theme.danger, fontSize: 12, lineHeight: 18, marginTop: 10 }}>{error}</Text> : null}
     <View style={{ marginTop: widgetVisible ? 10 : 1, height: widgetVisible ? 110 : 1, overflow: 'hidden', borderRadius: 12, borderWidth: widgetVisible ? 1 : 0, borderColor: theme.border, opacity: widgetVisible ? 1 : 0.01 }}><WebView key={`${action}-${resetKey ?? 0}`} ref={webViewRef} style={{ height: widgetVisible ? 110 : 1 }} source={{ uri: pageUrl }} originWhitelist={[origin, 'https://challenges.cloudflare.com', 'about:blank']} javaScriptEnabled domStorageEnabled injectedJavaScriptBeforeContentLoaded={TURNSTILE_PAGE_CAPTURE_SCRIPT} onLoadEnd={onLoadEnd} onMessage={onMessage} onShouldStartLoadWithRequest={allowNavigation} onError={() => { widgetVisibleRef.current = false; setWidgetVisible(false); setError('安全验证页面加载失败，请检查网络'); }} onHttpError={() => { widgetVisibleRef.current = false; setWidgetVisible(false); setError('安全验证页面返回了无效内容，请联系管理员。'); }} accessibilityLabel="turnstile-webview" /></View>

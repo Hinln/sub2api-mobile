@@ -5,6 +5,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getPublicSettings, login, completeTwoFactor, AuthApiError } from '@/src/services/auth';
 import { TurnstileGate } from '@/src/components/turnstile-gate';
+import { LoginAgreementNotice } from '@/src/components/login-agreement';
 import { adminConfigState, hasAuthenticatedSession } from '@/src/store/admin-config';
 import { isAdmin } from '@/src/auth/session';
 import { theme } from '@/src/theme';
@@ -90,6 +91,7 @@ export default function LoginScreen() {
               {error ? <Text style={{ color: theme.danger, fontSize: 13, lineHeight: 19, marginTop: 13 }}>{error}</Text> : null}
               <Pressable accessibilityRole="button" disabled={busy} onPress={() => void submit()} style={{ marginTop: 17, minHeight: 50, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: busy ? theme.muted : theme.primary }}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '900' }}>登录</Text>}</Pressable>
               {registrationEnabled ? <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 5, marginTop: 18 }}><Text style={{ color: theme.subtext, fontSize: 13 }}>还没有账号？</Text><Link href="/register" asChild><Pressable><Text style={{ color: theme.primary, fontSize: 13, fontWeight: '900' }}>注册</Text></Pressable></Link></View> : null}
+              <LoginAgreementNotice action="login" />
             </>}
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 20 }}><ShieldCheck color={theme.success} size={15} /><Text style={{ color: theme.faint, fontSize: 11 }}>会话凭据仅保存于系统 SecureStore</Text></View>

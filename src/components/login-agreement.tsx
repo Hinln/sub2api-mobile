@@ -1,6 +1,7 @@
-import { Check, ChevronRight, FileText, ShieldCheck, X } from 'lucide-react-native';
+import { ChevronRight, ShieldCheck, X } from 'lucide-react-native';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Modal, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { getPublicSettings } from '@/src/services/auth';
 import type { LoginAgreementDocument } from '@/src/types/auth';
 import { theme } from '@/src/theme';
 
@@ -29,14 +30,10 @@ export function LoginAgreementCard({
   documents,
   updatedAt,
   revision,
-  required,
-  accepted,
 }: {
   documents: LoginAgreementDocument[];
   updatedAt?: string;
   revision?: string;
-  required: boolean;
-  accepted: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(documents[0]?.id ?? '');
@@ -49,13 +46,17 @@ export function LoginAgreementCard({
   if (!document) return null;
 
   return <>
-    <View style={{ marginTop: 14, borderRadius: 16, borderWidth: 1, borderColor: required && !accepted ? theme.primary : theme.border, backgroundColor: theme.cardRaised, padding: 12 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
-        <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: theme.primarySoft, alignItems: 'center', justifyContent: 'center' }}><FileText color={theme.primary} size={18} /></View>
-        <View style={{ flex: 1 }}><Text style={{ color: theme.text, fontSize: 13, fontWeight: '900' }}>{document.title || '服务条款'}</Text><Text style={{ color: theme.subtext, fontSize: 11, lineHeight: 16, marginTop: 3 }}>{accepted ? '本次登录已确认当前版本' : '登录或注册即表示你已阅读并同意'}</Text></View>
-        {accepted ? <Check color={theme.success} size={19} /> : <ShieldCheck color={theme.primary} size={19} />}
+    <View style={{ marginTop: 18, paddingTop: 14, borderTopWidth: 1, borderTopColor: theme.border, alignItems: 'center' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+        <ShieldCheck color={theme.faint} size={14} />
+        <Text style={{ color: theme.faint, fontSize: 11, lineHeight: 17, textAlign: 'center' }}>登录或注册即表示你已阅读并同意</Text>
       </View>
-      <Pressable accessibilityRole="button" onPress={() => setOpen(true)} style={{ alignSelf: 'flex-start', minHeight: 34, justifyContent: 'center', marginTop: 7 }}><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '800' }}>查看服务条款</Text></Pressable>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 3 }}>
+        {documents.map((item, index) => <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {index > 0 ? <Text style={{ color: theme.faint, fontSize: 11 }}>和</Text> : null}
+          <Pressable accessibilityRole="link" onPress={() => { setSelectedId(item.id); setOpen(true); }} hitSlop={6}><Text style={{ color: theme.primary, fontSize: 11, lineHeight: 17, fontWeight: '800' }}>{item.title || '服务条款'}</Text></Pressable>
+        </View>)}
+      </View>
     </View>
 
     <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
@@ -76,4 +77,35 @@ export function LoginAgreementCard({
       </SafeAreaView>
     </Modal>
   </>;
+}
+
+/**
+ * Loads the official public agreement documents and renders the passive
+ * footer notice used by the login and registration forms. Consent is recorded
+ * by the submit action; this component never adds a checkbox or blocks the
+ * form with a modal.
+ */
+export function LoginAgreementNotice({ action }: { action: 'login' | 'register' }) {
+  const [documents, setDocuments] = useState<LoginAgreementDocument[]>([]);
+  const [updatedAt, setUpdatedAt] = useState<string>();
+  const [revision, setRevision] = useState<string>();
+
+  useEffect(() => {
+    let active = true;
+    void getPublicSettings().then((settings) => {
+      if (!active || settings.login_agreement_enabled !== true) return;
+      const currentDocuments = settings.login_agreement_documents ?? [];
+      if (currentDocuments.length === 0) return;
+      setDocuments(currentDocuments);
+      setUpdatedAt(settings.login_agreement_updated_at);
+      setRevision(settings.login_agreement_revision);
+    }).catch(() => {
+      // The agreement footer is informational. The auth request and the
+      // first-party page remain responsible for enforcing the official policy.
+    });
+    return () => { active = false; };
+  }, [action]);
+
+  if (documents.length === 0) return null;
+  return <LoginAgreementCard documents={documents} updatedAt={updatedAt} revision={revision} />;
 }
