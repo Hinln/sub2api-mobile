@@ -67,7 +67,7 @@ staging/设备上验证：
 
 - `hub.vexlune.com/mobile/captcha/turnstile` 已由目标 backend 提供最小 bridge，
   但线上 `/mobile/captcha/turnstile/health` 当前仍返回 SPA shell（HTTP 200），
-  需部署 backend `d38d3ccce` 并核对 Cloudflare 路由。
+  需部署 backend `91a1b7f36` 并核对 Cloudflare 路由。
 - 需要可撤销的普通用户与管理员 staging 账号完成 role、TOTP、审计和支付幂等
   联调。
 - iOS IPA 已本机签名并通过 codesign；TestFlight 上传、处理和实体 iPhone 流程
