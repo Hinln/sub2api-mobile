@@ -36,8 +36,8 @@ export function TurnstileGate({ action, resetKey, onToken }: { action: 'login' |
 
   if (Platform.OS === 'web' || !ALLOWED_ACTIONS.has(action)) return null;
   if (loading) return <View style={{ minHeight: 72, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={theme.primary} /></View>;
-  if (!siteKey) return null;
   if (error) return <Text style={{ color: theme.danger, fontSize: 12, lineHeight: 18, marginTop: 12 }}>{error}</Text>;
+  if (!siteKey) return null;
 
   const bridgeUrl = `${origin}/mobile/captcha/turnstile?nonce=${encodeURIComponent(nonce)}&action=${encodeURIComponent(action)}`;
   function onMessage(event: WebViewMessageEvent) {
