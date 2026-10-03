@@ -4,7 +4,7 @@ Updated: 2026-10-03 (Asia/Shanghai).
 
 ## Repository authority
 
-The delivery targets are the two Hinln repositories. GitHub metadata reports Hinln/sub2api as a private standalone repository (isFork=false, no parent) and Hinln/sub2api-mobile as a public fork of ckken/sub2api-mobile; the latter is still the requested delivery repository and is unrelated to the public Wei-Shaw/sub2api reference. The authenticated backend checkout is repos/sub2api at final source commit `5ea52f8` on branch `codex/backend-hardening`, with reviewable shared-history Draft PR head `77d4917` on `codex/backend-hardening-pr`; that PR preserves `main` and contains only the 28-file mobile hardening diff. The remote is https://github.com/Hinln/sub2api.git. The mobile implementation baseline is `cf04b61` on `codex/vexlune-hub`; subsequent commits only refresh audit and release evidence.
+The delivery targets are the two Hinln repositories. GitHub metadata reports Hinln/sub2api as a private standalone repository (isFork=false, no parent) and Hinln/sub2api-mobile as a public fork of ckken/sub2api-mobile; the latter is still the requested delivery repository and is unrelated to the public Wei-Shaw/sub2api reference. The authenticated backend checkout is repos/sub2api at final source commit `5ea52f8` on branch `codex/backend-hardening`, with reviewable shared-history Draft PR head `77d4917` on `codex/backend-hardening-pr`; that PR preserves `main` and contains only the 28-file mobile hardening diff. The remote is https://github.com/Hinln/sub2api.git. The mobile implementation baseline is `cf04b61` on `codex/vexlune-hub`; later commits add Turnstile bridge fail-closed error and origin checks (`d88d90e`, `b5f7e02`) alongside audit and release evidence.
 
 ## Audit conclusion
 

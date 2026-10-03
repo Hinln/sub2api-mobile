@@ -10,6 +10,7 @@
 | Vitest | 通过（41/41） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP challenge、畸形二次验证响应、支付 URL/幂等、用户安全、真实服务契约和 Turnstile bridge fail-closed |
 | ESLint | 通过 | `pnpm exec expo lint`；0 error、0 warning |
 | Web export | 通过 | `pnpm exec expo export --platform web`；仅用于静态路由/类型烟测，不用于原生发布构建 |
+| Turnstile bridge fail-closed hardening | 通过 | `b5f7e02` rejects insecure nonce generation and validates the native WebView message's actual first-party URL before accepting the one-shot token |
 | Expo Doctor | 18/18（临时 npm shim） | `pnpm dlx expo-doctor@1.20.4`；主机直接运行 15/18，差异仅为缺少 npm；仅作依赖审计 |
 | iOS prebuild | 通过 | 隔离目录生成 `VexluneMobileConsole.xcodeproj` |
 | iOS Simulator Release | 通过 | Xcode 26.6；arm64/x86_64 `.app` |
