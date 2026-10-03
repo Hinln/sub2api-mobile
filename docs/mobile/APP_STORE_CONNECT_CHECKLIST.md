@@ -2,6 +2,17 @@
 
 本清单记录 Vexlune Hub 从签名归档到 App Review 的人工门槛。它不包含 Apple 密码、API 私钥、证书私钥或 provisioning profile。
 
+## 当前外部状态证据
+
+检查日期：2026-10-03（Asia/Shanghai）。
+
+- [x] App Store Connect 已存在 `Vexlune Hub` App 记录（App ID `6818636344`），iOS 版本 `1.0` 当前为“准备提交”。
+- [x] Apple Developer App ID `Vexlune Mobile Console` / `com.vexlune.mobile` 已存在。
+- [x] Apple Developer 已有有效 Distribution certificates；本机钥匙串当前仅发现 Apple Development 身份。
+- [x] 已有有效 Ad Hoc profile `Vexlune Mobile Console Ad Hoc 20260907`，绑定 `com.vexlune.mobile`。
+- [ ] 尚无绑定 `com.vexlune.mobile` 的 App Store provisioning profile；当前 App Store profile 属于 `com.vexlune.yubai`。
+- [ ] App Store Connect 尚无上传构建，iPhone 截图当前为 0/10。
+
 ## App 记录
 
 - [ ] App Store Connect 中的 App 名称为 `Vexlune Hub`。
