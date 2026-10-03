@@ -14,7 +14,7 @@
 | Expo Doctor | 18/18（临时 npm shim） | `pnpm dlx expo-doctor@1.20.4`；主机直接运行 15/18，差异仅为缺少 npm；仅作依赖审计 |
 | iOS prebuild | 通过 | 隔离目录生成 `VexluneMobileConsole.xcodeproj` |
 | iOS Simulator Release | 通过 | Xcode 26.6；arm64/x86_64 `.app` |
-| iPhoneOS Release unsigned | 通过 | arm64 `.app` 已打包并验证 IPA 完整性；未签名不能安装真机 |
+| iPhoneOS Release unsigned | 通过 | Xcode 26.6 生成 `build/VexluneMobileConsole-unsigned.xcarchive`，包含 arm64 `VexluneMobileConsole.app`、`main.jsbundle` 和 ExpoCrypto 原生依赖；Bundle ID `com.vexlune.mobile`，版本 `1.0.1 (2)`；未签名不能安装真机 |
 | iOS Simulator Release | 通过 | Xcode 26.6 生成 `build/ios-crypto/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`；arm64/x86_64，Bundle ID `com.vexlune.mobile`，版本 `1.0.1 (2)`；ExpoCrypto `getRandomValues` 已静态链接 |
 | iOS Simulator install/launch | 通过 | 将当前 Release `.app` 安装到 iPhone 17 Pro Max Simulator（UDID `1453B2BD-6F79-4861-9090-03284CF7E859`）并启动；登录首屏可见，Turnstile 原生随机源按设计 fail-closed |
 | iOS signed archive | 外部门槛 | Xcode 工程已由 config plugin 写入 Team `6KW552MWV6`、`CODE_SIGN_STYLE=Automatic` 和版本号；本机 `codesign` 仍在登录钥匙串授权阶段停滞，需完成一次钥匙串授权后重试 archive/export |
