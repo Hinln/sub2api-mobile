@@ -17,7 +17,7 @@
 | iPhoneOS Release unsigned | 通过 | Xcode 26.6 生成 `build/VexluneMobileConsole-unsigned.xcarchive`，并以 App Store 配置生成 `build/VexluneMobileConsole-appstore-unsigned.xcarchive`；均包含 arm64 `VexluneMobileConsole.app`、`main.jsbundle` 和 ExpoCrypto 原生依赖；Bundle ID `com.vexlune.mobile`，版本 `1.0.1 (2)`；未签名不能安装真机 |
 | iOS Simulator Release | 通过 | Xcode 26.6 生成 `build/ios-crypto/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`；arm64/x86_64，Bundle ID `com.vexlune.mobile`，版本 `1.0.1 (2)`；ExpoCrypto `getRandomValues` 已静态链接 |
 | iOS Simulator install/launch | 通过 | 将当前 Release `.app` 安装到 iPhone 17 Pro Max Simulator（UDID `1453B2BD-6F79-4861-9090-03284CF7E859`）并启动；登录首屏可见，Turnstile 原生随机源按设计 fail-closed |
-| iOS signed archive | 通过 | 原生 `xcodebuild -exportArchive` 已生成并签名 `build/appstore-export/VexluneMobileConsole.ipa`；`codesign --verify --deep --strict` 通过，Team `6KW552MWV6`，Bundle ID `com.vexlune.mobile`，SHA-256 `3209438e4d9b9b5c68ab44368a7a0a32aa953daede2385244195d4b6c023d55c` |
+| iOS signed archive | 通过 | 原生 `xcodebuild -exportArchive` 已按移动端交付头重新生成并签名 `build/appstore-export/VexluneMobileConsole.ipa`；`codesign --verify --deep --strict` 通过，Team `6KW552MWV6`，Bundle ID `com.vexlune.mobile`，SHA-256 `91487dece48615694740b9d7c2b90029e63a19c54c6563b1c2c821a388503f01` |
 | Live Hub Turnstile bridge | 未通过部署验收 | 当前 `https://hub.vexlune.com` TLS 已可建立且公共设置返回 JSON；但非法 action 仍返回 SPA `200`，有效 bridge 也返回嵌入式 SPA HTML。需部署 backend `933e91ccb`（含 `/mobile/captcha/*` SPA bypass）并修正 Cloudflare/origin 路由后再做真实 Turnstile 验收。 |
 | GitHub native iOS workflow | 环境阻塞 | run `37051524996` 在步骤前因 billing issue 失败（steps=0），未产生 IPA/.app artifact |
 | Android | 暂缓 | 按当前范围不开发 Android；恢复范围时再配置 Android SDK/Java/签名并补充 APK/AAB 证据 |

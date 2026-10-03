@@ -11,7 +11,7 @@
 - iOS prebuild：通过
 - iOS Simulator Release：通过；arm64/x86_64
 - iPhoneOS Release：通过；arm64，另已完成 App Store Distribution archive/export
-- 签名 IPA：`build/appstore-export/VexluneMobileConsole.ipa`，版本 `1.0.1 (2)`，SHA-256 `3209438e4d9b9b5c68ab44368a7a0a32aa953daede2385244195d4b6c023d55c`；`codesign --verify --deep --strict` 通过
+- 签名 IPA：`build/appstore-export/VexluneMobileConsole.ipa`，版本 `1.0.1 (2)`，SHA-256 `91487dece48615694740b9d7c2b90029e63a19c54c6563b1c2c821a388503f01`；`codesign --verify --deep --strict` 通过
 - 本机证书：Apple Development: YONGCHI PAN (KRVKFG5D67)、iPhone Distribution: Sichuan Xiashi Network Technology Service Co., Ltd；Team ID 6KW552MWV6
 - App Store profile：`Vexlune Mobile Console App Store 20261003 Distribu`，Bundle ID `com.vexlune.mobile`，有效期至 2027-10-03
 - `app.json` 已固定 `ios.appleTeamId=6KW552MWV6`；prebuild 会写入 Debug/Release 的 `DEVELOPMENT_TEAM`

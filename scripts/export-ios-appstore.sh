@@ -56,7 +56,10 @@ if [ ! -d "$archive_path" ]; then
     clean archive
 fi
 
-export_options=$(mktemp "${TMPDIR:-/tmp}/vexlune-export-options.XXXXXX.plist")
+# macOS mktemp requires the XXXXXX marker at the end of the template. Keep
+# the temporary plist extension out of the template so stale files cannot
+# make a repeated export fail with EEXIST.
+export_options=$(mktemp "${TMPDIR:-/tmp}/vexlune-export-options.XXXXXX")
 cleanup() { rm -f "$export_options"; }
 trap cleanup EXIT INT TERM
 cat > "$export_options" <<PLIST
