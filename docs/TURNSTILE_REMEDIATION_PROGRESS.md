@@ -38,6 +38,7 @@
 | frontend `pnpm build` | 通过，生成 `MobileTurnstileView` 资源 |
 | iOS 原生 Xcode Release Simulator 构建 | 通过，`VexluneMobileConsole.app` |
 | iOS 模拟器安装启动 | 通过，bundle `com.vexlune.mobile` |
+| 当前提交签名 IPA | 通过，提交 `23e83c1`，SHA-256 `27d8f9bbfdc2aa9883d15307ee6ab7326e55212fcf5ca24c5610865638385570` |
 | 生产 `/mobile/turnstile` 线上联调 | 未通过：线上返回旧 SPA 壳，入口 bundle 不含 `MobileTurnstile` 路由 |
 | 真实挑战与真实账号登录 | 未完成：需要部署后由授权账号完成一次交互 |
 | Android 实机 | 未测试：本阶段只交付 iOS |

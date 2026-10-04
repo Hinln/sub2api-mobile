@@ -27,7 +27,7 @@
 | 官方 v0.2.13 合同审计 | 通过（源码审计） | 已核对 `/api/v1/settings/public`、认证 provider proof 字段、Bearer/2FA 路由；官方 tag 不含 `/mobile/captcha/*`。 |
 | iOS Simulator Release | 通过 | 使用仓库内已提交的 `ios/VexluneMobileConsole.xcworkspace` 和 Xcode 26.6 `xcodebuild` 生成 arm64/x86_64 `.app`；没有 Expo/EAS 云构建。 |
 | iPhoneOS Release unsigned | 通过 | 使用原生 Xcode 工具链生成 arm64 archive/app；未签名包不能安装真机。 |
-| iOS signed archive/IPA | 历史证据，当前发布待重建 | 旧源码提交 `66ca5f45194981519780a4afbed5e2f83675ae19` 的 archive/IPA 曾通过签名校验；当前未提交 Turnstile 工作树尚未重新 archive/export，旧 SHA 不能作为本次发布证据。TestFlight 处理、实体 iPhone 和线上 API 验收仍未完成。 |
+| iOS signed archive/IPA | 通过（当前提交） | 提交 `23e83c1af0412e82c7d0cfb68ebac542fdd21505` 已完成 archive/export，IPA SHA-256 为 `27d8f9bbfdc2aa9883d15307ee6ab7326e55212fcf5ca24c5610865638385570`，解包 App 通过 `codesign --verify --deep --strict`。TestFlight 处理、实体 iPhone 和线上 API 验收仍未完成。 |
 | Production API / private bridge probe | 只读探测未通过专用页检查 | `scripts/verify-mobile-origin.sh` 确认公开设置为 JSON 且 Turnstile 已启用，也确认未暴露 Secret；线上 `/mobile/turnstile` 返回旧 SPA 壳，入口 bundle 不含 `MobileTurnstile`，所以不能视为已部署。没有调用生产 `/mobile/captcha/*`，没有部署私有 backend bridge。 |
 | Android | 暂缓 | 当前范围不开发、不构建、不签名 Android；恢复范围后另行补齐证据。 |
 

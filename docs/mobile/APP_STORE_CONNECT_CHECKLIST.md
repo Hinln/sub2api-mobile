@@ -26,9 +26,9 @@
 
 - [x] Xcode 中选择 Team `6KW552MWV6`，Bundle ID 与 App ID 匹配，受控 provisioning profile 与签名身份已验证。
 - [x] ASC 版本与工程 `CFBundleShortVersionString=1.0.1` 已对齐；build number 为 `2`，上传前仍需保持两者一致。
-- [x] 历史源码提交 `66ca5f45194981519780a4afbed5e2f83675ae19` 的原生 `archive` 和 `-exportArchive` 已完成，解包后的 App 通过 `codesign --verify --deep --strict`，历史 IPA SHA-256 为 `319046b2b8e2019f981b17f7351ab590ce0d44325fc79dcf12106c24591283b1`。该产物不包含当前未提交 Turnstile 工作树，需重新导出后才能上传；不使用 Expo/EAS 云构建或托管签名。
+- [x] 当前 Turnstile 提交 `23e83c1af0412e82c7d0cfb68ebac542fdd21505` 的原生 `archive` 和 `-exportArchive` 已完成，解包后的 App 通过 `codesign --verify --deep --strict`，IPA SHA-256 为 `27d8f9bbfdc2aa9883d15307ee6ab7326e55212fcf5ca24c5610865638385570`；不使用 Expo/EAS 云构建或托管签名。
 - [x] iOS 26.5 Simulator 已安装并启动当前 Release `.app`（iPhone 17 Pro Max，UDID `1453B2BD-6F79-4861-9090-03284CF7E859`）；这只证明本机模拟器启动路径，不能替代实体 iPhone/TestFlight 验收。
-- [ ] 当前 Turnstile 工作树重新导出包内 App 并通过 `codesign --verify --deep --strict`；完成后记录新的 IPA SHA-256、archive UUID、构建 commit 和 App Store Connect build ID。
+- [x] 当前 Turnstile 工作树已重新导出包内 App 并通过 `codesign --verify --deep --strict`；已记录 IPA SHA-256 和构建 commit。archive UUID 与 App Store Connect build ID 待上传后补录。
 - [ ] 上传完成后记录 App Store Connect build ID、处理状态和导出日志摘要。
 
 ## TestFlight 验收

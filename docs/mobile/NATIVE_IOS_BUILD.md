@@ -53,6 +53,11 @@ App Store/TestFlight 归档使用 `scripts/export-ios-appstore.sh`。脚本在 a
 源码 commit 标记，避免复用旧源码归档；源码或分支变化后会自动重新 archive。只有
 已人工核验归档内容时，才设置 `IOS_REUSE_ARCHIVE=1` 跳过这个保护。
 
+当前 Turnstile 提交 `23e83c1af0412e82c7d0cfb68ebac542fdd21505` 已导出并签名验证
+`build/appstore-export-turnstile/VexluneMobileConsole.ipa`；SHA-256 为
+`27d8f9bbfdc2aa9883d15307ee6ab7326e55212fcf5ca24c5610865638385570`，包内版本为
+`1.0.1 (2)`。该 IPA 尚未上传 App Store Connect。
+
 ## JavaScript 打包
 
 Xcode 的 `Bundle React Native code and images` 阶段调用 React Native 自带的 `react-native-xcode.sh`，入口为 `expo-router/entry.js`。`@react-native-community/cli`、`@react-native/metro-config`、`@babel/runtime` 和 `@react-native/assets-registry` 已作为直接依赖锁定，以确保 pnpm 的严格依赖解析在干净 checkout 中可复现。Metro 配置显式解析 `@/` 源码别名。

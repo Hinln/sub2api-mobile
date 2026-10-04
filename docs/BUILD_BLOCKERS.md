@@ -11,11 +11,11 @@
 - iPhoneOS Release 未签名构建通过，产物为 build/ios-device/Build/Products/Release-iphoneos/VexluneMobileConsole.app，主程序为 arm64；已验证可打包为 IPA，压缩包完整性通过。
 - 本机存在 Apple Development: YONGCHI PAN (KRVKFG5D67) 与 iPhone Distribution: Sichuan Xiashi Network Technology Service Co., Ltd 证书，Team ID 为 6KW552MWV6；已提交的 `ios/` 工程包含 Debug/Release 的 `DEVELOPMENT_TEAM`，原生构建不依赖 prebuild。
 - 已创建并安装 App Store provisioning profile `Vexlune Mobile Console App Store 20261003 Distribu`，Bundle ID 为 `com.vexlune.mobile`，有效期至 2027-10-03。
-- 历史工作树曾导出并验证签名 IPA：`build/appstore-export/VexluneMobileConsole.ipa`，SHA-256 `48a9867d874f1869c7f75ee4a287e1de6282b248a57e22e4586855b85609dd5d`；解包后的 `Payload/VexluneMobileConsole.app` 通过 `codesign --verify --deep --strict`。该 provenance 不是当前未提交 Turnstile 工作树的发布证据，需重新 archive/export。
+- 当前 Turnstile 提交 `23e83c1af0412e82c7d0cfb68ebac542fdd21505` 已重新导出并验证签名 IPA：`build/appstore-export-turnstile/VexluneMobileConsole.ipa`，SHA-256 `27d8f9bbfdc2aa9883d15307ee6ab7326e55212fcf5ca24c5610865638385570`；解包后的 App 通过 `codesign --verify --deep --strict`。尚未上传 App Store Connect。
 
 ## 尚未完成的发布条件
 
-1. 本机签名条件已满足，App Store Connect 版本已对齐为 `1.0.1`；当前仍需用本次源码重新导出 `1.0.1 (2)` IPA，再上传并在真实 iPhone/TestFlight 完成验收。
+1. 本机签名条件已满足，当前提交的 `1.0.1 (2)` IPA 已导出；仍需上传并在真实 iPhone/TestFlight 完成验收。
 2. GitHub Actions run 37051524996 在执行步骤前因账号 billing issue 失败（steps=0、无日志和 artifact）；恢复计费后才可取得云端 artifact。该问题不影响本机原生构建。
 3. 批准的非生产 provider 配置、staging origin 和真实账号联调仍需在目标环境完成；secret 不能进入 APP 或仓库。本轮不修改生产 Cloudflare 规则或后端。
 4. Android 按当前范围暂缓；本机没有 Android SDK/Java/adb，build-android-native.yml 只保留后续使用的原生 Gradle 入口。
