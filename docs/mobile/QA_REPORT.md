@@ -20,7 +20,7 @@
 | 检查 | 结果 | 说明 |
 |---|---|---|
 | TypeScript | 通过 | `pnpm exec tsc --noEmit` |
-| Vitest | 通过（52/52） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP、支付/用户服务契约和 `/mobile/turnstile` 专用页 WebView token bridge。测试不证明生产可用性。 |
+| Vitest | 通过（53/53） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP、支付/用户服务契约和 `/mobile/turnstile` 专用页 WebView token bridge。测试不证明生产可用性。 |
 | 生产路径占位扫描 | 通过 | `pnpm run verify:production-scan`；扫描 `app/` 与 `src/`，拒绝 mock/fixture/fake/sample、伪请求定时器、嵌入式 secret 和空 `onPress`。 |
 | ESLint | 通过 | `pnpm exec expo lint`；0 error、0 warning。 |
 | Web export | 通过 | `pnpm exec expo export --platform web`；只作静态路由/类型烟测，不是原生发布构建。 |
@@ -28,7 +28,7 @@
 | iOS Simulator Release | 通过 | 使用仓库内已提交的 `ios/VexluneMobileConsole.xcworkspace` 和 Xcode 26.6 `xcodebuild` 生成 arm64/x86_64 `.app`；没有 Expo/EAS 云构建。 |
 | iPhoneOS Release unsigned | 通过 | 使用原生 Xcode 工具链生成 arm64 archive/app；未签名包不能安装真机。 |
 | iOS signed archive/IPA | 历史证据，当前发布待重建 | 旧源码提交 `66ca5f45194981519780a4afbed5e2f83675ae19` 的 archive/IPA 曾通过签名校验；当前未提交 Turnstile 工作树尚未重新 archive/export，旧 SHA 不能作为本次发布证据。TestFlight 处理、实体 iPhone 和线上 API 验收仍未完成。 |
-| Production API / private bridge probe | 未执行（按边界） | 没有调用生产 `/mobile/captcha/*`，没有为移动端部署私有 backend bridge，也没有把生产响应当作非生产证据；当前实现打开同源 `/mobile/turnstile` 专用页，线上 bundle 尚未发布。 |
+| Production API / private bridge probe | 只读探测未通过专用页检查 | `scripts/verify-mobile-origin.sh` 确认公开设置为 JSON 且 Turnstile 已启用，也确认未暴露 Secret；线上 `/mobile/turnstile` 返回旧 SPA 壳，入口 bundle 不含 `MobileTurnstile`，所以不能视为已部署。没有调用生产 `/mobile/captcha/*`，没有部署私有 backend bridge。 |
 | Android | 暂缓 | 当前范围不开发、不构建、不签名 Android；恢复范围后另行补齐证据。 |
 
 ## 必测非生产链路
