@@ -30,7 +30,9 @@ Official v0.2.13 exposes captcha configuration through
 native UI obtains a provider token and submits `turnstile_token`, or the
 documented Tencent/Aliyun fields, to the auth endpoint. The official release
 does not define `/mobile/captcha/turnstile`, `/mobile/captcha/turnstile/health`,
-a nonce ledger or a native WebView postMessage bridge.
+a backend nonce ledger or a backend mobile bridge. The app's `/mobile/turnstile`
+frontend page has a constrained native WebView `postMessage` transport, but
+that page bridge does not change the API contract or accept credentials.
 
 Do not add a Cloudflare exception for a private bridge path. If an approved
 non-production environment returns HTML for an API request, report the origin

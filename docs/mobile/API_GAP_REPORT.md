@@ -51,7 +51,7 @@ secret.
 
 | ID | Gap | Why it blocks | Required closure |
 |---|---|---|---|
-| OFFICIAL_CAPTCHA_001 | The current source captures the provider token from the official first-party login/register/password-reset page and presents agreement content in a native bottom notice. The official contract has no private mobile endpoint or nonce field. | The capture must stay on the same first-party origin and submit only the provider proof fields accepted by v0.2.13; agreement is synchronized only after the user submits login or registration. | Keep the official-page WebView capture bounded to the three auth pages; do not auto-accept agreement, send a nonce, or add a private bridge route. |
+| OFFICIAL_CAPTCHA_001 | The mobile source now hosts the provider widget on the same-origin frontend route `/mobile/turnstile`. The route is a dedicated static page, not a new `/api/v1` or private backend captcha endpoint; the native app receives one token through a strictly validated WebView `postMessage` tuple (`version`, `requestId`, `nonce`, `action`). | The route bundle and CSP must be deployed to the approved environment, and one real challenge token must be consumed by the unchanged official auth endpoint. The native page must never receive credentials or session tokens. | Publish the frontend route, verify `https://challenges.cloudflare.com` script/frame/connect CSP, and run a real iOS login/register/reset check. Keep the backend at v0.2.13 and submit only the official `turnstile_token` field. |
 | OFFICIAL_CONTRACT_002 | Private backend additions (nonce validation, payment idempotency coordinator, bridge health endpoint and related migrations) are not part of v0.2.13. | Source inspection of a private checkout cannot prove behavior on the unchanged production server. | Re-audit every enabled route and DTO against v0.2.13; mark unsupported controls unavailable rather than guessing. |
 | STAGING_003 | No approved non-production origin and disposable QA accounts are recorded for this release. | Real role routing, captcha, refresh, payment and audited admin writes cannot be proven end to end. | Obtain a separately approved staging environment and revoke test accounts after QA. Never use production for destructive or payment tests. |
 | IOS_004 | TestFlight/App Store Connect processing and physical-device acceptance are external gates. | A local native archive/IPA does not prove TestFlight installation or live API behavior. | Upload the Xcode-exported IPA through the approved Apple account and record processing/device evidence. |
@@ -73,10 +73,10 @@ secret.
 
 ## Origin probe boundary
 
-`scripts/verify-mobile-origin.sh` probes only the public settings endpoint and
-the first-party `/login`, `/register`, and `/forgot-password` HTML pages. It
-does not call `/mobile/captcha/*`, invent a nonce, or validate a private bridge.
-The current `src/components/turnstile-gate.tsx` opens the same first-party auth
-pages and captures the provider widget callback; its output is valid only when
-the token is submitted using the official fields above. This report does not
-authorize changing the backend or production to add a bridge route.
+`scripts/verify-mobile-origin.sh` probes the public settings endpoint and the
+first-party `/login`, `/register`, `/forgot-password`, and `/mobile/turnstile`
+HTML pages. It does not call `/mobile/captcha/*` or validate a backend private
+bridge. The current `src/components/turnstile-gate.tsx` opens only the dedicated
+same-origin challenge page and validates its native message tuple before passing
+the token to the official auth endpoint. The page bridge is a frontend transport
+boundary; it does not add a backend API, nonce ledger, or Cloudflare exception.

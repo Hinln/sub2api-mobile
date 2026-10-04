@@ -1,6 +1,6 @@
 import { Link, Redirect, router } from 'expo-router';
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Sparkles } from 'lucide-react-native';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
@@ -11,6 +11,7 @@ import { VexluneLogo } from '@/src/components/vexlune-logo';
 import { isAdmin } from '@/src/auth/session';
 import { AuthApiError, completeTwoFactor, getPublicSettings, login } from '@/src/services/auth';
 import { adminConfigState, hasAuthenticatedSession } from '@/src/store/admin-config';
+import { canSubmitTurnstile, isUsableTurnstileToken, type TurnstileStatus } from '@/src/lib/turnstile';
 
 // CommonJS entry avoids import.meta in Expo Metro's classic web bundle.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -69,9 +70,12 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [turnstileToken, setTurnstileToken] = useState('');
   const [turnstileReset, setTurnstileReset] = useState(0);
   const [agreementSubmitAttempt, setAgreementSubmitAttempt] = useState(0);
+  const turnstileStatusRef = useRef<TurnstileStatus>('loading');
+  const turnstileTokenRef = useRef('');
+  const pendingSubmitRef = useRef(false);
+  const submitInFlightRef = useRef(false);
   const [registrationEnabled, setRegistrationEnabled] = useState<boolean | null>(null);
   const [passwordResetEnabled, setPasswordResetEnabled] = useState<boolean | null>(null);
 
@@ -87,20 +91,55 @@ export default function LoginScreen() {
 
   if (hasAuthenticatedSession(config) && !busy) return <Redirect href={isAdmin(config.user) && config.workspaceMode !== 'user' ? '/monitor' : '/user'} />;
 
-  async function submit() {
+  function handleTurnstileStatus(status: TurnstileStatus) {
+    turnstileStatusRef.current = status;
+    if (status === 'disabled' && pendingSubmitRef.current && !submitInFlightRef.current) {
+      pendingSubmitRef.current = false;
+      void submit('');
+    }
+  }
+
+  function handleTurnstileToken(token: string) {
+    turnstileTokenRef.current = token;
+    if (isUsableTurnstileToken(token)) {
+      turnstileStatusRef.current = 'token';
+      if (pendingSubmitRef.current && !submitInFlightRef.current) {
+        pendingSubmitRef.current = false;
+        void submit(token);
+      }
+    }
+  }
+
+  async function submit(overrideToken?: string) {
+    if (submitInFlightRef.current) return;
     setError('');
     if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) return setError('请输入有效邮箱');
     if (!password) return setError('请输入密码');
+    const token = overrideToken ?? turnstileTokenRef.current;
+    if (!canSubmitTurnstile(turnstileStatusRef.current, token)) {
+      pendingSubmitRef.current = true;
+      setAgreementSubmitAttempt((value) => value + 1);
+      if (turnstileStatusRef.current === 'error') {
+        turnstileTokenRef.current = '';
+        setTurnstileReset((value) => value + 1);
+        setError('安全验证组件加载失败，正在重新加载，请完成验证后再试。');
+      } else {
+        setError('请先完成 Cloudflare 人机验证，完成后将自动继续登录。');
+      }
+      return;
+    }
+    pendingSubmitRef.current = false;
     setAgreementSubmitAttempt((value) => value + 1);
     setBusy(true);
+    submitInFlightRef.current = true;
     try {
-      const result = await login({ email: email.trim().toLowerCase(), password, turnstile_token: turnstileToken || undefined });
+      const result = await login({ email: email.trim().toLowerCase(), password, turnstile_token: token || undefined });
       if (result.requires_2fa && result.temp_token) { setTempToken(result.temp_token); return; }
       router.replace(isAdmin(result.user ?? null) ? '/monitor' : '/user');
     } catch (reason) {
-      setTurnstileToken(''); setTurnstileReset((value) => value + 1);
+      turnstileTokenRef.current = ''; setTurnstileReset((value) => value + 1);
       setError(reason instanceof AuthApiError && reason.challenge ? '请先完成 Cloudflare 人机验证，再重试登录。' : reason instanceof Error ? reason.message : '登录失败，请稍后重试');
-    } finally { setBusy(false); }
+    } finally { submitInFlightRef.current = false; setBusy(false); }
   }
 
   async function submitTwoFactor() {
@@ -129,13 +168,13 @@ export default function LoginScreen() {
               <TextInput accessibilityLabel="totp-code" value={totpCode} onChangeText={(value) => { setTotpCode(value.replace(/\D/g, '').slice(0, 6)); setError(''); }} keyboardType="number-pad" maxLength={6} placeholder="000000" placeholderTextColor={authColors.faint} style={{ marginTop: 18, color: authColors.ink, backgroundColor: authColors.field, borderRadius: 16, borderWidth: 1, borderColor: error ? authColors.danger : authColors.line, paddingHorizontal: 15, paddingVertical: 14, fontSize: 21, letterSpacing: 8, textAlign: 'center' }} />
               {error ? <Text style={{ color: authColors.danger, fontSize: 13, lineHeight: 19, marginTop: 13 }}>{error}</Text> : null}
               <View style={{ marginTop: 17 }}><GradientAction label="完成登录" busy={busy} onPress={() => void submitTwoFactor()} /></View>
-              <Pressable onPress={() => { setTempToken(''); setTotpCode(''); setTurnstileToken(''); setTurnstileReset((value) => value + 1); setError(''); }} style={{ alignItems: 'center', paddingTop: 16 }}><Text style={{ color: authColors.primary, fontWeight: '800', fontSize: 13 }}>返回登录</Text></Pressable>
+              <Pressable onPress={() => { setTempToken(''); setTotpCode(''); turnstileTokenRef.current = ''; pendingSubmitRef.current = false; setTurnstileReset((value) => value + 1); setError(''); }} style={{ alignItems: 'center', paddingTop: 16 }}><Text style={{ color: authColors.primary, fontWeight: '800', fontSize: 13 }}>返回登录</Text></Pressable>
             </> : <>
               <AuthTabs />
               <AuthField icon={<Mail color={authColors.subtext} size={20} />} label="邮箱地址" helper="请输入您的邮箱地址"><TextInput accessibilityLabel="email" value={email} onChangeText={(value) => { setEmail(value); setError(''); }} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" textContentType="username" placeholder="name@example.com" placeholderTextColor={authColors.faint} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15 }} /></AuthField>
               <AuthField icon={<LockKeyhole color={authColors.subtext} size={20} />} label="密码" helper="请输入密码（至少 6 位）"><TextInput accessibilityLabel="password" value={password} onChangeText={(value) => { setPassword(value); setError(''); }} secureTextEntry={!showPassword} autoCapitalize="none" autoCorrect={false} textContentType="password" placeholder="请输入密码" placeholderTextColor={authColors.faint} onSubmitEditing={() => void submit()} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15 }} /><Pressable accessibilityLabel="toggle-password" onPress={() => setShowPassword((value) => !value)} style={{ padding: 13 }}>{showPassword ? <EyeOff color={authColors.subtext} size={19} /> : <Eye color={authColors.subtext} size={19} />}</Pressable></AuthField>
               {passwordResetEnabled ? <View style={{ alignItems: 'flex-end', marginTop: 6 }}><Link href="/forgot-password" asChild><Pressable accessibilityRole="link"><Text style={{ color: '#2D63DA', fontSize: 13, fontWeight: '800' }}>忘记密码？</Text></Pressable></Link></View> : null}
-              <TurnstileGate action="login" resetKey={turnstileReset} consentRequestKey={agreementSubmitAttempt} onToken={setTurnstileToken} />
+              <TurnstileGate action="login" resetKey={turnstileReset} consentRequestKey={agreementSubmitAttempt} onToken={handleTurnstileToken} onStatus={handleTurnstileStatus} />
               {error ? <Text style={{ color: authColors.danger, fontSize: 13, lineHeight: 19, marginTop: 13 }}>{error}</Text> : null}
               <View style={{ marginTop: 17 }}><GradientAction label="登录" busy={busy} onPress={() => void submit()} /></View>
               {registrationEnabled === false ? <Text style={{ color: authColors.subtext, fontSize: 12, textAlign: 'center', marginTop: 15 }}>当前未开放公开注册</Text> : null}

@@ -25,4 +25,4 @@ The public upstream snapshot uses Gin routes under `/api/v1`, response envelope 
 - Server `/auth/me` is the source of role truth on boot and after refresh.
 - Admin APIs require server-side admin middleware; client routing is UX only.
 - API client treats `cf-mitigated: challenge` and unexpected `text/html` as a dedicated error.
-- Captcha proof follows the official v0.2.13 public settings and provider fields. The native gate opens the official first-party auth page and captures its provider callback; no Cloudflare secret, nonce, private mobile bridge or bypass credential ships in the app.
+- Captcha proof follows the official v0.2.13 public settings and provider fields. The native gate opens the same-origin frontend route `/mobile/turnstile`, which hosts only the official Turnstile widget, and accepts a strictly validated `postMessage` token; no Cloudflare secret, backend private captcha endpoint or bypass credential ships in the app.

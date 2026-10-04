@@ -11,7 +11,7 @@ Cloudflare 配置在本轮保持不变；本文不授权部署私有扩展。
 | 边界 | 允许内容 | 明确禁止 |
 |---|---|---|
 | APP → 管理 API | HTTPS `/api/v1/*`、Bearer access/refresh token、provider captcha proof | 数据库/Redis/SSH/Docker 直连、源站 IP、管理员 API key、captcha secret |
-| APP → 官方验证码控件/网页 | 官方 provider 资源和一次性 provider token | 私有 `/mobile/captcha/*`、任意 JavaScript bridge、nonce 或共享绕过密钥 |
+| APP → 官方验证码控件/网页 | Same-origin `/mobile/turnstile` page, official provider resource and one-time token; native side validates a versioned `postMessage` tuple | Credentials/session tokens in the page, arbitrary third-party JavaScript bridge, private `/mobile/captcha/*` backend route, or shared bypass key |
 | 服务端 → captcha provider | 服务端保存的 secret 和官方 v0.2.13 校验请求 | 将 secret 序列化到公开 settings、APP bundle、URL 或日志 |
 | 管理员工作台 | 服务端签发的 admin JWT、服务端 AdminAuth/审计/step-up | 以本地 role、隐藏路由或 UI 确认代替服务端授权 |
 
@@ -32,7 +32,7 @@ Cloudflare 配置在本轮保持不变；本文不授权部署私有扩展。
 
 - `/api/v1/settings/public` 决定是否启用 Turnstile、Tencent 或 Aliyun，并只
   返回公开 site/app ID。
-- 客户端使用官方 provider widget/SDK 或官方 web auth surface，按 v0.2.13
+- 客户端使用同源 `/mobile/turnstile` 页面中的官方 provider widget/SDK，按 v0.2.13
   提交 `turnstile_token`，或 Tencent `tencent_captcha_ticket` /
   `tencent_captcha_randstr` 等官方字段。不存在官方 `turnstile_nonce` 或
   mobile bridge 合同。

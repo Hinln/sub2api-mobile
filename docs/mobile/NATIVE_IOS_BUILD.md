@@ -20,6 +20,35 @@ IOS_SDK=iphoneos IOS_DESTINATION='generic/platform=iOS' \
 
 脚本会检查版本化的 Xcode workspace，安装 CocoaPods，然后执行 `xcodebuild`。CocoaPods 的 Ruby Logger 兼容处理只作用于当前命令；Apple 证书和私钥不会写入仓库。
 
+## 在 iOS Simulator 安装和启动
+
+当前交付范围优先支持 iOS；本地验收使用 Xcode 的原生 Simulator，不需要 Expo
+开发服务器、EAS 或 GitHub Actions。先选择一个已安装的 iOS runtime 和设备 UDID，
+再构建、安装并启动版本化的 `.app`：
+
+```bash
+# 查看可用设备，并替换为本机仍可用的 UDID
+xcrun simctl list devices available
+DEVICE_UDID='1453B2BD-6F79-4861-9090-03284CF7E859'
+
+xcrun simctl boot "$DEVICE_UDID" 2>/dev/null || true
+open -a Simulator
+pnpm run native:build:ios
+xcrun simctl install "$DEVICE_UDID" \
+  build/ios/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app
+xcrun simctl launch "$DEVICE_UDID" com.vexlune.mobile
+```
+
+`simctl boot` 在设备已经启动时会返回非零状态，因此示例允许该单一状态继续；
+构建、安装或启动失败仍会使后续命令失败。构建产物必须来自当前 checkout，不能
+用旧的 `.app` 代替。首次启动后可用 `xcrun simctl spawn "$DEVICE_UDID" log
+stream --level debug --predicate 'process == "VexluneMobileConsole"'` 观察原生
+日志；日志中不得包含 access token、refresh token、密码或 Turnstile token。
+
+当前本机已验证的设备是 iPhone 17 Pro Max（iOS 26.5，UDID
+`1453B2BD-6F79-4861-9090-03284CF7E859`）。设备列表和 UDID 会随 Xcode/Simulator
+状态变化，不能写死到发布脚本中。
+
 App Store/TestFlight 归档使用 `scripts/export-ios-appstore.sh`。脚本在 archive 旁写入
 源码 commit 标记，避免复用旧源码归档；源码或分支变化后会自动重新 archive。只有
 已人工核验归档内容时，才设置 `IOS_REUSE_ARCHIVE=1` 跳过这个保护。

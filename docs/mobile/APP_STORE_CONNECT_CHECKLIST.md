@@ -26,8 +26,9 @@
 
 - [x] Xcode 中选择 Team `6KW552MWV6`，Bundle ID 与 App ID 匹配，受控 provisioning profile 与签名身份已验证。
 - [x] ASC 版本与工程 `CFBundleShortVersionString=1.0.1` 已对齐；build number 为 `2`，上传前仍需保持两者一致。
-- [x] 本机原生 `archive` 和 `-exportArchive` 已完成；解包后的 `Payload/VexluneMobileConsole.app` 通过 `codesign --verify --deep --strict`，当前源码提交 `66ca5f45194981519780a4afbed5e2f83675ae19` 导出的 IPA SHA-256 为 `319046b2b8e2019f981b17f7351ab590ce0d44325fc79dcf12106c24591283b1`。不使用 Expo/EAS 云构建或托管签名。
-- [x] 导出包内的 App 已通过 `codesign --verify --deep --strict`，并已记录 IPA SHA-256；上传后补充 archive UUID、构建 commit 和 App Store Connect build ID。
+- [x] 历史源码提交 `66ca5f45194981519780a4afbed5e2f83675ae19` 的原生 `archive` 和 `-exportArchive` 已完成，解包后的 App 通过 `codesign --verify --deep --strict`，历史 IPA SHA-256 为 `319046b2b8e2019f981b17f7351ab590ce0d44325fc79dcf12106c24591283b1`。该产物不包含当前未提交 Turnstile 工作树，需重新导出后才能上传；不使用 Expo/EAS 云构建或托管签名。
+- [x] iOS 26.5 Simulator 已安装并启动当前 Release `.app`（iPhone 17 Pro Max，UDID `1453B2BD-6F79-4861-9090-03284CF7E859`）；这只证明本机模拟器启动路径，不能替代实体 iPhone/TestFlight 验收。
+- [ ] 当前 Turnstile 工作树重新导出包内 App 并通过 `codesign --verify --deep --strict`；完成后记录新的 IPA SHA-256、archive UUID、构建 commit 和 App Store Connect build ID。
 - [ ] 上传完成后记录 App Store Connect build ID、处理状态和导出日志摘要。
 
 ## TestFlight 验收
@@ -35,7 +36,7 @@
 - [ ] 内部测试组已加入，测试账号分别覆盖普通用户和管理员角色。
 - [ ] 真机完成邮箱密码登录、角色路由、401 刷新、退出和 SecureStore 清理。
 - [ ] 官方 Sub2API v0.2.13 provider widget/SDK 在批准的非生产域名返回 token；过期或无效 token 被服务端拒绝。官方合同不包含私有 mobile captcha bridge。
-- [ ] 用户侧 API Key、usage、公告、订阅与订单读取成功；订单幂等键重试不会重复下单。
+- [ ] 用户侧 API Key、usage、公告、订阅与订单读取成功；订单写操作超时先查询服务端结果，只有官方明确提供 replay 语义时才允许自动重试。
 - [ ] 管理员侧用户、账号、分组、日志与设置权限和审计事件符合后端结果。
 - [ ] 崩溃、401/403/429、Turnstile、支付幂等冲突和 API p95 监控已开启，日志不含 token/secret。
 

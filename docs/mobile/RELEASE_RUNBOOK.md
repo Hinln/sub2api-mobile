@@ -15,8 +15,9 @@ Android 构建列为发布步骤。
 2. 使用已批准的非生产环境和可撤销账号完成 QA。禁止为移动发布把私有 backend
    分支、迁移或 mobile captcha bridge 部署到生产。
 3. 在移动仓库执行类型、测试和占位扫描；执行
-   `scripts/verify-mobile-origin.sh`，确认公开 settings 和三个第一方认证页面
-   均为可用的官方响应。该脚本不调用 `/mobile/captcha/*` 私有 bridge。
+   `scripts/verify-mobile-origin.sh`，确认公开 settings、三个第一方认证页面和
+   `/mobile/turnstile` 专用页面均为 HTML/JSON 200，并且没有 secret。该脚本不调用
+   `/mobile/captcha/*` 私有 backend bridge。
 4. 检查 Bundle ID、版本/build、隐私与支持链接、截图、年龄分级、审核账号和出口
    合规资料；没有这些资料不能提交 TestFlight/App Review。
 

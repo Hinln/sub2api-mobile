@@ -36,7 +36,7 @@ private Hinln backend checkout is not a release dependency.
 
 1. Replace API-key boot/login with an email/password session layer while preserving server-owned authorization. **Done in the mobile source; official-contract alignment remains a release gate.**
 2. Add public settings, login/register/2FA/refresh/logout/me contracts with runtime validation and Cloudflare HTML detection. **Done.**
-3. Use the official v0.2.13 provider captcha fields from public settings; show the agreement in the native bottom notice and synchronize it only when the user submits login or registration; never accept a secret, invent a nonce, or depend on a private mobile bridge. **Contract alignment pending.**
+3. Use the official v0.2.13 provider captcha fields from public settings; show the agreement in the native bottom notice and synchronize it only when the user submits login or registration. The same-origin frontend `/mobile/turnstile` page is a constrained token transport surface, not a private backend API; it never accepts credentials or secrets. **Source alignment complete; deployment and real challenge evidence pending.**
 4. Establish role-aware user/admin router groups and query-cache isolation. **Done.**
 5. Port existing admin read/write functions to Bearer JWT only after server contract verification; retain no API-key UI. **Done.**
 6. Add user navigation and feature modules only for endpoints confirmed in the official v0.2.13 contract. **Source audit pending for any private-only extension.**

@@ -55,8 +55,10 @@ async function request<T>(path: string, init: RequestInit = {}, options: { auth?
   }
   const envelope = payload && typeof payload === 'object' && ('data' in payload || 'code' in payload || 'message' in payload) ? payload as ApiEnvelope<T> : undefined;
   if (!response.ok || (typeof envelope?.code === 'number' && envelope.code !== 0)) {
-    const message = typeof envelope?.message === 'string' ? envelope.message : `HTTP ${response.status}`;
-    throw new AuthApiError(message, response.status, { code: envelope?.code, requestId: response.headers.get('x-request-id') ?? undefined });
+    const reason = typeof envelope?.reason === 'string' ? envelope.reason.toUpperCase() : '';
+    const providerChallenge = reason === 'TURNSTILE_VERIFICATION_FAILED';
+    const message = providerChallenge ? 'Cloudflare 人机验证未完成或已过期，请重新完成验证。' : typeof envelope?.message === 'string' ? envelope.message : `HTTP ${response.status}`;
+    throw new AuthApiError(message, response.status, { code: envelope?.code, requestId: response.headers.get('x-request-id') ?? undefined, challenge: providerChallenge });
   }
   return (envelope && 'data' in envelope ? envelope.data : payload) as T;
 }

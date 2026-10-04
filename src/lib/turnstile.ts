@@ -1,212 +1,133 @@
 /**
- * The official Sub2API server accepts a Turnstile token directly on its
- * authentication endpoints. It does not expose the private mobile bridge
- * that used to exist in this client. The native client therefore loads the
- * official first-party login/register page in a WebView and wraps the public
- * Turnstile render callback so the solved token can be handed back to React
- * Native. The page remains on the first-party origin, so Cloudflare sees the
- * same hostname that the official web client uses.
+ * Shared contract for the first-party /mobile/turnstile page.
+ *
+ * The page is deliberately a small, same-origin Turnstile host. It never
+ * receives credentials or session tokens. Bridge payloads are untrusted
+ * until the native side verifies the page origin and current instance tuple.
  */
 
-export type TurnstilePageMessage = {
-  type?: string;
+export const TURNSTILE_BRIDGE_VERSION = 1 as const;
+export const TURNSTILE_TOKEN_MAX_LENGTH = 2048;
+export const TURNSTILE_PAGE_PATH = '/mobile/turnstile' as const;
+
+export type TurnstileAction = 'login' | 'register' | 'forgot_password';
+export type TurnstileBridgeType =
+  | 'ready'
+  | 'success'
+  | 'error'
+  | 'expired'
+  | 'before-interactive'
+  | 'after-interactive'
+  | 'unsupported'
+  | 'disabled';
+
+export type TurnstileBridgeMessage = {
+  version: typeof TURNSTILE_BRIDGE_VERSION;
+  type: TurnstileBridgeType;
+  requestId: string;
+  nonce: string;
+  action: TurnstileAction;
   token?: string;
-  origin?: string;
+  errorCode?: string;
 };
 
 export type ParsedTurnstileMessage =
+  | { kind: 'ready' }
   | { kind: 'token'; token: string }
-  | { kind: 'agreement-required' }
-  | { kind: 'agreement-accepted' }
-  | { kind: 'agreement-accept-failed' }
-  | { kind: 'widget-ready' }
+  | { kind: 'error'; errorCode: string }
   | { kind: 'expired' }
-  | { kind: 'unavailable' }
+  | { kind: 'before-interactive' }
+  | { kind: 'after-interactive' }
+  | { kind: 'unsupported'; errorCode?: string }
+  | { kind: 'disabled' }
   | null;
 
-/**
- * Runs before the official page scripts. It observes the official
- * `window.turnstile.render` API and wraps only the callback supplied by the
- * official page. No token is fabricated and no challenge is skipped.
- *
- * The setter plus short polling window covers both Turnstile SDK loading
- * orders used by the official frontend. The wrapper calls the original
- * callback as well, so the page keeps its normal state and expiry handling.
- */
-export const TURNSTILE_PAGE_CAPTURE_SCRIPT = `
-(function () {
-  var patched = [];
-  var sent = false;
-  var agreementSent = false;
-  var widgetSent = false;
-  function wasPatched(api) { return patched.indexOf(api) !== -1; }
-  function postToken(token) {
-    if (sent || typeof token !== 'string' || token.length < 20) return;
-    sent = true;
-    if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'turnstile_token', origin: window.location.origin, token: token }));
-    }
-  }
-  function detectAgreement() {
-    if (agreementSent || window.__vexluneAgreementAccepted || !document.body) return;
-    var dialogs = Array.prototype.slice.call(document.querySelectorAll('[role="dialog"], [aria-modal="true"], dialog'));
-    var scope = dialogs.length ? dialogs[dialogs.length - 1] : document.body;
-    var text = (scope.innerText || '').replace(/\\s+/g, ' ');
-    if (!/(服务条款|terms of service|terms & conditions)/i.test(text)) return;
-    var controls = Array.prototype.slice.call(scope.querySelectorAll('button, a, [role="button"]'));
-    if (!controls.some(function (node) { return /^(同意(?:并继续)?|接受(?:并继续)?|agree(?: and continue)?|accept(?: and continue)?)$/i.test((node.innerText || node.textContent || '').replace(/\\s+/g, ' ').trim()); })) return;
-    agreementSent = true;
-    if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'agreement_required', origin: window.location.origin }));
-    }
-  }
-  function detectWidget() {
-    if (widgetSent || (agreementSent && !window.__vexluneAgreementAccepted) || !document.body) return;
-    if (!document.querySelector('iframe[src*="challenges.cloudflare.com"]')) return;
-    widgetSent = true;
-    if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'widget_ready', origin: window.location.origin }));
-    }
-  }
-  function patch(api) {
-    if (!api || typeof api.render !== 'function' || wasPatched(api)) return;
-    var originalRender = api.render;
-    try {
-      api.render = function (container, options) {
-        options = options || {};
-        var originalCallback = options.callback;
-        var originalExpiredCallback = options['expired-callback'];
-        var originalErrorCallback = options['error-callback'];
-        var wrappedOptions = Object.assign({}, options, {
-          callback: function (token) {
-            postToken(token);
-            if (typeof originalCallback === 'function') originalCallback(token);
-          },
-          'expired-callback': function () {
-            sent = false;
-            if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'turnstile_expired', origin: window.location.origin }));
-            if (typeof originalExpiredCallback === 'function') originalExpiredCallback();
-          },
-          'error-callback': function () {
-            sent = false;
-            if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'turnstile_unavailable', origin: window.location.origin }));
-            if (typeof originalErrorCallback === 'function') originalErrorCallback();
-          }
-        });
-        return originalRender.call(this, container, wrappedOptions);
-      };
-      patched.push(api);
-    } catch (_) {
-      // A future SDK may expose a frozen API. Polling will keep trying while
-      // the page remains open, and the native side will fail closed otherwise.
-    }
-  }
-  function observe() { patch(window.turnstile); detectAgreement(); detectWidget(); }
+export type TurnstileStatus = 'loading' | 'disabled' | 'waiting' | 'ready' | 'token' | 'error';
+
+export type TurnstileBridgeContext = {
+  origin: string;
+  requestId: string;
+  nonce: string;
+  action: TurnstileAction;
+};
+
+export function isUsableTurnstileToken(token: string | undefined | null): token is string {
+  return typeof token === 'string'
+    && token.length >= 20
+    && token.length <= TURNSTILE_TOKEN_MAX_LENGTH
+    && token.trim() === token;
+}
+
+export function canSubmitTurnstile(status: TurnstileStatus, token: string | undefined | null): boolean {
+  if (status === 'disabled') return true;
+  return status === 'token' && isUsableTurnstileToken(token);
+}
+
+function isAction(value: unknown): value is TurnstileAction {
+  return value === 'login' || value === 'register' || value === 'forgot_password';
+}
+
+function isBridgeType(value: unknown): value is TurnstileBridgeType {
+  return value === 'ready'
+    || value === 'success'
+    || value === 'error'
+    || value === 'expired'
+    || value === 'before-interactive'
+    || value === 'after-interactive'
+    || value === 'unsupported'
+    || value === 'disabled';
+}
+
+function isSafeIdentifier(value: unknown): value is string {
+  return typeof value === 'string' && value.length >= 8 && value.length <= 128 && /^[A-Za-z0-9._~-]+$/.test(value);
+}
+
+/** Validate every field, including non-success messages, against this page instance. */
+export function parseTurnstilePageMessage(raw: string, context: TurnstileBridgeContext): ParsedTurnstileMessage {
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > 8192) return null;
   try {
-    var current = window.turnstile;
-    Object.defineProperty(window, 'turnstile', {
-      configurable: true,
-      enumerable: true,
-      get: function () { return current; },
-      set: function (value) { current = value; patch(value); }
-    });
-  } catch (_) {
-    // The polling fallback below handles non-configurable globals.
-  }
-  observe();
-  var timer = setInterval(observe, 25);
-  setTimeout(function () { clearInterval(timer); }, 30000);
-})();
-true;
-`;
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    if (value.version !== TURNSTILE_BRIDGE_VERSION
+      || !isBridgeType(value.type)
+      || !isSafeIdentifier(value.requestId)
+      || !isSafeIdentifier(value.nonce)
+      || !isAction(value.action)
+      || value.requestId !== context.requestId
+      || value.nonce !== context.nonce
+      || value.action !== context.action) return null;
 
-/**
- * Keeps the official page's widget visible in the small native challenge
- * surface while hiding its unrelated login form. This is cosmetic only; the
- * challenge iframe and official page scripts remain untouched.
- */
-export const TURNSTILE_PAGE_FOCUS_SCRIPT = `
-(function () {
-  function focusWidget() {
-    var frame = document.querySelector('iframe[src*="challenges.cloudflare.com"]');
-    if (!frame) return false;
-    var node = frame;
-    while (node.parentElement && node.parentElement !== document.body) {
-      var parent = node.parentElement;
-      Array.prototype.forEach.call(parent.children, function (child) {
-        if (child !== node) child.style.display = 'none';
-      });
-      node = parent;
+    if (value.type === 'success') {
+      const token = typeof value.token === 'string' ? value.token : null;
+      return isUsableTurnstileToken(token) ? { kind: 'token', token } : null;
     }
-    if (document.body) {
-      document.body.style.margin = '0';
-      document.body.style.minHeight = '90px';
-      document.body.style.overflow = 'hidden';
-      Array.prototype.forEach.call(document.body.children, function (child) {
-        if (child !== node) child.style.display = 'none';
-      });
+    if (value.type === 'error') {
+      const errorCode = typeof value.errorCode === 'string' && value.errorCode.length <= 128 ? value.errorCode : 'unknown';
+      return { kind: 'error', errorCode };
     }
-    frame.style.display = 'block';
-    frame.scrollIntoView({ block: 'center', inline: 'center' });
-    return true;
-  }
-  var attempts = 0;
-  var timer = setInterval(function () {
-    attempts += 1;
-    if (focusWidget() || attempts >= 120) clearInterval(timer);
-  }, 100);
-})();
-true;
-`;
-
-/**
- * The native bottom notice is the user-facing consent surface. After the user
- * presses the login or registration action, this script clicks the equivalent
- * control in the official first-party page so that the page records the same
- * consent and can continue rendering Turnstile. It is never injected before
- * that action.
- */
-export const TURNSTILE_PAGE_ACCEPT_AGREEMENT_SCRIPT = `
-(function () {
-  function accept() {
-    var dialogs = Array.prototype.slice.call(document.querySelectorAll('[role="dialog"], [aria-modal="true"], dialog'));
-    var roots = dialogs.length ? dialogs : [document.body];
-    var nodes = roots.reduce(function (all, root) { return all.concat(Array.prototype.slice.call(root.querySelectorAll('button, a, [role="button"]'))); }, []);
-    var target = nodes.find(function (node) {
-      var text = (node.innerText || node.textContent || '').replace(/\\s+/g, ' ').trim();
-      return /^(同意(?:并继续)?|接受(?:并继续)?|agree(?: and continue)?|accept(?: and continue)?)$/i.test(text);
-    });
-    if (!target) return false;
-    target.click();
-    window.__vexluneAgreementAccepted = true;
-    if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'agreement_accepted', origin: window.location.origin }));
-    return true;
-  }
-  var attempts = 0;
-  var timer = setInterval(function () {
-    attempts += 1;
-    if (accept()) clearInterval(timer);
-    else if (attempts >= 150) {
-      clearInterval(timer);
-      if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'agreement_accept_failed', origin: window.location.origin }));
+    if (value.type === 'unsupported') {
+      return { kind: 'unsupported', ...(typeof value.errorCode === 'string' && value.errorCode.length <= 128 ? { errorCode: value.errorCode } : {}) };
     }
-  }, 100);
-})();
-true;
-`;
-
-export function parseTurnstilePageMessage(raw: string, expectedOrigin: string): ParsedTurnstileMessage {
-  try {
-    const value = JSON.parse(raw) as TurnstilePageMessage;
-    if (value.type === 'agreement_required' && value.origin === expectedOrigin) return { kind: 'agreement-required' };
-    if (value.type === 'agreement_accepted' && value.origin === expectedOrigin) return { kind: 'agreement-accepted' };
-    if (value.type === 'agreement_accept_failed' && value.origin === expectedOrigin) return { kind: 'agreement-accept-failed' };
-    if (value.type === 'widget_ready' && value.origin === expectedOrigin) return { kind: 'widget-ready' };
-    if (value.type === 'turnstile_expired' && value.origin === expectedOrigin) return { kind: 'expired' };
-    if (value.type === 'turnstile_unavailable') return { kind: 'unavailable' };
-    if (value.type !== 'turnstile_token' || value.origin !== expectedOrigin || typeof value.token !== 'string' || value.token.length < 20) return null;
-    return { kind: 'token', token: value.token };
+    if (value.type === 'ready') return { kind: 'ready' };
+    if (value.type === 'expired') return { kind: 'expired' };
+    if (value.type === 'before-interactive') return { kind: 'before-interactive' };
+    if (value.type === 'after-interactive') return { kind: 'after-interactive' };
+    return { kind: 'disabled' };
   } catch {
     return null;
   }
+}
+
+export function createTurnstileBridgeContext(origin: string, action: TurnstileAction, resetKey: number): TurnstileBridgeContext {
+  const random = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 14)}`;
+  return { origin, action, requestId: `v1-${action}-${resetKey}-${random()}`, nonce: random() };
+}
+
+export function buildTurnstilePageUrl(context: TurnstileBridgeContext): string {
+  const fragment = new URLSearchParams({
+    version: String(TURNSTILE_BRIDGE_VERSION),
+    requestId: context.requestId,
+    nonce: context.nonce,
+    action: context.action,
+  });
+  return `${context.origin}${TURNSTILE_PAGE_PATH}#${fragment.toString()}`;
 }

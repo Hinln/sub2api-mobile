@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react-native';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
@@ -9,6 +9,7 @@ import { LoginAgreementNotice } from '@/src/components/login-agreement';
 import { TurnstileGate } from '@/src/components/turnstile-gate';
 import { VexluneLogo } from '@/src/components/vexlune-logo';
 import { AuthApiError, getPublicSettings, register, sendVerifyCode } from '@/src/services/auth';
+import { canSubmitTurnstile, isUsableTurnstileToken, type TurnstileStatus } from '@/src/lib/turnstile';
 
 const authColors = {
   ink: '#142452',
@@ -51,9 +52,12 @@ export default function RegisterScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [turnstileToken, setTurnstileToken] = useState('');
   const [turnstileReset, setTurnstileReset] = useState(0);
   const [agreementSubmitAttempt, setAgreementSubmitAttempt] = useState(0);
+  const turnstileStatusRef = useRef<TurnstileStatus>('loading');
+  const turnstileTokenRef = useRef('');
+  const pendingSubmitRef = useRef(false);
+  const submitInFlightRef = useRef(false);
   const [registrationEnabled, setRegistrationEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -62,13 +66,48 @@ export default function RegisterScreen() {
     return () => { active = false; };
   }, []);
 
-  async function submit() {
+  function handleTurnstileStatus(status: TurnstileStatus) {
+    turnstileStatusRef.current = status;
+    if (status === 'disabled' && pendingSubmitRef.current && !submitInFlightRef.current) {
+      pendingSubmitRef.current = false;
+      void submit('');
+    }
+  }
+
+  function handleTurnstileToken(token: string) {
+    turnstileTokenRef.current = token;
+    if (isUsableTurnstileToken(token)) {
+      turnstileStatusRef.current = 'token';
+      if (pendingSubmitRef.current && !submitInFlightRef.current) {
+        pendingSubmitRef.current = false;
+        void submit(token);
+      }
+    }
+  }
+
+  async function submit(overrideToken?: string) {
+    if (submitInFlightRef.current) return;
     setError(''); setNotice('');
     if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) return setError('请输入有效邮箱');
     if (password.length < 6) return setError('密码至少需要 6 位');
     if (password !== confirm) return setError('两次输入的密码不一致');
+    const token = overrideToken ?? turnstileTokenRef.current;
+    if (!canSubmitTurnstile(turnstileStatusRef.current, token)) {
+      pendingSubmitRef.current = true;
+      setAgreementSubmitAttempt((value) => value + 1);
+      if (turnstileStatusRef.current === 'error') {
+        turnstileTokenRef.current = '';
+        setTurnstileReset((value) => value + 1);
+        setError('安全验证组件加载失败，正在重新加载，请完成验证后再试。');
+      } else {
+        setError('请先完成 Cloudflare 人机验证，完成后将自动继续注册。');
+      }
+      return;
+    }
+    pendingSubmitRef.current = false;
     setAgreementSubmitAttempt((value) => value + 1);
     setBusy(true);
+    submitInFlightRef.current = true;
     try {
       const settings = await getPublicSettings();
       if (settings.registration_enabled === false) {
@@ -77,16 +116,16 @@ export default function RegisterScreen() {
         return;
       }
       if (settings.email_verify_enabled && !verifyStep) {
-        await sendVerifyCode({ email: email.trim().toLowerCase(), turnstile_token: turnstileToken || undefined });
-        setTurnstileToken(''); setTurnstileReset((value) => value + 1);
+        await sendVerifyCode({ email: email.trim().toLowerCase(), turnstile_token: token || undefined });
+        turnstileTokenRef.current = ''; setTurnstileReset((value) => value + 1);
         setVerifyStep(true); setNotice('验证码已发送，请检查邮箱'); return;
       }
-      await register({ email: email.trim().toLowerCase(), password, verify_code: verifyCode || undefined, turnstile_token: turnstileToken || undefined });
+      await register({ email: email.trim().toLowerCase(), password, verify_code: verifyCode || undefined, turnstile_token: token || undefined });
       router.replace('/user');
     } catch (reason) {
-      setTurnstileToken(''); setTurnstileReset((value) => value + 1);
+      turnstileTokenRef.current = ''; setTurnstileReset((value) => value + 1);
       setError(reason instanceof AuthApiError && reason.challenge ? '请先完成 Cloudflare 人机验证，再重试。' : reason instanceof Error ? reason.message : '注册失败，请稍后重试');
-    } finally { setBusy(false); }
+    } finally { submitInFlightRef.current = false; setBusy(false); }
   }
 
   return <AuthBackdrop><SafeAreaView style={{ flex: 1 }}><KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}><ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 28 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -97,7 +136,7 @@ export default function RegisterScreen() {
       <AuthField icon={<LockKeyhole color={authColors.subtext} size={20} />} label="密码" helper="至少 6 位字符"><TextInput accessibilityLabel="register-password" value={password} onChangeText={(value) => { setPassword(value); setError(''); }} secureTextEntry={!showPassword} autoCapitalize="none" autoCorrect={false} placeholder="设置登录密码" placeholderTextColor={authColors.faint} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15 }} /><Pressable accessibilityLabel="toggle-register-password" onPress={() => setShowPassword((value) => !value)} style={{ padding: 13 }}>{showPassword ? <EyeOff color={authColors.subtext} size={19} /> : <Eye color={authColors.subtext} size={19} />}</Pressable></AuthField>
       <AuthField icon={<LockKeyhole color={authColors.subtext} size={20} />} label="确认密码" helper="再次输入相同密码"><TextInput accessibilityLabel="register-confirm-password" value={confirm} onChangeText={(value) => { setConfirm(value); setError(''); }} secureTextEntry={!showPassword} autoCapitalize="none" autoCorrect={false} placeholder="确认登录密码" placeholderTextColor={authColors.faint} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15 }} /></AuthField>
       {verifyStep ? <AuthField icon={<ShieldCheck color={authColors.subtext} size={20} />} label="邮箱验证码" helper="验证码已发送至你的邮箱"><TextInput accessibilityLabel="register-verify-code" value={verifyCode} onChangeText={(value) => setVerifyCode(value.replace(/\D/g, '').slice(0, 8))} keyboardType="number-pad" placeholder="请输入验证码" placeholderTextColor={authColors.faint} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15 }} /></AuthField> : null}
-      <TurnstileGate action="register" resetKey={turnstileReset} consentRequestKey={agreementSubmitAttempt} onToken={setTurnstileToken} />
+      <TurnstileGate action="register" resetKey={turnstileReset} consentRequestKey={agreementSubmitAttempt} onToken={handleTurnstileToken} onStatus={handleTurnstileStatus} />
       {registrationEnabled === false ? <Text style={{ color: '#A36814', fontSize: 13, lineHeight: 19, marginTop: 13 }}>当前已关闭公开注册，请返回登录或联系管理员。</Text> : null}
       {notice ? <Text style={{ color: '#16825C', fontSize: 13, lineHeight: 19, marginTop: 13 }}>{notice}</Text> : null}
       {error ? <Text style={{ color: authColors.danger, fontSize: 13, lineHeight: 19, marginTop: 13 }}>{error}</Text> : null}

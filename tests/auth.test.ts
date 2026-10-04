@@ -38,6 +38,42 @@ describe('public auth transport', () => {
     expect(error.status).toBe(403);
   });
 
+  it('classifies the official Turnstile verification failure reason as a challenge', async () => {
+    sessionState.baseUrl = 'https://hub.vexlune.com';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      code: 400,
+      reason: 'TURNSTILE_VERIFICATION_FAILED',
+      message: 'turnstile verification failed',
+    }), { status: 400, headers: { 'content-type': 'application/json' } }));
+
+    const error = await login({ email: 'person@example.com', password: 'password', turnstile_token: 'x'.repeat(20) }).catch((value) => value as AuthApiError);
+    expect(error).toBeInstanceOf(AuthApiError);
+    expect(error.challenge).toBe(true);
+    expect(error.message).toContain('Cloudflare');
+  });
+
+  it('forwards the one-time Turnstile token exactly once with login', async () => {
+    sessionState.baseUrl = 'https://hub.vexlune.com';
+    const turnstileToken = 'turnstile-token-1234567890';
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({ code: 0, data: {
+        access_token: 'access-token', refresh_token: 'refresh-token', expires_in: 3600,
+        user: { id: 7, email: 'person@example.com', role: 'user' },
+      } }), { status: 200, headers: { 'content-type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ code: 0, data: {
+        id: 7, email: 'person@example.com', role: 'user', status: 'active',
+      } }), { status: 200, headers: { 'content-type': 'application/json' } }));
+
+    await login({ email: 'person@example.com', password: 'password', turnstile_token: turnstileToken });
+
+    const request = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(JSON.parse(String(request.body))).toEqual({
+      email: 'person@example.com',
+      password: 'password',
+      turnstile_token: turnstileToken,
+    });
+  });
+
   it('refreshes the role from auth/me after login', async () => {
     sessionState.baseUrl = 'https://hub.vexlune.com';
     const fetchMock = vi.spyOn(globalThis, 'fetch')

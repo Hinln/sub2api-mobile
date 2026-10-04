@@ -32,6 +32,8 @@ export const publicSettingsSchema = z.object({
   login_agreement_documents: z.array(loginAgreementDocumentSchema).optional(),
   turnstile_enabled: z.boolean().optional(),
   turnstile_site_key: z.string().optional(),
+  aliyun_captcha_enabled: z.boolean().optional(),
+  tencent_captcha_enabled: z.boolean().optional(),
   payment_enabled: z.boolean().optional(),
   site_name: z.string().optional(),
   site_subtitle: z.string().optional(),

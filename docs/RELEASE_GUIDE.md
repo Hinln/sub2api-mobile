@@ -34,7 +34,18 @@ Artifact 名称：`vexlune-ios-unsigned-v<version>-b<build>`（版本和 build n
 ## Android（暂缓）
 
 当前版本不触发 Android workflow，不生成 APK/AAB，也不配置 Android SDK、Java 或
-签名。恢复 Android 范围后另行建立构建和验收记录。
+签名。`package.json` 中保留的 Android helper 和
+`.github/workflows/build-android-native.yml` 只用于未来重新立项后的原生工具链
+迁移评估；它们不属于本次发布入口，也不能作为本次验收证据。恢复 Android 范围后，
+应先提交独立的 Gradle 工程、签名方案和真机验收记录，再开启对应命令。
+
+## 当前交付边界
+
+本次发布只验收 iOS。不要运行 `expo run:ios`、`expo run:android`、`expo prebuild`
+或 EAS Build 来生成发布工程；iOS 发布始终使用仓库内的 `ios/` workspace、
+CocoaPods 和 Xcode。Expo runtime 依赖仍用于路由和原生模块，但这不改变发布工具链。
+GitHub Actions 的 unsigned iOS workflow 仅是可选的无签名诊断；如果 Actions 不可用，
+不影响本机 Xcode 构建、归档或签名导出。
 
 ## 本机原生构建
 

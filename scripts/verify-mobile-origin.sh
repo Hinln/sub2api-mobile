@@ -27,9 +27,10 @@ if grep -Eiq 'turnstile[_-]?secret|cf[_-]?clearance|x-api-key|"secret[_-]?key"' 
   exit 1
 fi
 
-for page in login register forgot-password; do
-  page_headers="$tmp_dir/$page.headers"
-  page_body="$tmp_dir/$page.body"
+for page in login register forgot-password mobile/turnstile; do
+  page_file_key="$(printf '%s' "$page" | tr '/' '_')"
+  page_headers="$tmp_dir/$page_file_key.headers"
+  page_body="$tmp_dir/$page_file_key.body"
   page_status="$(curl -sS -o "$page_body" -D "$page_headers" -w '%{http_code}' "$base_url/$page")"
   page_type="$(awk 'tolower($0) ~ /^content-type:/ {print tolower($0); exit}' "$page_headers")"
   if [ "$page_status" != "200" ] || ! printf '%s' "$page_type" | grep -q 'text/html'; then
@@ -37,7 +38,7 @@ for page in login register forgot-password; do
     exit 1
   fi
   if ! grep -Eiq 'turnstile' "$page_body"; then
-    echo "first-party auth page does not expose the configured Turnstile client (page=$page)" >&2
+    echo "first-party page does not expose the configured Turnstile client (page=$page)" >&2
     exit 1
   fi
   if grep -Eiq 'turnstile[_-]?secret|cf[_-]?clearance|x-api-key|"secret[_-]?key"' "$page_body"; then

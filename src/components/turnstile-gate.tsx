@@ -1,191 +1,253 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { WebView, type WebView as WebViewInstance, type WebViewMessageEvent, type WebViewNavigation } from 'react-native-webview';
 import { getPublicSettings } from '@/src/services/auth';
 import { sessionState } from '@/src/auth/session';
 import { theme } from '@/src/theme';
-import { parseTurnstilePageMessage, TURNSTILE_PAGE_ACCEPT_AGREEMENT_SCRIPT, TURNSTILE_PAGE_CAPTURE_SCRIPT, TURNSTILE_PAGE_FOCUS_SCRIPT } from '@/src/lib/turnstile';
-import type { LoginAgreementDocument } from '@/src/types/auth';
+import {
+  buildTurnstilePageUrl,
+  createTurnstileBridgeContext,
+  parseTurnstilePageMessage,
+  type TurnstileAction,
+  type TurnstileStatus,
+} from '@/src/lib/turnstile';
 
-const ALLOWED_ACTIONS = new Set(['login', 'register', 'forgot_password']);
+const ALLOWED_ACTIONS = new Set<TurnstileAction>(['login', 'register', 'forgot_password']);
 
-export function TurnstileGate({ action, resetKey, consentRequestKey = 0, onToken }: { action: 'login' | 'register' | 'forgot_password'; resetKey?: number; consentRequestKey?: number; onToken: (token: string) => void }) {
-  const [siteKey, setSiteKey] = useState('');
+type GateProps = {
+  action: TurnstileAction;
+  resetKey?: number;
+  /** The native submit action reveals the dedicated challenge surface. */
+  consentRequestKey?: number;
+  onToken: (token: string) => void;
+  onStatus?: (status: TurnstileStatus) => void;
+};
+
+type ShouldStartLoadRequest = WebViewNavigation & { isTopFrame?: boolean };
+
+export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onToken, onStatus }: GateProps) {
   const [loading, setLoading] = useState(true);
+  const [enabled, setEnabled] = useState<boolean | null>(null);
   const [error, setError] = useState('');
-  const [widgetVisible, setWidgetVisible] = useState(false);
-  const [agreementRequired, setAgreementRequired] = useState(false);
-  const [agreementAccepted, setAgreementAccepted] = useState(false);
-  const [agreementDocuments, setAgreementDocuments] = useState<LoginAgreementDocument[]>([]);
-  const agreementAcceptedRef = useRef(false);
-  const agreementRequiredRef = useRef(false);
-  const widgetVisibleRef = useRef(false);
-  const origin = sessionState.baseUrl;
+  const [widgetReady, setWidgetReady] = useState(false);
+  const [interactive, setInteractive] = useState(false);
+  const [challengeRequested, setChallengeRequested] = useState(consentRequestKey > 0);
+  const onStatusRef = useRef(onStatus);
+  const onTokenRef = useRef(onToken);
   const webViewRef = useRef<WebViewInstance>(null);
-  const unavailableTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const consumedRef = useRef(false);
+  const widgetReadyRef = useRef(false);
+  const context = useMemo(() => createTurnstileBridgeContext(sessionState.baseUrl, action, resetKey), [action, resetKey]);
+  const pageUrl = useMemo(() => buildTurnstilePageUrl(context), [context]);
+
+  useEffect(() => { onStatusRef.current = onStatus; }, [onStatus]);
+  useEffect(() => { onTokenRef.current = onToken; }, [onToken]);
+  useEffect(() => { setChallengeRequested(consentRequestKey > 0); }, [consentRequestKey]);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setEnabled(null);
     setError('');
-    setWidgetVisible(false);
-    widgetVisibleRef.current = false;
+    setWidgetReady(false);
+    widgetReadyRef.current = false;
+    setInteractive(false);
+    consumedRef.current = false;
+    onTokenRef.current('');
+    onStatusRef.current?.('loading');
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
     void getPublicSettings().then((settings) => {
       if (!active) return;
-      const documents = settings.login_agreement_documents ?? [];
-      const agreementEnabled = action !== 'forgot_password' && settings.login_agreement_enabled === true && documents.length > 0;
-      // The native bottom notice is the primary consent surface. Show it as
-      // soon as the official public settings confirm a current agreement;
-      // the first-party WebView remains hidden until the user submits login
-      // or registration, which is the consent action for this app.
-      setAgreementDocuments(agreementEnabled ? documents : []);
-      const accepted = agreementEnabled ? agreementAcceptedRef.current : true;
-      agreementAcceptedRef.current = accepted;
-      agreementRequiredRef.current = agreementEnabled && !accepted;
-      setAgreementAccepted(accepted);
-      setAgreementRequired(agreementRequiredRef.current);
-      if (settings.turnstile_enabled && settings.turnstile_site_key) setSiteKey(settings.turnstile_site_key);
-      else setSiteKey('');
-    }).catch(() => { if (active) setError('无法读取安全验证设置'); }).finally(() => { if (active) setLoading(false); });
+      if (settings.turnstile_enabled === false) {
+        if (settings.aliyun_captcha_enabled === true || settings.tencent_captcha_enabled === true) {
+          setError('当前启用的安全验证供应商不受 APP 支持，请联系管理员。');
+          onStatusRef.current?.('error');
+        } else {
+          setEnabled(false);
+          onStatusRef.current?.('disabled');
+        }
+        return;
+      }
+      if (settings.turnstile_enabled === true && typeof settings.turnstile_site_key === 'string' && settings.turnstile_site_key.trim()) {
+        setEnabled(true);
+        onStatusRef.current?.('waiting');
+        return;
+      }
+      setEnabled(null);
+      setError('安全验证配置异常，请联系管理员。');
+      onStatusRef.current?.('error');
+    }).catch(() => {
+      if (!active) return;
+      setEnabled(null);
+      setError('无法读取安全验证设置，请检查网络后重试。');
+      onStatusRef.current?.('error');
+    }).finally(() => { if (active) setLoading(false); });
+
     return () => {
       active = false;
-      if (unavailableTimer.current) clearTimeout(unavailableTimer.current);
-      unavailableTimer.current = null;
+      widgetReadyRef.current = false;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     };
   }, [action, resetKey]);
 
-  useEffect(() => {
-    agreementAcceptedRef.current = agreementAccepted;
-  }, [agreementAccepted]);
-
-  useEffect(() => {
-    agreementRequiredRef.current = agreementRequired;
-  }, [agreementRequired]);
-
-  useEffect(() => {
-    widgetVisibleRef.current = widgetVisible;
-  }, [widgetVisible]);
-
-  // Login/register is the consent action. The native prompt stays passive;
-  // this effect synchronizes the same consent into the first-party page only
-  // after the parent form has validated and the user has pressed its button.
-  useEffect(() => {
-    if (consentRequestKey <= 0 || agreementDocuments.length === 0 || agreementAcceptedRef.current) return;
-    agreementAcceptedRef.current = true;
-    agreementRequiredRef.current = false;
-    setAgreementAccepted(true);
-    setAgreementRequired(false);
-    setWidgetVisible(false);
-    widgetVisibleRef.current = false;
-    setError('');
-    onToken('');
-    webViewRef.current?.injectJavaScript(TURNSTILE_PAGE_ACCEPT_AGREEMENT_SCRIPT);
-  }, [agreementDocuments.length, consentRequestKey, onToken]);
-
-  if (Platform.OS === 'web' || !ALLOWED_ACTIONS.has(action)) return null;
-  if (loading) return <View style={{ minHeight: 72, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={theme.primary} /></View>;
-  if (!siteKey) return <View><Text style={{ color: error ? theme.danger : theme.subtext, fontSize: 12, lineHeight: 18, marginTop: 12 }}>{error || '当前未启用安全验证。'}</Text></View>;
-
-  // The official web client owns the Turnstile widget. Loading its auth page
-  // keeps the challenge on the first-party hostname and avoids depending on a
-  // private backend bridge that is absent from official releases.
-  const pagePath = action === 'register' ? '/register' : action === 'forgot_password' ? '/forgot-password' : '/login';
-  const pageUrl = `${origin}${pagePath}`;
-  function onMessage(event: WebViewMessageEvent) {
-    try {
-      if (new URL(event.nativeEvent.url).origin !== origin) {
-        setError('安全验证消息来源无效，请重试。');
-        return;
+  function scheduleTimeout() {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      timeoutRef.current = null;
+      if (!widgetReadyRef.current && !consumedRef.current) {
+        setError('官方安全验证组件未加载，请检查网络后重试。');
+        onStatusRef.current?.('error');
       }
+    }, 30_000);
+  }
+
+  function onMessage(event: WebViewMessageEvent) {
+    // onMessage.url is the main document URL on supported RN WebView versions.
+    // It is still checked in addition to the payload tuple; the payload cannot
+    // authenticate an arbitrary page by claiming an origin.
+    try {
+      if (new URL(event.nativeEvent.url).origin !== context.origin) return;
     } catch {
-      setError('安全验证消息来源无效，请重试。');
       return;
     }
-    const message = parseTurnstilePageMessage(event.nativeEvent.data, origin);
-    if (!message) return;
-    if (message.kind === 'agreement-required') {
-      if (unavailableTimer.current) clearTimeout(unavailableTimer.current);
-      unavailableTimer.current = null;
-      onToken('');
-      setWidgetVisible(false);
-      widgetVisibleRef.current = false;
-      agreementRequiredRef.current = true;
-      setAgreementRequired(true);
-      return;
-    }
-    if (message.kind === 'agreement-accepted') {
-      agreementAcceptedRef.current = true;
-      agreementRequiredRef.current = false;
-      setAgreementAccepted(true);
-      setAgreementRequired(false);
+    const message = parseTurnstilePageMessage(event.nativeEvent.data, context);
+    if (!message || consumedRef.current && message.kind === 'token') return;
+    if (message.kind === 'ready') {
+      widgetReadyRef.current = true;
+      setWidgetReady(true);
+      setInteractive(false);
       setError('');
+      onStatusRef.current?.('ready');
       return;
     }
-    if (message.kind === 'agreement-accept-failed') {
-      agreementAcceptedRef.current = false;
-      agreementRequiredRef.current = true;
-      setAgreementAccepted(false);
-      setAgreementRequired(true);
-      setError('服务条款未能同步，请重试登录或注册。');
+    if (message.kind === 'before-interactive') {
+      setInteractive(false);
+      onStatusRef.current?.('waiting');
       return;
     }
-    if (message.kind === 'widget-ready') {
-      widgetVisibleRef.current = true;
-      setWidgetVisible(true);
-      webViewRef.current?.injectJavaScript(TURNSTILE_PAGE_FOCUS_SCRIPT);
+    if (message.kind === 'after-interactive') {
+      setInteractive(true);
+      onStatusRef.current?.('ready');
+      return;
+    }
+    if (message.kind === 'token') {
+      consumedRef.current = true;
+      widgetReadyRef.current = true;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+      setWidgetReady(true);
+      setInteractive(true);
+      setError('');
+      onStatusRef.current?.('token');
+      onTokenRef.current(message.token);
       return;
     }
     if (message.kind === 'expired') {
-      onToken('');
+      consumedRef.current = false;
+      onTokenRef.current('');
       setError('安全验证已过期，请重新完成验证。');
+      onStatusRef.current?.('ready');
       return;
     }
-    if (message.kind === 'unavailable') {
-      if (unavailableTimer.current) clearTimeout(unavailableTimer.current);
-      unavailableTimer.current = null;
-      widgetVisibleRef.current = false;
-      setWidgetVisible(false);
-      setError('官方安全验证组件未加载，请稍后重试。');
+    if (message.kind === 'disabled') {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+      widgetReadyRef.current = false;
+      setEnabled(false);
+      onStatusRef.current?.('disabled');
       return;
     }
-    if (unavailableTimer.current) clearTimeout(unavailableTimer.current);
-    unavailableTimer.current = null;
-    widgetVisibleRef.current = true;
-    setWidgetVisible(true);
-    setError('');
-    onToken(message.token);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+    widgetReadyRef.current = false;
+    setWidgetReady(false);
+    setInteractive(false);
+    consumedRef.current = false;
+    onTokenRef.current('');
+    setError(message.kind === 'unsupported'
+      ? '当前设备不支持安全验证，请更新系统后重试。'
+      : `安全验证加载失败（${message.errorCode}），请重试。`);
+    onStatusRef.current?.('error');
   }
 
-  function allowNavigation(request: WebViewNavigation) {
+  function allowNavigation(request: ShouldStartLoadRequest) {
     try {
       const url = new URL(request.url);
-      if (url.protocol === 'about:' && url.href === 'about:blank') return true;
-      return url.origin === origin || url.origin === 'https://challenges.cloudflare.com';
-    } catch { return false; }
+      if (url.protocol === 'about:' && (url.href === 'about:blank' || url.href === 'about:srcdoc')) return true;
+      if (url.origin === context.origin) return url.pathname === '/mobile/turnstile';
+      // Cloudflare is allowed for iframe/subresource navigation only. A
+      // challenge origin must never replace the trusted top-level document.
+      return url.origin === 'https://challenges.cloudflare.com' && request.isTopFrame === false;
+    } catch {
+      return false;
+    }
   }
 
-  function scheduleUnavailableTimer() {
-    if (unavailableTimer.current) clearTimeout(unavailableTimer.current);
-    unavailableTimer.current = setTimeout(() => {
-      unavailableTimer.current = null;
-      if (!widgetVisibleRef.current && !agreementRequiredRef.current) setError('官方安全验证组件未加载，请检查网络后重试。');
-    }, 45_000);
+  function isMainDocumentUrl(value: string | undefined) {
+    if (!value) return true;
+    try {
+      const url = new URL(value);
+      return url.origin === context.origin && url.pathname === '/mobile/turnstile';
+    } catch {
+      return true;
+    }
   }
 
-  function onLoadEnd() {
-    if (agreementAccepted && agreementDocuments.length > 0) webViewRef.current?.injectJavaScript(TURNSTILE_PAGE_ACCEPT_AGREEMENT_SCRIPT);
-    // A provider page can load successfully while its Turnstile script is
-    // blocked by network policy. Fail closed after a bounded wait instead of
-    // leaving the login form with a challenge that can never produce a token.
-    scheduleUnavailableTimer();
-  }
+  if (Platform.OS === 'web' || !ALLOWED_ACTIONS.has(action)) return null;
+  if (loading) return <View style={{ minHeight: 72, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={theme.primary} /></View>;
+  if (enabled === false) return <Text style={{ color: theme.subtext, fontSize: 12, lineHeight: 18, marginTop: 12 }}>当前未启用安全验证。</Text>;
+  if (enabled !== true) return <Text style={{ color: theme.danger, fontSize: 12, lineHeight: 18, marginTop: 12 }}>{error || '安全验证暂不可用，请稍后重试。'}</Text>;
 
   return <View style={{ marginTop: 14 }}>
-    {/* Agreement is communicated by the native footer. Keep the first-party
-        WebView mounted but quiet until the user submits the form; showing a
-        second in-form consent card makes the auth surface feel blocked. */}
-    {!widgetVisible && !agreementRequired ? <View style={{ minHeight: 56, borderRadius: 14, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.cardRaised, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 10 }}><ActivityIndicator color={theme.primary} /><Text style={{ flex: 1, color: error ? theme.danger : theme.subtext, fontSize: 12, lineHeight: 18 }}>{error || '正在加载官方安全验证…'}</Text></View> : null}
-    {error && widgetVisible ? <Text style={{ color: theme.danger, fontSize: 12, lineHeight: 18, marginTop: 10 }}>{error}</Text> : null}
-    <View style={{ marginTop: widgetVisible ? 10 : 1, height: widgetVisible ? 110 : 1, overflow: 'hidden', borderRadius: 12, borderWidth: widgetVisible ? 1 : 0, borderColor: theme.border, opacity: widgetVisible ? 1 : 0.01 }}><WebView key={`${action}-${resetKey ?? 0}`} ref={webViewRef} style={{ height: widgetVisible ? 110 : 1 }} source={{ uri: pageUrl }} originWhitelist={[origin, 'https://challenges.cloudflare.com', 'about:blank']} javaScriptEnabled domStorageEnabled injectedJavaScriptBeforeContentLoaded={TURNSTILE_PAGE_CAPTURE_SCRIPT} onLoadEnd={onLoadEnd} onMessage={onMessage} onShouldStartLoadWithRequest={allowNavigation} onError={() => { widgetVisibleRef.current = false; setWidgetVisible(false); setError('安全验证页面加载失败，请检查网络'); }} onHttpError={() => { widgetVisibleRef.current = false; setWidgetVisible(false); setError('安全验证页面返回了无效内容，请联系管理员。'); }} accessibilityLabel="turnstile-webview" /></View>
+    <View style={{ minHeight: 58, borderRadius: 14, borderWidth: 1, borderColor: error ? theme.danger : theme.border, backgroundColor: theme.cardRaised, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      {!widgetReady && !error ? <ActivityIndicator color={theme.primary} /> : null}
+      <Text style={{ flex: 1, color: error ? theme.danger : theme.subtext, fontSize: 12, lineHeight: 18 }}>
+        {error || (widgetReady ? (interactive ? '请完成下方安全验证' : '安全验证已就绪') : '正在加载安全验证…')}
+      </Text>
+    </View>
+    {challengeRequested ? <View style={{ marginTop: 10, height: 110, overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: theme.border, backgroundColor: '#fff' }}>
+      <WebView
+        key={`${action}-${resetKey}`}
+        ref={webViewRef}
+        style={{ height: 110 }}
+        source={{ uri: pageUrl }}
+        originWhitelist={[context.origin, 'https://challenges.cloudflare.com', 'about:blank', 'about:srcdoc']}
+        javaScriptEnabled
+        domStorageEnabled
+        thirdPartyCookiesEnabled
+        sharedCookiesEnabled
+        onLoadEnd={scheduleTimeout}
+        onMessage={onMessage}
+        onShouldStartLoadWithRequest={allowNavigation}
+        onError={(event) => {
+          if (!isMainDocumentUrl(event.nativeEvent.url)) return;
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+          widgetReadyRef.current = false;
+          consumedRef.current = false;
+          setWidgetReady(false);
+          setInteractive(false);
+          onTokenRef.current('');
+          setError('安全验证页面加载失败，请检查网络后重试。');
+          onStatusRef.current?.('error');
+        }}
+        onHttpError={(event) => {
+          if (!isMainDocumentUrl(event.nativeEvent.url)) return;
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+          widgetReadyRef.current = false;
+          consumedRef.current = false;
+          setWidgetReady(false);
+          setInteractive(false);
+          onTokenRef.current('');
+          setError(`安全验证页面返回异常（${event.nativeEvent.statusCode}）。`);
+          onStatusRef.current?.('error');
+        }}
+        accessibilityLabel="turnstile-webview"
+      />
+    </View> : null}
   </View>;
 }
