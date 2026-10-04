@@ -126,7 +126,8 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
     // It is still checked in addition to the payload tuple; the payload cannot
     // authenticate an arbitrary page by claiming an origin.
     try {
-      if (new URL(event.nativeEvent.url).origin !== context.origin) return;
+      const messageUrl = new URL(event.nativeEvent.url);
+      if (messageUrl.origin !== context.origin || messageUrl.pathname !== '/mobile/turnstile') return;
     } catch {
       return;
     }
@@ -249,7 +250,10 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
     </View>
     {challengeRequested ? <View style={{ marginTop: 10, height: 110, overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: theme.border, backgroundColor: '#fff' }}>
       <WebView
-        key={`${action}-${resetKey}`}
+        // Include instanceKey so local token expiry creates a fresh document.
+        // A hash-only URL change is not sufficient to rerun the page's
+        // onMounted initialization on every WKWebView version.
+        key={`${action}-${resetKey}-${instanceKey}`}
         ref={webViewRef}
         style={{ height: 110 }}
         source={{ uri: pageUrl }}

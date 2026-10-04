@@ -26,6 +26,9 @@
    Cloudflare 后端拒绝都 fail closed；token 只存于内存，成功或失败后立即丢弃。
 5. 页面保持浅色 Vexlune Hub 登录 UI。验证 WebView 在用户提交后才显示，避免首次打开
    登录页出现网页内容片段；注册邮箱验证码仍由公开设置决定。
+6. 本地令牌刷新会把 `instanceKey` 纳入 WebView key，强制创建新文档并生成新的
+   requestId/nonce；原生消息还必须来自同源 `/mobile/turnstile` 主文档路径，避免
+   同源其他页面伪造桥消息。
 
 ## 自动化证据
 
