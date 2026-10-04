@@ -1,6 +1,8 @@
 import { normalizeHubUrl } from '@/src/config/vexlune';
 import { clearSession, sessionState, saveSession, updateAccessToken, updateSessionUser } from '@/src/auth/session';
 import { userSchema, publicSettingsSchema, authResponseSchema, type AuthResponse, type AuthUser, type PublicSettings } from '@/src/types/auth';
+import { recordTurnstileDiagnostic } from '@/src/lib/turnstile-diagnostics';
+import type { TurnstileAction } from '@/src/lib/turnstile';
 
 type ApiEnvelope<T> = { code?: number; message?: string; reason?: string; data?: T } & Record<string, unknown>;
 
@@ -31,7 +33,16 @@ function isHtmlResponse(response: Response, body: string) {
   return mitigated === 'challenge' || contentType.includes('text/html') || /^\s*<(?:!doctype\s+html|html|head|body)\b/i.test(body);
 }
 
+function turnstileActionForPath(path: string): TurnstileAction | undefined {
+  if (path === '/api/v1/auth/login') return 'login';
+  if (path === '/api/v1/auth/register' || path === '/api/v1/auth/send-verify-code') return 'register';
+  if (path === '/api/v1/auth/forgot-password') return 'forgot_password';
+  return undefined;
+}
+
 async function request<T>(path: string, init: RequestInit = {}, options: { auth?: boolean } = {}) {
+  const action = turnstileActionForPath(path);
+  const startedAt = Date.now();
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
@@ -41,12 +52,15 @@ async function request<T>(path: string, init: RequestInit = {}, options: { auth?
   try {
     response = await fetch(urlFor(path), { ...init, headers });
   } catch (error) {
+    if (action) recordTurnstileDiagnostic({ phase: 'error', action, status: 'business-network-error', errorCode: 'request_failed', durationMs: Date.now() - startedAt });
     throw new AuthApiError(error instanceof Error ? error.message : '网络连接失败', 0);
   }
 
   const text = await response.text();
   if (isHtmlResponse(response, text)) {
-    throw new AuthApiError('Cloudflare 正在验证当前请求，请完成浏览器挑战后重试。', response.status, { challenge: true });
+    const requestId = response.headers.get('x-request-id') ?? undefined;
+    if (action) recordTurnstileDiagnostic({ phase: 'edge-challenge', action, httpStatus: response.status, requestId, status: 'cf-challenge', durationMs: Date.now() - startedAt });
+    throw new AuthApiError('Cloudflare 正在验证当前请求，请完成浏览器挑战后重试。', response.status, { challenge: true, requestId });
   }
 
   let payload: ApiEnvelope<T> | T | null = null;
@@ -58,8 +72,11 @@ async function request<T>(path: string, init: RequestInit = {}, options: { auth?
     const reason = typeof envelope?.reason === 'string' ? envelope.reason.toUpperCase() : '';
     const providerChallenge = reason === 'TURNSTILE_VERIFICATION_FAILED';
     const message = providerChallenge ? 'Cloudflare 人机验证未完成或已过期，请重新完成验证。' : typeof envelope?.message === 'string' ? envelope.message : `HTTP ${response.status}`;
-    throw new AuthApiError(message, response.status, { code: envelope?.code, requestId: response.headers.get('x-request-id') ?? undefined, challenge: providerChallenge });
+    const requestId = response.headers.get('x-request-id') ?? undefined;
+    if (action) recordTurnstileDiagnostic({ phase: 'backend-reject', action, httpStatus: response.status, requestId, status: providerChallenge ? 'provider-reject' : 'business-reject', errorCode: reason || `http_${response.status}`, durationMs: Date.now() - startedAt });
+    throw new AuthApiError(message, response.status, { code: envelope?.code, requestId, challenge: providerChallenge });
   }
+  if (action) recordTurnstileDiagnostic({ phase: 'business-submit', action, status: 'accepted', durationMs: Date.now() - startedAt });
   return (envelope && 'data' in envelope ? envelope.data : payload) as T;
 }
 

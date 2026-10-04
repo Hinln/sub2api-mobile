@@ -8,9 +8,11 @@ import {
   buildTurnstilePageUrl,
   createTurnstileBridgeContext,
   parseTurnstilePageMessage,
+  TURNSTILE_LOCAL_REFRESH_MS,
   type TurnstileAction,
   type TurnstileStatus,
 } from '@/src/lib/turnstile';
+import { recordTurnstileDiagnostic } from '@/src/lib/turnstile-diagnostics';
 
 const ALLOWED_ACTIONS = new Set<TurnstileAction>(['login', 'register', 'forgot_password']);
 
@@ -36,10 +38,13 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
   const onTokenRef = useRef(onToken);
   const webViewRef = useRef<WebViewInstance>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tokenExpiryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const consumedRef = useRef(false);
   const widgetReadyRef = useRef(false);
-  const context = useMemo(() => createTurnstileBridgeContext(sessionState.baseUrl, action, resetKey), [action, resetKey]);
+  const [instanceKey, setInstanceKey] = useState(0);
+  const context = useMemo(() => createTurnstileBridgeContext(sessionState.baseUrl, action, resetKey + instanceKey), [action, instanceKey, resetKey]);
   const pageUrl = useMemo(() => buildTurnstilePageUrl(context), [context]);
+  const startedAtRef = useRef(Date.now());
 
   useEffect(() => { onStatusRef.current = onStatus; }, [onStatus]);
   useEffect(() => { onTokenRef.current = onToken; }, [onToken]);
@@ -55,33 +60,42 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
     setInteractive(false);
     consumedRef.current = false;
     onTokenRef.current('');
+    startedAtRef.current = Date.now();
+    recordTurnstileDiagnostic({ phase: 'config-read', action, requestId: context.requestId, status: 'started' });
     onStatusRef.current?.('loading');
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (tokenExpiryRef.current) clearTimeout(tokenExpiryRef.current);
+    tokenExpiryRef.current = null;
 
     void getPublicSettings().then((settings) => {
       if (!active) return;
       if (settings.turnstile_enabled === false) {
         if (settings.aliyun_captcha_enabled === true || settings.tencent_captcha_enabled === true) {
           setError('当前启用的安全验证供应商不受 APP 支持，请联系管理员。');
+          recordTurnstileDiagnostic({ phase: 'config-read', action, requestId: context.requestId, status: 'unsupported-provider' });
           onStatusRef.current?.('error');
         } else {
           setEnabled(false);
+          recordTurnstileDiagnostic({ phase: 'config-read', action, requestId: context.requestId, status: 'disabled', durationMs: Date.now() - startedAtRef.current });
           onStatusRef.current?.('disabled');
         }
         return;
       }
       if (settings.turnstile_enabled === true && typeof settings.turnstile_site_key === 'string' && settings.turnstile_site_key.trim()) {
         setEnabled(true);
+        recordTurnstileDiagnostic({ phase: 'config-read', action, requestId: context.requestId, status: 'enabled', durationMs: Date.now() - startedAtRef.current });
         onStatusRef.current?.('waiting');
         return;
       }
       setEnabled(null);
       setError('安全验证配置异常，请联系管理员。');
+      recordTurnstileDiagnostic({ phase: 'config-read', action, requestId: context.requestId, status: 'invalid', errorCode: 'config_invalid', durationMs: Date.now() - startedAtRef.current });
       onStatusRef.current?.('error');
     }).catch(() => {
       if (!active) return;
       setEnabled(null);
       setError('无法读取安全验证设置，请检查网络后重试。');
+      recordTurnstileDiagnostic({ phase: 'config-read', action, requestId: context.requestId, status: 'failed', errorCode: 'settings_request_failed', durationMs: Date.now() - startedAtRef.current });
       onStatusRef.current?.('error');
     }).finally(() => { if (active) setLoading(false); });
 
@@ -90,8 +104,10 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
       widgetReadyRef.current = false;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
+      if (tokenExpiryRef.current) clearTimeout(tokenExpiryRef.current);
+      tokenExpiryRef.current = null;
     };
-  }, [action, resetKey]);
+  }, [action, context.requestId, resetKey]);
 
   function scheduleTimeout() {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -99,6 +115,7 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
       timeoutRef.current = null;
       if (!widgetReadyRef.current && !consumedRef.current) {
         setError('官方安全验证组件未加载，请检查网络后重试。');
+        recordTurnstileDiagnostic({ phase: 'error', action, requestId: context.requestId, status: 'timeout', errorCode: 'page_load_timeout', durationMs: Date.now() - startedAtRef.current });
         onStatusRef.current?.('error');
       }
     }, 30_000);
@@ -120,16 +137,19 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
       setWidgetReady(true);
       setInteractive(false);
       setError('');
+      recordTurnstileDiagnostic({ phase: 'widget-ready', action, requestId: context.requestId, status: 'ready', durationMs: Date.now() - startedAtRef.current });
       onStatusRef.current?.('ready');
       return;
     }
     if (message.kind === 'before-interactive') {
       setInteractive(false);
+      recordTurnstileDiagnostic({ phase: 'interaction', action, requestId: context.requestId, status: 'before-interactive' });
       onStatusRef.current?.('waiting');
       return;
     }
     if (message.kind === 'after-interactive') {
       setInteractive(true);
+      recordTurnstileDiagnostic({ phase: 'interaction', action, requestId: context.requestId, status: 'after-interactive' });
       onStatusRef.current?.('ready');
       return;
     }
@@ -141,6 +161,20 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
       setWidgetReady(true);
       setInteractive(true);
       setError('');
+      if (tokenExpiryRef.current) clearTimeout(tokenExpiryRef.current);
+      tokenExpiryRef.current = setTimeout(() => {
+        tokenExpiryRef.current = null;
+        if (!consumedRef.current) return;
+        consumedRef.current = false;
+        onTokenRef.current('');
+        setInteractive(false);
+        setWidgetReady(false);
+        setError('安全验证已接近有效期，请重新完成验证。');
+        recordTurnstileDiagnostic({ phase: 'token', action, requestId: context.requestId, status: 'local-expired', errorCode: 'token_refresh_required', durationMs: TURNSTILE_LOCAL_REFRESH_MS });
+        onStatusRef.current?.('ready');
+        setInstanceKey((value) => value + 1);
+      }, TURNSTILE_LOCAL_REFRESH_MS);
+      recordTurnstileDiagnostic({ phase: 'token', action, requestId: context.requestId, status: 'received' });
       onStatusRef.current?.('token');
       onTokenRef.current(message.token);
       return;
@@ -149,6 +183,9 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
       consumedRef.current = false;
       onTokenRef.current('');
       setError('安全验证已过期，请重新完成验证。');
+      if (tokenExpiryRef.current) clearTimeout(tokenExpiryRef.current);
+      tokenExpiryRef.current = null;
+      recordTurnstileDiagnostic({ phase: 'token', action, requestId: context.requestId, status: 'expired', errorCode: 'provider_expired' });
       onStatusRef.current?.('ready');
       return;
     }
@@ -157,6 +194,7 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
       timeoutRef.current = null;
       widgetReadyRef.current = false;
       setEnabled(false);
+      recordTurnstileDiagnostic({ phase: 'config-read', action, requestId: context.requestId, status: 'disabled' });
       onStatusRef.current?.('disabled');
       return;
     }
@@ -170,6 +208,7 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
     setError(message.kind === 'unsupported'
       ? '当前设备不支持安全验证，请更新系统后重试。'
       : `安全验证加载失败（${message.errorCode}），请重试。`);
+    recordTurnstileDiagnostic({ phase: message.kind === 'unsupported' ? 'error' : 'sdk-load', action, requestId: context.requestId, status: message.kind, errorCode: message.kind === 'unsupported' ? message.errorCode : message.errorCode });
     onStatusRef.current?.('error');
   }
 
@@ -232,6 +271,7 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
           setInteractive(false);
           onTokenRef.current('');
           setError('安全验证页面加载失败，请检查网络后重试。');
+          recordTurnstileDiagnostic({ phase: 'page-load', action, requestId: context.requestId, status: 'failed', errorCode: 'webview_error' });
           onStatusRef.current?.('error');
         }}
         onHttpError={(event) => {
@@ -244,6 +284,7 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
           setInteractive(false);
           onTokenRef.current('');
           setError(`安全验证页面返回异常（${event.nativeEvent.statusCode}）。`);
+          recordTurnstileDiagnostic({ phase: 'page-load', action, requestId: context.requestId, status: 'http-error', httpStatus: event.nativeEvent.statusCode });
           onStatusRef.current?.('error');
         }}
         accessibilityLabel="turnstile-webview"

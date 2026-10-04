@@ -47,4 +47,20 @@ for page in login register forgot-password mobile/turnstile; do
   fi
 done
 
+# A Vue history fallback can return the public home shell with HTTP 200 for
+# `/mobile/turnstile`. Confirm that the deployed entry bundle actually knows
+# about the dedicated route; status/content-type alone cannot prove that the
+# native WebView will render the challenge page.
+login_body="$tmp_dir/login.body"
+index_asset="$(grep -Eo 'src="/assets/[^" ]+\.js"' "$login_body" | head -n 1 | cut -d'"' -f2 || true)"
+if [ -z "$index_asset" ]; then
+  echo "could not locate the first-party JavaScript entry bundle" >&2
+  exit 1
+fi
+entry_bundle="$(curl -sS "$base_url$index_asset")"
+if ! printf '%s' "$entry_bundle" | grep -q 'MobileTurnstile'; then
+  echo "the deployed entry bundle does not contain the dedicated MobileTurnstile route" >&2
+  exit 1
+fi
+
 echo "mobile origin contract passed: $base_url"
