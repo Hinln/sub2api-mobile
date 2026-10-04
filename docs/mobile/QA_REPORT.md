@@ -25,6 +25,7 @@
 | ESLint | 通过 | `pnpm exec expo lint`；0 error、0 warning。 |
 | Web export | 通过 | `pnpm exec expo export --platform web`；只作静态路由/类型烟测，不是原生发布构建。 |
 | 官方 v0.2.13 合同审计 | 通过（源码审计） | 已核对 `/api/v1/settings/public`、认证 provider proof 字段、Bearer/2FA 路由；官方 tag 不含 `/mobile/captcha/*`。 |
+| Go 后端测试 | 未运行 | 当前开发机没有 Go 工具链；本轮未修改或部署后端，不能把私有 checkout 的测试结果当作官方 v0.2.13 证据。 |
 | iOS Simulator Release | 通过 | 使用仓库内已提交的 `ios/VexluneMobileConsole.xcworkspace` 和 Xcode 26.6 `xcodebuild` 生成 arm64/x86_64 `.app`；没有 Expo/EAS 云构建。 |
 | iPhoneOS Release unsigned | 通过 | 使用原生 Xcode 工具链生成 arm64 archive/app；未签名包不能安装真机。 |
 | iOS signed archive/IPA | 通过（当前提交） | 提交 `23e83c1af0412e82c7d0cfb68ebac542fdd21505` 已完成 archive/export，IPA SHA-256 为 `27d8f9bbfdc2aa9883d15307ee6ab7326e55212fcf5ca24c5610865638385570`，解包 App 通过 `codesign --verify --deep --strict`。TestFlight 处理、实体 iPhone 和线上 API 验收仍未完成。 |
