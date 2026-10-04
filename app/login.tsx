@@ -1,7 +1,7 @@
 import { Link, Redirect, router } from 'expo-router';
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Sparkles } from 'lucide-react-native';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, InteractionManager, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
 import { AuthBackdrop } from '@/src/components/auth-backdrop';
@@ -54,10 +54,10 @@ function AuthField({ icon, label, helper, children }: { icon: ReactNode; label: 
   </View>;
 }
 
-function AuthTabs() {
+function AuthTabs({ onRegister }: { onRegister: () => void }) {
   return <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: authColors.line, marginBottom: 20 }}>
     <View style={{ flex: 1, alignItems: 'center', paddingBottom: 13, borderBottomWidth: 3, borderBottomColor: authColors.primary }}><Text style={{ color: authColors.ink, fontSize: 19, fontWeight: '900' }}>登录</Text></View>
-    <Pressable accessibilityRole="tab" onPress={() => router.replace('/register')} style={{ flex: 1, alignItems: 'center', paddingBottom: 13 }}><Text style={{ color: authColors.faint, fontSize: 19, fontWeight: '800' }}>注册</Text></Pressable>
+    <Pressable accessibilityRole="tab" onPress={onRegister} style={{ flex: 1, alignItems: 'center', paddingBottom: 13 }}><Text style={{ color: authColors.faint, fontSize: 19, fontWeight: '800' }}>注册</Text></Pressable>
   </View>;
 }
 
@@ -76,6 +76,7 @@ export default function LoginScreen() {
   const turnstileTokenRef = useRef('');
   const pendingSubmitRef = useRef(false);
   const submitInFlightRef = useRef(false);
+  const authNavigationTaskRef = useRef<{ cancel: () => void } | null>(null);
   const [registrationEnabled, setRegistrationEnabled] = useState<boolean | null>(null);
   const [passwordResetEnabled, setPasswordResetEnabled] = useState<boolean | null>(null);
 
@@ -88,6 +89,21 @@ export default function LoginScreen() {
     }).catch(() => { if (active) { setRegistrationEnabled(false); setPasswordResetEnabled(false); } });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => () => {
+    authNavigationTaskRef.current?.cancel();
+  }, []);
+
+  function navigateToRegister() {
+    // iOS 26 can crash inside UIKit's UIFieldEditor when a secure TextInput is
+    // torn down in the same native batch as the next auth screen mounts. Let
+    // the current field apply the non-secure prop first, then replace the route.
+    setShowPassword(true);
+    authNavigationTaskRef.current?.cancel();
+    authNavigationTaskRef.current = InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => router.replace('/register'));
+    });
+  }
 
   if (hasAuthenticatedSession(config) && !busy) return <Redirect href={isAdmin(config.user) && config.workspaceMode !== 'user' ? '/monitor' : '/user'} />;
 
@@ -174,7 +190,7 @@ export default function LoginScreen() {
               <View style={{ marginTop: 17 }}><GradientAction label="完成登录" busy={busy} onPress={() => void submitTwoFactor()} /></View>
               <Pressable onPress={() => { setTempToken(''); setTotpCode(''); turnstileTokenRef.current = ''; pendingSubmitRef.current = false; setTurnstileReset((value) => value + 1); setError(''); }} style={{ alignItems: 'center', paddingTop: 16 }}><Text style={{ color: authColors.primary, fontWeight: '800', fontSize: 13 }}>返回登录</Text></Pressable>
             </> : <>
-              <AuthTabs />
+              <AuthTabs onRegister={navigateToRegister} />
               <AuthField icon={<Mail color={authColors.subtext} size={20} />} label="邮箱地址" helper="请输入您的邮箱地址"><TextInput accessibilityLabel="email" value={email} onChangeText={(value) => { invalidatePendingSubmit(); setEmail(value); setError(''); }} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" textContentType="username" placeholder="name@example.com" placeholderTextColor={authColors.faint} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15 }} /></AuthField>
               <AuthField icon={<LockKeyhole color={authColors.subtext} size={20} />} label="密码" helper="请输入密码（至少 6 位）"><TextInput accessibilityLabel="password" value={password} onChangeText={(value) => { invalidatePendingSubmit(); setPassword(value); setError(''); }} secureTextEntry={!showPassword} autoCapitalize="none" autoCorrect={false} textContentType="password" placeholder="请输入密码" placeholderTextColor={authColors.faint} onSubmitEditing={() => void submit()} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15 }} /><Pressable accessibilityLabel="toggle-password" onPress={() => setShowPassword((value) => !value)} style={{ padding: 13 }}>{showPassword ? <EyeOff color={authColors.subtext} size={19} /> : <Eye color={authColors.subtext} size={19} />}</Pressable></AuthField>
               {passwordResetEnabled ? <View style={{ alignItems: 'flex-end', marginTop: 6 }}><Link href="/forgot-password" asChild><Pressable accessibilityRole="link"><Text style={{ color: '#2D63DA', fontSize: 13, fontWeight: '800' }}>忘记密码？</Text></Pressable></Link></View> : null}

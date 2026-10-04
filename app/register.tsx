@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react-native';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, InteractionManager, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
 import { AuthBackdrop } from '@/src/components/auth-backdrop';
@@ -35,9 +35,9 @@ function AuthField({ icon, label, helper, children }: { icon: ReactNode; label: 
   return <View style={{ marginTop: 15 }}><Text style={{ color: authColors.ink, fontSize: 13, fontWeight: '800', marginBottom: 7 }}>{label}</Text><View style={{ minHeight: 54, borderRadius: 16, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.field, flexDirection: 'row', alignItems: 'center', paddingLeft: 15 }}>{icon}{children}</View><Text style={{ color: authColors.subtext, fontSize: 11, lineHeight: 17, marginTop: 6 }}>{helper}</Text></View>;
 }
 
-function AuthTabs() {
+function AuthTabs({ onLogin }: { onLogin: () => void }) {
   return <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: authColors.line, marginBottom: 17 }}>
-    <Pressable accessibilityRole="tab" onPress={() => router.replace('/login')} style={{ flex: 1, alignItems: 'center', paddingBottom: 13 }}><Text style={{ color: authColors.faint, fontSize: 19, fontWeight: '800' }}>登录</Text></Pressable>
+    <Pressable accessibilityRole="tab" onPress={onLogin} style={{ flex: 1, alignItems: 'center', paddingBottom: 13 }}><Text style={{ color: authColors.faint, fontSize: 19, fontWeight: '800' }}>登录</Text></Pressable>
     <View style={{ flex: 1, alignItems: 'center', paddingBottom: 13, borderBottomWidth: 3, borderBottomColor: authColors.primary }}><Text style={{ color: authColors.ink, fontSize: 19, fontWeight: '900' }}>注册</Text></View>
   </View>;
 }
@@ -58,6 +58,7 @@ export default function RegisterScreen() {
   const turnstileTokenRef = useRef('');
   const pendingSubmitRef = useRef(false);
   const submitInFlightRef = useRef(false);
+  const authNavigationTaskRef = useRef<{ cancel: () => void } | null>(null);
   const [registrationEnabled, setRegistrationEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -65,6 +66,20 @@ export default function RegisterScreen() {
     void getPublicSettings().then((settings) => { if (active) setRegistrationEnabled(settings.registration_enabled !== false); }).catch(() => { if (active) setRegistrationEnabled(false); });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => () => {
+    authNavigationTaskRef.current?.cancel();
+  }, []);
+
+  function navigateToLogin() {
+    // See login.tsx: release secure native fields before replacing the auth
+    // route to avoid the iOS 26 UIFieldEditor crash.
+    setShowPassword(true);
+    authNavigationTaskRef.current?.cancel();
+    authNavigationTaskRef.current = InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => router.replace('/login'));
+    });
+  }
 
   function handleTurnstileStatus(status: TurnstileStatus) {
     turnstileStatusRef.current = status;
@@ -135,9 +150,9 @@ export default function RegisterScreen() {
   return <AuthBackdrop><SafeAreaView style={{ flex: 1 }}><KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}><ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 28 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <View style={{ alignItems: 'center', marginBottom: 23 }}><VexluneLogo size={62} /><Text style={{ color: authColors.ink, fontSize: 29, fontWeight: '900', marginTop: 12 }}>加入 Vexlune Hub</Text><Text style={{ color: authColors.ink, fontSize: 15, letterSpacing: 5, marginTop: 4 }}>创建你的 AI 工作台</Text><Text style={{ color: authColors.subtext, fontSize: 13, letterSpacing: 1.5, marginTop: 11 }}>从邮箱开始，连接智能服务</Text></View>
     <View style={{ backgroundColor: '#FFFFFFD9', borderRadius: 26, borderWidth: 1, borderColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 21, paddingBottom: 19, shadowColor: '#7189B8', shadowOpacity: 0.12, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 5 }}>
-      <AuthTabs />
+      <AuthTabs onLogin={navigateToLogin} />
       <AuthField icon={<Mail color={authColors.subtext} size={20} />} label="邮箱地址" helper="请输入用于登录的邮箱"><TextInput accessibilityLabel="register-email" value={email} onChangeText={(value) => { invalidatePendingSubmit(); setEmail(value); setError(''); }} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" placeholder="name@example.com" placeholderTextColor={authColors.faint} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15 }} /></AuthField>
-      <AuthField icon={<LockKeyhole color={authColors.subtext} size={20} />} label="密码" helper="至少 6 位字符"><TextInput accessibilityLabel="register-password" value={password} onChangeText={(value) => { invalidatePendingSubmit(); setPassword(value); setError(''); }} secureTextEntry={!showPassword} autoCapitalize="none" autoCorrect={false} placeholder="设置登录密码" placeholderTextColor={authColors.faint} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15 }} /><Pressable accessibilityLabel="toggle-register-password" onPress={() => setShowPassword((value) => !value)} style={{ padding: 13 }}>{showPassword ? <EyeOff color={authColors.subtext} size={19} /> : <Eye color={authColors.subtext} size={19} />} </Pressable></AuthField>
+      <AuthField icon={<LockKeyhole color={authColors.subtext} size={20} />} label="密码" helper="至少 6 位字符"><TextInput accessibilityLabel="register-password" value={password} onChangeText={(value) => { invalidatePendingSubmit(); setPassword(value); setError(''); }} secureTextEntry={!showPassword} autoCapitalize="none" autoCorrect={false} placeholder="设置登录密码" placeholderTextColor={authColors.faint} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15 }} /><Pressable accessibilityLabel="toggle-register-password" onPress={() => setShowPassword((value) => !value)} style={{ padding: 13 }}>{showPassword ? <EyeOff color={authColors.subtext} size={19} /> : <Eye color={authColors.subtext} size={19} />}</Pressable></AuthField>
       <AuthField icon={<LockKeyhole color={authColors.subtext} size={20} />} label="确认密码" helper="再次输入相同密码"><TextInput accessibilityLabel="register-confirm-password" value={confirm} onChangeText={(value) => { invalidatePendingSubmit(); setConfirm(value); setError(''); }} secureTextEntry={!showPassword} autoCapitalize="none" autoCorrect={false} placeholder="确认登录密码" placeholderTextColor={authColors.faint} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15 }} /></AuthField>
       {verifyStep ? <AuthField icon={<ShieldCheck color={authColors.subtext} size={20} />} label="邮箱验证码" helper="验证码已发送至你的邮箱"><TextInput accessibilityLabel="register-verify-code" value={verifyCode} onChangeText={(value) => { invalidatePendingSubmit(); setVerifyCode(value.replace(/\D/g, '').slice(0, 8)); }} keyboardType="number-pad" placeholder="请输入验证码" placeholderTextColor={authColors.faint} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15 }} /></AuthField> : null}
       <TurnstileGate action="register" resetKey={turnstileReset} consentRequestKey={agreementSubmitAttempt} onToken={handleTurnstileToken} onStatus={handleTurnstileStatus} />
@@ -145,7 +160,7 @@ export default function RegisterScreen() {
       {notice ? <Text style={{ color: '#16825C', fontSize: 13, lineHeight: 19, marginTop: 13 }}>{notice}</Text> : null}
       {error ? <Text style={{ color: authColors.danger, fontSize: 13, lineHeight: 19, marginTop: 13 }}>{error}</Text> : null}
       <View style={{ marginTop: 17 }}><GradientAction label={registrationEnabled === false ? '注册已关闭' : registrationEnabled === null ? '检查注册状态…' : verifyStep ? '完成注册' : '创建账号'} busy={busy} disabled={registrationEnabled !== true} onPress={() => void submit()} /></View>
-      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 5, marginTop: 18 }}><Text style={{ color: authColors.subtext, fontSize: 13 }}>已有账号？</Text><Pressable onPress={() => router.replace('/login')}><Text style={{ color: '#2D63DA', fontSize: 13, fontWeight: '900' }}>返回登录</Text></Pressable></View>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 5, marginTop: 18 }}><Text style={{ color: authColors.subtext, fontSize: 13 }}>已有账号？</Text><Pressable onPress={navigateToLogin}><Text style={{ color: '#2D63DA', fontSize: 13, fontWeight: '900' }}>返回登录</Text></Pressable></View>
       <LoginAgreementNotice action="register" />
     </View>
     <View style={{ alignItems: 'center', marginTop: 24 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}><ShieldCheck color="#7C91B8" size={14} /><Text style={{ color: '#8798BA', fontSize: 11 }}>登录或注册即表示你同意服务条款</Text></View><Text style={{ color: '#8295BA', fontSize: 10, letterSpacing: 4, marginTop: 23 }}>VEXLUNE HUB</Text><Text style={{ color: '#9AA8C4', fontSize: 9, letterSpacing: 2, marginTop: 6 }}>INTELLIGENCE FOR A BRIGHTER TOMORROW</Text></View>

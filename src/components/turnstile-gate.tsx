@@ -246,7 +246,9 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
     <View style={{ minHeight: 58, borderRadius: 14, borderWidth: 1, borderColor: error ? theme.danger : theme.border, backgroundColor: theme.cardRaised, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
       {!widgetReady && !error ? <ActivityIndicator color={theme.primary} /> : null}
       <Text style={{ flex: 1, color: error ? theme.danger : theme.subtext, fontSize: 12, lineHeight: 18 }}>
-        {error || (widgetReady ? (interactive ? '请完成下方安全验证' : '安全验证已就绪') : '正在加载安全验证…')}
+        {error || (widgetReady
+          ? (interactive ? '请完成下方安全验证' : '安全验证已就绪')
+          : challengeRequested ? '正在加载安全验证…' : '提交时加载安全验证')}
       </Text>
     </View>
     {challengeRequested ? <View style={{ marginTop: 10, height: 110, overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: theme.border, backgroundColor: '#fff' }}>
