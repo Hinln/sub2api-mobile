@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildTurnstileInlinePageHtml,
+  buildTurnstileInlinePageScript,
   buildTurnstilePageUrl,
   buildTurnstileWebViewKey,
   canSubmitTurnstile,
@@ -59,6 +61,19 @@ describe('dedicated Turnstile bridge contract', () => {
     expect(url.hash).toContain('requestId=');
     expect(first.requestId).not.toBe(second.requestId);
     expect(first.nonce).not.toBe(second.nonce);
+  });
+
+  it('builds an app-owned page without embedding credentials or a Turnstile secret', () => {
+    const html = buildTurnstileInlinePageHtml(context, '0x4AAAAAAD-SBybJjIg5VuPI');
+    expect(html).toContain('https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit');
+    expect(html).toContain("appearance: 'interaction-only'");
+    expect(html).toContain('/api/v1/settings/public');
+    expect(html).toContain('0x4AAAAAAD-SBybJjIg5VuPI');
+    expect(html).toContain(context.requestId);
+    expect(html).toContain(context.nonce);
+    expect(html).not.toContain('turnstile_secret');
+    expect(html).not.toContain('password');
+    expect(buildTurnstileInlinePageScript(context, '0x4AAAAAAD-SBybJjIg5VuPI')).toContain('native_bridge_missing');
   });
 
   it('changes the WebView instance key when local refresh advances', () => {

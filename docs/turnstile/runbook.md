@@ -19,6 +19,21 @@
 4. Run `pnpm typecheck && pnpm lint && pnpm test && pnpm run verify:production-scan`. Inspect development logs for the ordered phases and the same build ID/component ID/bridge version.
 5. Compare the same URL in a normal browser, a minimal visible WebView, and the native auth form. A browser success cannot stand in for native bridge or backend Siteverify success.
 
+For simulator auth acceptance, install a signed Debug artifact so iOS Keychain/SecureStore is available:
+
+```sh
+xcodebuild -workspace ios/VexluneMobileConsole.xcworkspace \
+  -scheme VexluneMobileConsole -configuration Debug -sdk iphonesimulator \
+  -destination 'id=<simulator-udid>' -derivedDataPath build/ios-signed \
+  CODE_SIGN_IDENTITY='Apple Development' CODE_SIGNING_ALLOWED=YES \
+  CODE_SIGNING_REQUIRED=YES DEVELOPMENT_TEAM=6KW552MWV6 build
+xcrun simctl install <simulator-udid> build/ios-signed/Build/Products/Debug-iphonesimulator/VexluneMobileConsole.app
+```
+
+An unsigned/adhoc simulator package can reach the auth API but fail when `expo-secure-store` writes the accepted session (`errSecMissingEntitlement`). Treat that as a build/signing failure, not an authentication failure.
+
+The auth gate uses an app-owned HTML fallback while the production route is stale. The fallback must receive the public site key from the native settings request and keep `https://hub.vexlune.com/mobile/turnstile` as its `baseUrl`; do not put a secret, credential, or hard-coded production token in the HTML. If the provider emits an interactive callback, a visible user interaction is required. An invisible WebView cannot complete that challenge by itself.
+
 ## Required release operation (approval required)
 
 The current production route is missing. The release owner must publish the frontend bundle containing `/mobile/turnstile` from the approved backend/frontend build. Do not change the official Sub2API `0.2.13` backend version, auth endpoints, database, secret key, or Cloudflare rules.

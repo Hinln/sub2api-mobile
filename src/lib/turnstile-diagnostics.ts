@@ -32,7 +32,8 @@ export type TurnstileDiagnostic = {
 
 function diagnosticsEnabled() {
   const devFlag = (globalThis as { __DEV__?: boolean }).__DEV__;
-  return devFlag !== false && process.env.NODE_ENV !== 'production';
+  const releaseOverride = process.env.EXPO_PUBLIC_TURNSTILE_DIAGNOSTICS === '1';
+  return devFlag !== false && (process.env.NODE_ENV !== 'production' || releaseOverride);
 }
 
 function safeIdentifier(value: string | undefined) {
@@ -48,6 +49,7 @@ function safeErrorCode(value: string | undefined) {
 
 export function recordTurnstileDiagnostic(event: TurnstileDiagnostic) {
   if (!diagnosticsEnabled()) return;
+  const devFlag = (globalThis as { __DEV__?: boolean }).__DEV__;
   const platform = (globalThis as { navigator?: { product?: string } }).navigator?.product ?? 'native';
   const payload = {
     scope: 'turnstile',
@@ -67,5 +69,10 @@ export function recordTurnstileDiagnostic(event: TurnstileDiagnostic) {
     ...(typeof event.durationMs === 'number' ? { durationMs: Math.max(0, Math.round(event.durationMs)) } : {}),
     ...(event.pageVersion && /^[A-Za-z0-9._~-]{1,64}$/.test(event.pageVersion) ? { pageVersion: event.pageVersion } : {}),
   };
-  console.info(`[turnstile] ${JSON.stringify(payload)}`);
+  const line = `[turnstile] ${JSON.stringify(payload)}`;
+  console.info(line);
+  // React Native release builds may omit info-level console output from the
+  // device log. Keep the same redacted event visible at warning level during
+  // local diagnostics so the complete chain can be captured from simctl.
+  if (devFlag || process.env.EXPO_PUBLIC_TURNSTILE_DIAGNOSTICS === '1') console.warn(line);
 }
