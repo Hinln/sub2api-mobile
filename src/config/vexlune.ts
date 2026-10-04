@@ -18,7 +18,9 @@ export function normalizeHubUrl(input: string) {
   if (url.hostname === new URL(VEXLUNE_API_URL).hostname) throw new Error('模型 API 地址不能用作管理地址');
   if (url.pathname !== '/' || url.search || url.hash) throw new Error('管理地址只能填写站点根地址');
 
-  return value;
+  // Use the browser's canonical origin so WebView URL.origin comparisons are
+  // stable for equivalent inputs such as an uppercase hostname or :443.
+  return url.origin;
 }
 
 export function isDefaultHubUrl(value: string) {

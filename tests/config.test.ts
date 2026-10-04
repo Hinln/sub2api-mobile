@@ -10,6 +10,9 @@ import { buildQuery } from '@/src/services/admin';
 
 describe('Vexlune domain boundary', () => {
   it('accepts the default HTTPS Hub root', () => expect(normalizeHubUrl(`${VEXLUNE_HUB_URL}/`)).toBe(VEXLUNE_HUB_URL));
+  it('canonicalizes equivalent HTTPS origins for WebView source checks', () => {
+    expect(normalizeHubUrl('HTTPS://HUB.EXAMPLE.COM:443/')).toBe('https://hub.example.com');
+  });
   it('rejects the model API as an admin address', () => expect(() => normalizeHubUrl(VEXLUNE_API_URL)).toThrow(/API/));
   it('rejects HTTP and embedded credentials', () => {
     expect(() => normalizeHubUrl('http://hub.example.com')).toThrow();
