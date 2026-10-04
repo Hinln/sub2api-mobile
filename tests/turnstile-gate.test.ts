@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildTurnstilePageUrl,
+  buildTurnstileWebViewKey,
   canSubmitTurnstile,
   createTurnstileBridgeContext,
   isUsableTurnstileToken,
@@ -57,5 +58,10 @@ describe('dedicated Turnstile bridge contract', () => {
     expect(url.hash).toContain('requestId=');
     expect(first.requestId).not.toBe(second.requestId);
     expect(first.nonce).not.toBe(second.nonce);
+  });
+
+  it('changes the WebView instance key when local refresh advances', () => {
+    expect(buildTurnstileWebViewKey('login', 2, 0)).toBe('login-2-0');
+    expect(buildTurnstileWebViewKey('login', 2, 1)).not.toBe(buildTurnstileWebViewKey('login', 2, 0));
   });
 });

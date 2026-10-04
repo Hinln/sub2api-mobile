@@ -6,6 +6,7 @@ import { sessionState } from '@/src/auth/session';
 import { theme } from '@/src/theme';
 import {
   buildTurnstilePageUrl,
+  buildTurnstileWebViewKey,
   createTurnstileBridgeContext,
   parseTurnstilePageMessage,
   TURNSTILE_LOCAL_REFRESH_MS,
@@ -251,9 +252,7 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
     {challengeRequested ? <View style={{ marginTop: 10, height: 110, overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: theme.border, backgroundColor: '#fff' }}>
       <WebView
         // Include instanceKey so local token expiry creates a fresh document.
-        // A hash-only URL change is not sufficient to rerun the page's
-        // onMounted initialization on every WKWebView version.
-        key={`${action}-${resetKey}-${instanceKey}`}
+        key={buildTurnstileWebViewKey(action, resetKey, instanceKey)}
         ref={webViewRef}
         style={{ height: 110 }}
         source={{ uri: pageUrl }}

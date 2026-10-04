@@ -21,7 +21,7 @@
 | 4 | 普通用户工作台每个可见控件连接真实接口且写操作可重试 | `src/services/user.ts` 与 `app/user*.tsx`；API key、usage、公告、订阅和订单服务接线；传输层幂等/重试边界有测试 | 源码完成；支付 sandbox 待验 |
 | 5 | 管理员工作台、渐进披露和高风险操作的权限/审计/幂等 | `src/services/admin*.ts`、管理员路由、后端 AdminAuth/audit/step-up；管理员服务测试 | 源码完成；管理员 staging 待验 |
 | 6 | 官方后端合同与不支持项进入缺口报告 | `API_GAP_REPORT.md`、`API_COVERAGE_MATRIX.md`；没有后端迁移或 private bridge 部署 | 合同审计完成；不支持项保持阻塞 |
-| 7 | 逐行真实联调、无占位扫描、安全和错误路径证据 | `QA_REPORT.md`、`SECURITY_MODEL.md`、`scripts/verify-production-scan.sh`、Vitest 54/54；非生产账号待验 | 本地完成；非生产阻塞 |
+| 7 | 逐行真实联调、无占位扫描、安全和错误路径证据 | `QA_REPORT.md`、`SECURITY_MODEL.md`、`scripts/verify-production-scan.sh`、Vitest 55/55；非生产账号待验 | 本地完成；非生产阻塞 |
 | 8 | 可安装 iOS 构建、发布和回滚资料 | 当前 Turnstile 提交已完成签名 archive/IPA 且 codesign 通过；发布/回滚/ASC 清单已建立；Android 暂缓 | iOS 本地完成；发布外部门槛待验 |
 
 ## 已执行的本地检查
@@ -30,7 +30,7 @@
 
 ```text
 pnpm exec tsc --noEmit
-pnpm exec vitest run                 # 54/54
+pnpm exec vitest run                 # 55/55
 pnpm exec expo lint                  # 0 error / 0 warning
 pnpm exec expo export --platform web
 sh scripts/verify-production-scan.sh

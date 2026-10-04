@@ -20,7 +20,7 @@
 | 检查 | 结果 | 说明 |
 |---|---|---|
 | TypeScript | 通过 | `pnpm exec tsc --noEmit` |
-| Vitest | 通过（54/54） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP、支付/用户服务契约、规范化 Hub origin 和 `/mobile/turnstile` 专用页 WebView token bridge。测试不证明生产可用性。 |
+| Vitest | 通过（55/55） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP、支付/用户服务契约、规范化 Hub origin、WebView 实例刷新 key 和 `/mobile/turnstile` 专用页 WebView token bridge。测试不证明生产可用性。 |
 | 生产路径占位扫描 | 通过 | `pnpm run verify:production-scan`；扫描 `app/` 与 `src/`，拒绝 mock/fixture/fake/sample、伪请求定时器、嵌入式 secret 和空 `onPress`。 |
 | ESLint | 通过 | `pnpm exec expo lint`；0 error、0 warning。 |
 | Web export | 通过 | `pnpm exec expo export --platform web`；只作静态路由/类型烟测，不是原生发布构建。 |
@@ -31,7 +31,7 @@
 | iOS signed archive/IPA | 通过（当前提交） | 提交 `32dedab2883aedcbf93c7a1d803bbafaee484fce` 已完成 archive/export，IPA SHA-256 为 `6b82d9ebe482d15885d4f986bb64498e768506e8ffd2355ea1690065459e031e`，archive dSYM UUID 为 `54E47192-6BBA-32DC-AFE3-F059DA104365`，解包 App 通过 `codesign --verify --deep --strict`。TestFlight 处理、实体 iPhone 和线上 API 验收仍未完成。 |
 | Production API / private bridge probe | 只读探测未通过专用页检查 | `scripts/verify-mobile-origin.sh` 确认公开设置为 JSON 且 Turnstile 已启用，也确认未暴露 Secret；线上 `/mobile/turnstile` 返回旧 SPA 壳，入口 bundle 不含 `MobileTurnstile`，所以不能视为已部署。没有调用生产 `/mobile/captcha/*`，没有部署私有 backend bridge。 |
 | Official v0.2.13 clean patch | 通过（临时干净检出） | `docs/official-v0.2.13-turnstile.patch` 在官方 tag `3040209f205472038c1ba745a1bedd2edd9053b1` 上 `git apply --check` 通过；应用后 `vue-tsc -b` 与 `vite build` 通过，并生成 `MobileTurnstileView` chunk。官方锁文件在当前 pnpm overrides 校验下无法 frozen install，构建使用已验证的同版本依赖树，未修改生产。 |
-| Turnstile token refresh lifecycle | 源码检查通过；设备联调待完成 | 本地 240 秒刷新现在会重建专用 WebView 文档并生成新 tuple；原生消息来源同时校验同源 `/mobile/turnstile` 路径，避免 hash-only 导航或同源其他页面导致陈旧/伪造消息。自动化覆盖 tuple/config 合同，真实 240 秒 WebView 重建仍需 iOS 设备运行验证。 |
+| Turnstile token refresh lifecycle | 源码与本地合同测试通过；设备联调待完成 | 本地 240 秒刷新现在会重建专用 WebView 文档并生成新 tuple；原生消息来源同时校验同源 `/mobile/turnstile` 路径，避免 hash-only 导航或同源其他页面导致陈旧/伪造消息。自动化覆盖 tuple/config 和实例 key 合同，真实 240 秒 WebView 重建仍需 iOS 设备运行验证。 |
 | Android | 暂缓 | 当前范围不开发、不构建、不签名 Android；恢复范围后另行补齐证据。 |
 
 ## 必测非生产链路

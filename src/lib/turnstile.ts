@@ -65,6 +65,14 @@ export function canSubmitTurnstile(status: TurnstileStatus, token: string | unde
   return status === 'token' && isUsableTurnstileToken(token);
 }
 
+/**
+ * The WebView key must include the local instance counter. A fragment-only URL
+ * update is not guaranteed to remount the document on every WKWebView version.
+ */
+export function buildTurnstileWebViewKey(action: TurnstileAction, resetKey: number, instanceKey: number): string {
+  return `${action}-${resetKey}-${instanceKey}`;
+}
+
 function isAction(value: unknown): value is TurnstileAction {
   return value === 'login' || value === 'register' || value === 'forgot_password';
 }

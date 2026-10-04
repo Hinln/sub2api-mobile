@@ -35,7 +35,7 @@
 | 检查 | 结果 |
 | --- | --- |
 | mobile `pnpm typecheck` | 通过 |
-| mobile `pnpm test` | 通过，11 个测试文件 / 54 个测试 |
+| mobile `pnpm test` | 通过，11 个测试文件 / 55 个测试 |
 | mobile `pnpm lint` | 通过 |
 | frontend `pnpm typecheck` | 通过 |
 | frontend `pnpm build` | 通过，生成 `MobileTurnstileView` 资源 |
