@@ -7,10 +7,12 @@
  */
 
 export const TURNSTILE_BRIDGE_VERSION = 1 as const;
+export const TURNSTILE_PAGE_VERSION = 'bridge-v1' as const;
+export const TURNSTILE_COMPONENT_ID = 'cloudflare-turnstile-explicit' as const;
+export const TURNSTILE_PAGE_PATH = '/mobile/turnstile' as const;
 export const TURNSTILE_TOKEN_MAX_LENGTH = 2048;
 /** Refresh a token before the provider's documented five-minute lifetime. */
 export const TURNSTILE_LOCAL_REFRESH_MS = 240_000;
-export const TURNSTILE_PAGE_PATH = '/mobile/turnstile' as const;
 
 export type TurnstileAction = 'login' | 'register' | 'forgot_password';
 export type TurnstileBridgeType =

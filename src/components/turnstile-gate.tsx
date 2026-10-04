@@ -10,6 +10,7 @@ import {
   createTurnstileBridgeContext,
   parseTurnstilePageMessage,
   TURNSTILE_LOCAL_REFRESH_MS,
+  TURNSTILE_PAGE_VERSION,
   type TurnstileAction,
   type TurnstileStatus,
 } from '@/src/lib/turnstile';
@@ -128,18 +129,29 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
     // authenticate an arbitrary page by claiming an origin.
     try {
       const messageUrl = new URL(event.nativeEvent.url);
-      if (messageUrl.origin !== context.origin || messageUrl.pathname !== '/mobile/turnstile') return;
+      if (messageUrl.origin !== context.origin || messageUrl.pathname !== '/mobile/turnstile') {
+        recordTurnstileDiagnostic({ phase: 'bridge', action, requestId: context.requestId, status: 'rejected-source-origin-or-path' });
+        return;
+      }
     } catch {
+      recordTurnstileDiagnostic({ phase: 'bridge', action, requestId: context.requestId, status: 'rejected-source-url' });
       return;
     }
     const message = parseTurnstilePageMessage(event.nativeEvent.data, context);
-    if (!message || consumedRef.current && message.kind === 'token') return;
+    if (!message) {
+      recordTurnstileDiagnostic({ phase: 'bridge', action, requestId: context.requestId, status: 'rejected-context-or-version' });
+      return;
+    }
+    if (consumedRef.current && message.kind === 'token') {
+      recordTurnstileDiagnostic({ phase: 'bridge', action, requestId: context.requestId, status: 'stale-token-rejected' });
+      return;
+    }
     if (message.kind === 'ready') {
       widgetReadyRef.current = true;
       setWidgetReady(true);
       setInteractive(false);
       setError('');
-      recordTurnstileDiagnostic({ phase: 'widget-ready', action, requestId: context.requestId, status: 'ready', durationMs: Date.now() - startedAtRef.current });
+      recordTurnstileDiagnostic({ phase: 'widget-ready', action, requestId: context.requestId, status: 'ready', pageVersion: TURNSTILE_PAGE_VERSION, durationMs: Date.now() - startedAtRef.current });
       onStatusRef.current?.('ready');
       return;
     }
@@ -202,15 +214,21 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
     }
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = null;
-    widgetReadyRef.current = false;
-    setWidgetReady(false);
+    // A provider error callback is a different failure from a page/SDK load
+    // failure. Preserve the rendered widget state so the native surface does
+    // not claim that the component never loaded when Cloudflare already did.
+    const providerHadWidget = widgetReadyRef.current;
+    widgetReadyRef.current = providerHadWidget;
+    setWidgetReady(providerHadWidget);
     setInteractive(false);
     consumedRef.current = false;
     onTokenRef.current('');
     setError(message.kind === 'unsupported'
       ? '当前设备不支持安全验证，请更新系统后重试。'
-      : `安全验证加载失败（${message.errorCode}），请重试。`);
-    recordTurnstileDiagnostic({ phase: message.kind === 'unsupported' ? 'error' : 'sdk-load', action, requestId: context.requestId, status: message.kind, errorCode: message.kind === 'unsupported' ? message.errorCode : message.errorCode });
+      : providerHadWidget
+        ? `安全验证返回错误（${message.errorCode}），请重新完成验证。`
+        : `安全验证加载失败（${message.errorCode}），请重试。`);
+    recordTurnstileDiagnostic({ phase: message.kind === 'unsupported' ? 'error' : 'error', action, requestId: context.requestId, status: providerHadWidget ? 'provider-error' : message.kind, errorCode: message.kind === 'unsupported' ? message.errorCode : message.errorCode });
     onStatusRef.current?.('error');
   }
 
@@ -221,7 +239,11 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
       if (url.origin === context.origin) return url.pathname === '/mobile/turnstile';
       // Cloudflare is allowed for iframe/subresource navigation only. A
       // challenge origin must never replace the trusted top-level document.
-      return url.origin === 'https://challenges.cloudflare.com' && request.isTopFrame === false;
+      // react-native-webview 13.15.0 exposes isTopFrame on iOS, while
+      // Android may omit it for subframe requests. Unknown is safe here only
+      // for the explicitly allowed Cloudflare origin; a true top-frame value
+      // is always rejected so the trusted page cannot be replaced.
+      return url.origin === 'https://challenges.cloudflare.com' && request.isTopFrame !== true;
     } catch {
       return false;
     }
@@ -263,7 +285,13 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
         domStorageEnabled
         thirdPartyCookiesEnabled
         sharedCookiesEnabled
-        onLoadEnd={scheduleTimeout}
+        onLoadStart={() => {
+          recordTurnstileDiagnostic({ phase: 'page-load', action, requestId: context.requestId, status: 'started' });
+        }}
+        onLoadEnd={() => {
+          recordTurnstileDiagnostic({ phase: 'page-load', action, requestId: context.requestId, status: 'loaded', pageVersion: TURNSTILE_PAGE_VERSION, durationMs: Date.now() - startedAtRef.current });
+          scheduleTimeout();
+        }}
         onMessage={onMessage}
         onShouldStartLoadWithRequest={allowNavigation}
         onError={(event) => {

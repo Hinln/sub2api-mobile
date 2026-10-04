@@ -18,6 +18,10 @@ describe('Turnstile diagnostics', () => {
     expect(info).toHaveBeenCalledOnce();
     const line = String(info.mock.calls[0]?.[0]);
     expect(line).toContain('"scope":"turnstile"');
+    expect(line).toContain('"buildId":"1.0.1+2"');
+    expect(line).toContain('"componentId":"cloudflare-turnstile-explicit"');
+    expect(line).toContain('"bridgeVersion":1');
+    expect(line).toContain('"pagePath":"/mobile/turnstile"');
     expect(line).toContain('"phase":"backend-reject"');
     expect(line).toContain('"requestId":"v1-login-0-abcdefgh"');
     expect(line).toContain('"httpStatus":403');

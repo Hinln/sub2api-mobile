@@ -1,5 +1,5 @@
-import { APP_VERSION } from '@/src/config/vexlune';
-import type { TurnstileAction } from '@/src/lib/turnstile';
+import { APP_BUILD_ID, APP_VERSION } from '@/src/config/vexlune';
+import { TURNSTILE_BRIDGE_VERSION, TURNSTILE_COMPONENT_ID, TURNSTILE_PAGE_PATH, type TurnstileAction } from '@/src/lib/turnstile';
 
 /**
  * A deliberately small, development-only diagnostic channel for the native
@@ -9,6 +9,7 @@ import type { TurnstileAction } from '@/src/lib/turnstile';
 export type TurnstileDiagnosticPhase =
   | 'config-read'
   | 'page-load'
+  | 'bridge'
   | 'sdk-load'
   | 'widget-ready'
   | 'interaction'
@@ -26,6 +27,7 @@ export type TurnstileDiagnostic = {
   httpStatus?: number;
   errorCode?: string;
   durationMs?: number;
+  pageVersion?: string;
 };
 
 function diagnosticsEnabled() {
@@ -50,6 +52,10 @@ export function recordTurnstileDiagnostic(event: TurnstileDiagnostic) {
   const payload = {
     scope: 'turnstile',
     appVersion: APP_VERSION,
+    buildId: APP_BUILD_ID,
+    componentId: TURNSTILE_COMPONENT_ID,
+    bridgeVersion: TURNSTILE_BRIDGE_VERSION,
+    pagePath: TURNSTILE_PAGE_PATH,
     platform,
     timestamp: new Date().toISOString(),
     phase: event.phase,
@@ -59,6 +65,7 @@ export function recordTurnstileDiagnostic(event: TurnstileDiagnostic) {
     ...(typeof event.httpStatus === 'number' ? { httpStatus: event.httpStatus } : {}),
     ...(safeErrorCode(event.errorCode) ? { errorCode: safeErrorCode(event.errorCode) } : {}),
     ...(typeof event.durationMs === 'number' ? { durationMs: Math.max(0, Math.round(event.durationMs)) } : {}),
+    ...(event.pageVersion && /^[A-Za-z0-9._~-]{1,64}$/.test(event.pageVersion) ? { pageVersion: event.pageVersion } : {}),
   };
   console.info(`[turnstile] ${JSON.stringify(payload)}`);
 }
