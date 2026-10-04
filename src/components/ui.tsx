@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { VexluneLogo } from '@/src/components/vexlune-logo';
 import { humanizeApiError } from '@/src/lib/admin-fetch';
 import { theme } from '@/src/theme';
 
@@ -18,17 +19,28 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.page }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 112 }}
+        contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 10, paddingBottom: 112 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} /> : undefined}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 18 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: theme.text, fontSize: 28, lineHeight: 34, fontWeight: '900' }}>{title}</Text>
-            {subtitle ? <Text style={{ color: theme.subtext, fontSize: 13, lineHeight: 20, marginTop: 5 }}>{subtitle}</Text> : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{ width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }}>
+              <VexluneLogo size={27} />
+            </View>
+            <View>
+              <Text style={{ color: theme.text, fontSize: 15, fontWeight: '900', letterSpacing: -0.2 }}>Vexlune Hub</Text>
+              <View style={{ alignSelf: 'flex-start', marginTop: 3, borderRadius: 999, backgroundColor: theme.primarySoft, paddingHorizontal: 7, paddingVertical: 3 }}>
+                <Text style={{ color: theme.primary, fontSize: 9, fontWeight: '900', letterSpacing: 0.4 }}>管理后台</Text>
+              </View>
+            </View>
           </View>
-          {right}
+          {right ? <View style={{ alignItems: 'flex-end' }}>{right}</View> : null}
+        </View>
+        <View style={{ marginBottom: 18 }}>
+          <Text style={{ color: theme.text, fontSize: 28, lineHeight: 34, fontWeight: '900', letterSpacing: -0.6 }}>{title}</Text>
+          {subtitle ? <Text style={{ color: theme.subtext, fontSize: 13, lineHeight: 20, marginTop: 5 }}>{subtitle}</Text> : null}
         </View>
         {children}
       </ScrollView>

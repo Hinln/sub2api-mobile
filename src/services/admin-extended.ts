@@ -76,7 +76,9 @@ export function deleteAdminAnnouncement(id: number) {
 }
 
 export function listAdminPaymentOrders(params: { page?: number; page_size?: number; status?: string; search?: string } = {}) {
-  return adminFetch<PaginatedData<AdminPaymentOrder>>(`/api/v1/admin/payment/orders${buildQuery({ page: params.page ?? 1, page_size: params.page_size ?? 20, status: params.status, search: params.search })}`);
+  // The official v0.2.13 handler calls this filter `keyword`; `search` is
+  // accepted by several other admin list endpoints but is ignored here.
+  return adminFetch<PaginatedData<AdminPaymentOrder>>(`/api/v1/admin/payment/orders${buildQuery({ page: params.page ?? 1, page_size: params.page_size ?? 20, status: params.status, keyword: params.search })}`);
 }
 
 export function getAdminPaymentDashboard() {
@@ -93,6 +95,10 @@ export function retryAdminPaymentOrder(id: number, idempotencyKey?: string) {
 
 export function refundAdminPaymentOrder(id: number, body: { amount?: number; reason: string; force?: boolean; deduct_balance?: boolean }, idempotencyKey?: string) {
   return adminFetch<Record<string, unknown>>(`/api/v1/admin/payment/orders/${id}/refund`, { method: 'POST', body: JSON.stringify(body) }, { idempotencyKey });
+}
+
+export function queryAdminPaymentRefund(id: number, idempotencyKey?: string) {
+  return adminFetch<Record<string, unknown>>(`/api/v1/admin/payment/orders/${id}/refund/query`, { method: 'POST' }, { idempotencyKey });
 }
 
 export function listAuditLogs(params: { page?: number; page_size?: number; q?: string; action?: string; success?: boolean } = {}) {

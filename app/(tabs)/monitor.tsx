@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { AlertTriangle, ChevronRight, CircleCheck, RefreshCw } from 'lucide-react-native';
-import { useMemo } from 'react';
+import { AlertTriangle, ChevronDown, ChevronRight, ChevronUp, CircleCheck, RefreshCw } from 'lucide-react-native';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { Badge, Card, Metric, Page, SectionTitle, StateCard } from '@/src/components/ui';
@@ -23,6 +23,17 @@ function last24Hours() {
   return { start_date: start.toISOString().slice(0, 10), end_date: end.toISOString().slice(0, 10), granularity: 'hour' as const };
 }
 
+function Disclosure({ title, summary, open, onPress, children }: { title: string; summary: string; open: boolean; onPress: () => void; children: ReactNode }) {
+  const Icon = open ? ChevronUp : ChevronDown;
+  return <View style={{ marginTop: 24 }}>
+    <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}>
+      <View style={{ flex: 1 }}><Text style={{ color: theme.text, fontSize: 17, fontWeight: '800' }}>{title}</Text><Text style={{ color: theme.subtext, fontSize: 12, marginTop: 4 }}>{summary}</Text></View>
+      <Icon color={theme.faint} size={19} />
+    </Pressable>
+    {open ? <View style={{ marginTop: 11 }}>{children}</View> : null}
+  </View>;
+}
+
 export default function MonitorScreen() {
   const range = useMemo(() => last24Hours(), []);
   const stats = useQuery({ queryKey: ['dashboard-stats'], queryFn: getDashboardStats, staleTime: 30_000 });
@@ -31,6 +42,10 @@ export default function MonitorScreen() {
   const accounts = useQuery({ queryKey: ['dashboard-accounts'], queryFn: () => listAccounts('', { page_size: 50 }), staleTime: 30_000 });
   const trend = useQuery({ queryKey: ['dashboard-trend-24h'], queryFn: () => getDashboardTrend(range), staleTime: 30_000 });
   const failures = useQuery({ queryKey: ['dashboard-failures'], queryFn: () => listRequestErrors({ page_size: 5, resolved: false }), staleTime: 30_000 });
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [poolOpen, setPoolOpen] = useState(false);
+  const [trendOpen, setTrendOpen] = useState(false);
+  const [failuresOpen, setFailuresOpen] = useState(false);
 
   const queries = [stats, settings, version, accounts, trend, failures];
   const loading = stats.isLoading || accounts.isLoading;
@@ -46,35 +61,40 @@ export default function MonitorScreen() {
 
   return (
     <Page
-      title={'\u6982\u89c8'}
-      subtitle={`${settings.data?.site_name || 'Vexlune Hub'} \u00b7 ${version.data?.version || '\u7248\u672c\u672a\u77e5'}`}
+      title={'运营概览'}
+      subtitle={`${settings.data?.site_name || 'Vexlune Hub'} · ${version.data?.version || '版本未知'}`}
       refreshing={refreshing}
       onRefresh={refresh}
       right={<Pressable accessibilityLabel="refresh-dashboard" onPress={refresh} style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: theme.cardRaised, alignItems: 'center', justifyContent: 'center' }}><RefreshCw color={theme.primary} size={19} /></Pressable>}
     >
       <StateCard loading={loading} error={error} onRetry={refresh} />
       {!loading && !error ? <>
-        <Card>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><CircleCheck color={theme.success} size={20} /><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '800' }}>{'Hub \u8fde\u63a5\u6b63\u5e38'}</Text><Text style={{ color: theme.subtext, fontSize: 12, marginTop: 4 }}>{'\u6570\u636e\u66f4\u65b0\u4e8e '}{new Date().toLocaleTimeString('zh-CN')}</Text></View><Badge label="ONLINE" tone="success" /></View>
+        <Card style={{ paddingVertical: 18 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}><CircleCheck color={theme.success} size={21} /><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '800' }}>{'Hub 连接正常'}</Text><Text style={{ color: theme.subtext, fontSize: 12, marginTop: 4 }}>{'最近刷新于 '}{new Date().toLocaleTimeString('zh-CN')}</Text></View><Badge label="ONLINE" tone="success" /></View>
+          {abnormal > 0 ? <Pressable onPress={() => router.push('/exceptions')} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 15, paddingTop: 13, borderTopWidth: 1, borderTopColor: theme.border }}><AlertTriangle color={theme.danger} size={15} /><Text style={{ flex: 1, color: theme.danger, fontSize: 12, fontWeight: '700' }}>{`${abnormal} 个上游账号有异常`}</Text><Text style={{ color: theme.danger, fontSize: 12, fontWeight: '800' }}>{'查看异常'}</Text><ChevronRight color={theme.danger} size={15} /></Pressable> : null}
         </Card>
 
-        <SectionTitle title={'\u4eca\u65e5\u6570\u636e'} />
-        <View style={{ flexDirection: 'row', gap: 10 }}><Metric label={'\u8bf7\u6c42\u6570'} value={count(stats.data?.today_requests)} /><Metric label={'\u6210\u529f\u7387'} value={successRate(stats.data)} tone="success" /></View>
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}><Metric label={'\u603b Token'} value={formatTokenValue(stats.data?.today_tokens ?? 0)} /><Metric label={'\u5b9e\u9645\u8ba1\u8d39'} value={money(actualBilling)} tone="warning" /></View>
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}><Metric label={'\u5931\u8d25\u8bf7\u6c42'} value={count(stats.data?.today_failed_requests)} tone="danger" /><Metric label="RPM" value={count(stats.data?.rpm)} /></View>
-        <Card style={{ marginTop: 10 }}><Text style={{ color: theme.subtext, fontSize: 11, lineHeight: 17 }}>{'\u5b9e\u9645\u8ba1\u8d39\u4ec5\u4f7f\u7528 Hub \u8fd4\u56de\u7684 today_actual_cost\uff1b\u7f3a\u5931\u65f6\u4e0d\u7528 today_cost \u63a8\u6d4b\u3002\u5b98\u65b9\u6807\u51c6\u4ef7\u683c'}<Text style={{ color: theme.primary, fontWeight: '900' }}>{money(officialReference)}</Text>{'\uff0c\u4ec5\u4f5c\u53c2\u8003\uff0c\u4e0d\u4ee3\u8868\u5b9e\u9645\u8ba1\u8d39\u6216\u4e0a\u6e38\u6210\u672c\u3002'}</Text></Card>
+        <SectionTitle title={'今日核心指标'} />
+        <View style={{ flexDirection: 'row', gap: 10 }}><Metric label={'请求数'} value={count(stats.data?.today_requests)} /><Metric label={'成功率'} value={successRate(stats.data)} tone="success" /></View>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}><Metric label={'实际计费'} value={money(actualBilling)} tone="warning" /><Metric label={'失败请求'} value={count(stats.data?.today_failed_requests)} tone="danger" /></View>
 
-        <SectionTitle title={'\u7528\u6237\u4e0e\u8d26\u53f7\u6c60'} />
-        <View style={{ flexDirection: 'row', gap: 10 }}><Metric label={'\u7528\u6237\u603b\u6570'} value={count(stats.data?.total_users)} /><Metric label={'\u4eca\u65e5\u65b0\u589e'} value={count(stats.data?.today_new_users)} tone="success" /><Metric label={'\u6d3b\u8dc3\u7528\u6237'} value={count(stats.data?.active_users)} /></View>
-        <Pressable onPress={() => router.push('/accounts')} style={{ marginTop: 10 }}><Card><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '800' }}>{'\u4e0a\u6e38\u8d26\u53f7'}</Text><Text style={{ color: theme.subtext, fontSize: 12, marginTop: 5 }}>{`\u5171 ${accounts.data?.total ?? stats.data?.total_accounts ?? 0} \u00b7 \u5f02\u5e38 ${abnormal} \u00b7 \u5df2\u505c\u7528 ${disabled}`}</Text></View>{abnormal > 0 ? <AlertTriangle color={theme.danger} size={20} /> : <CircleCheck color={theme.success} size={20} />}<ChevronRight color={theme.faint} size={18} /></View></Card></Pressable>
+        <Disclosure title={'运行明细'} summary={`Token ${formatTokenValue(stats.data?.today_tokens ?? 0)} · RPM ${count(stats.data?.rpm)}`} open={detailsOpen} onPress={() => setDetailsOpen((value) => !value)}>
+          <Card><View style={{ flexDirection: 'row', gap: 10 }}><Metric label={'总 Token'} value={formatTokenValue(stats.data?.today_tokens ?? 0)} /><Metric label="RPM" value={count(stats.data?.rpm)} /></View><Text style={{ color: theme.subtext, fontSize: 11, lineHeight: 17, marginTop: 14 }}>{'实际计费仅使用 Hub 返回的 today_actual_cost；缺失时不用 today_cost 推测。官方标准价格'}<Text style={{ color: theme.primary, fontWeight: '900' }}>{money(officialReference)}</Text>{'，仅作参考。'}</Text></Card>
+        </Disclosure>
 
-        <SectionTitle title={'24 \u5c0f\u65f6\u8bf7\u6c42\u8d8b\u52bf'} />
-        <Card>
-          {(trend.data?.trend ?? []).length ? <View style={{ height: 126, flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>{(trend.data?.trend ?? []).slice(-24).map((point, index) => <View key={`${point.date}-${index}`} accessibilityLabel={`trend-${index}`} style={{ flex: 1, minHeight: 3, height: `${Math.max(4, (point.requests / maxRequests) * 100)}%`, borderRadius: 3, backgroundColor: index === (trend.data?.trend.length ?? 0) - 1 ? theme.primary : '#493A6B' }} />)}</View> : <Text style={{ color: theme.subtext, textAlign: 'center', paddingVertical: 26 }}>{'\u5f53\u524d\u65f6\u95f4\u8303\u56f4\u6ca1\u6709\u8d8b\u52bf\u6570\u636e'}</Text>}
-        </Card>
+        <Disclosure title={'用户与账号池'} summary={`用户 ${count(stats.data?.total_users)} · 上游账号 ${accounts.data?.total ?? stats.data?.total_accounts ?? 0}`} open={poolOpen} onPress={() => setPoolOpen((value) => !value)}>
+          <View style={{ flexDirection: 'row', gap: 10 }}><Metric label={'用户总数'} value={count(stats.data?.total_users)} /><Metric label={'今日新增'} value={count(stats.data?.today_new_users)} tone="success" /><Metric label={'活跃用户'} value={count(stats.data?.active_users)} /></View>
+          <Pressable onPress={() => router.push('/accounts')} style={{ marginTop: 12 }}><Card><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '800' }}>{'上游账号'}</Text><Text style={{ color: theme.subtext, fontSize: 12, marginTop: 5 }}>{`共 ${accounts.data?.total ?? stats.data?.total_accounts ?? 0} · 异常 ${abnormal} · 已停用 ${disabled}`}</Text></View>{abnormal > 0 ? <AlertTriangle color={theme.danger} size={20} /> : <CircleCheck color={theme.success} size={20} />}<ChevronRight color={theme.faint} size={18} /></View></Card></Pressable>
+        </Disclosure>
 
-        <SectionTitle title={'\u6700\u8fd1\u5931\u8d25'} action={<Pressable onPress={() => router.push('/exceptions')}><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '800' }}>{'\u67e5\u770b\u5168\u90e8'}</Text></Pressable>} />
-        {(failures.data?.items ?? []).length ? <View style={{ gap: 9 }}>{failures.data!.items.map((item) => <Card key={item.id}><View style={{ flexDirection: 'row', gap: 10 }}><AlertTriangle color={theme.danger} size={18} /><View style={{ flex: 1 }}><Text numberOfLines={1} style={{ color: theme.text, fontWeight: '700' }}>{item.model || item.request_path || `Request #${item.id}`}</Text><Text numberOfLines={2} style={{ color: theme.subtext, fontSize: 12, lineHeight: 18, marginTop: 5 }}>{item.message || `HTTP ${item.status_code ?? '--'}`}</Text></View><Badge label={String(item.status_code ?? 'ERR')} tone="danger" /></View></Card>)}</View> : <Card><Text style={{ color: theme.subtext, textAlign: 'center' }}>{'\u6682\u65e0\u5931\u8d25\u8bb0\u5f55'}</Text></Card>}
+        <Disclosure title={'24 小时请求趋势'} summary={'按小时查看请求量变化'} open={trendOpen} onPress={() => setTrendOpen((value) => !value)}>
+          <Card>{(trend.data?.trend ?? []).length ? <View style={{ height: 126, flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>{(trend.data?.trend ?? []).slice(-24).map((point, index) => <View key={`${point.date}-${index}`} accessibilityLabel={`trend-${index}`} style={{ flex: 1, minHeight: 3, height: `${Math.max(4, (point.requests / maxRequests) * 100)}%`, borderRadius: 3, backgroundColor: index === (trend.data?.trend.length ?? 0) - 1 ? theme.primary : '#493A6B' }} />)}</View> : <Text style={{ color: theme.subtext, textAlign: 'center', paddingVertical: 26 }}>{'当前时间范围没有趋势数据'}</Text>}</Card>
+        </Disclosure>
+
+        <Disclosure title={'最近失败'} summary={`${failures.data?.items.length ?? 0} 条未处理记录`} open={failuresOpen} onPress={() => setFailuresOpen((value) => !value)}>
+          <View style={{ gap: 9 }}>{(failures.data?.items ?? []).length ? failures.data!.items.map((item) => <Card key={item.id}><View style={{ flexDirection: 'row', gap: 10 }}><AlertTriangle color={theme.danger} size={18} /><View style={{ flex: 1 }}><Text numberOfLines={1} style={{ color: theme.text, fontWeight: '700' }}>{item.model || item.request_path || `Request #${item.id}`}</Text><Text numberOfLines={2} style={{ color: theme.subtext, fontSize: 12, lineHeight: 18, marginTop: 5 }}>{item.message || `HTTP ${item.status_code ?? '--'}`}</Text></View><Badge label={String(item.status_code ?? 'ERR')} tone="danger" /></View></Card>) : <Card><Text style={{ color: theme.subtext, textAlign: 'center' }}>{'暂无失败记录'}</Text></Card>}</View>
+          <Pressable onPress={() => router.push('/exceptions')} style={{ alignItems: 'center', marginTop: 12, paddingVertical: 8 }}><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '800' }}>{'查看全部异常'}</Text></Pressable>
+        </Disclosure>
       </> : null}
     </Page>
   );

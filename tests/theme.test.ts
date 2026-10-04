@@ -14,7 +14,7 @@ describe('theme preferences', () => {
   beforeEach(() => { vi.clearAllMocks(); themePreferences.mode = 'light'; themePreferences.hydrated = false; });
 
   it('defaults to light and persists a selected theme without touching credentials', async () => {
-    expect(theme.page).toBe('#F6F5F9');
+    expect(theme.page).toBe('#F4F8FF');
     await setThemeMode('dark');
     expect(themePreferences.mode).toBe('dark');
     expect(theme.page).toBe('#08080B');

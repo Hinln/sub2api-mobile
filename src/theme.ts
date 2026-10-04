@@ -16,9 +16,9 @@ export type ThemePalette = {
 };
 
 const light: ThemePalette = {
-  page: '#F6F5F9', card: '#FFFFFF', cardRaised: '#F0EEF5', muted: '#E5E1EC', border: '#E4E0EA',
-  primary: '#7C3AED', primarySoft: '#EEE7FF', text: '#17141F', subtext: '#696273', faint: '#938B9F',
-  success: '#16825C', successSoft: '#E6F6EF', warning: '#B86905', warningSoft: '#FFF2DB', danger: '#C73D53', dangerSoft: '#FDE9ED',
+  page: '#F4F8FF', card: '#FFFFFF', cardRaised: '#EEF4FF', muted: '#E1EAF8', border: '#DDE7F5',
+  primary: '#5368C7', primarySoft: '#E8EEFF', text: '#16233D', subtext: '#64728D', faint: '#95A3BA',
+  success: '#25846A', successSoft: '#E5F6EF', warning: '#A96B12', warningSoft: '#FFF3DB', danger: '#C75365', dangerSoft: '#FCE9EE',
 };
 
 const dark: ThemePalette = {

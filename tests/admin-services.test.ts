@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { listAccounts, listUsageLogs, listUsers } from '@/src/services/admin';
-import { listAlertEvents } from '@/src/services/admin-extended';
+import { listAdminPaymentOrders, listAlertEvents, queryAdminPaymentRefund } from '@/src/services/admin-extended';
 import { adminConfigState } from '@/src/store/admin-config';
 
 vi.mock('expo-secure-store', () => ({
@@ -56,5 +56,21 @@ describe('admin service query contracts', () => {
     await expect(listAlertEvents({ limit: 50, status: 'firing' })).resolves.toEqual(events);
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/v1/admin/ops/alert-events?limit=50&status=firing');
     expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain('page_size=');
+  });
+
+  it('uses keyword for the official admin payment order search filter', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response(page));
+    await listAdminPaymentOrders({ page: 2, page_size: 10, search: 'user@example.com' });
+    const url = String(fetchMock.mock.calls[0]?.[0]);
+    expect(url).toContain('/api/v1/admin/payment/orders?page=2&page_size=10&keyword=user%40example.com');
+    expect(url).not.toContain('search=');
+  });
+
+  it('uses the official refund status query route', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ success: true }));
+    await queryAdminPaymentRefund(42, 'refund-query-key');
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(String(url)).toContain('/api/v1/admin/payment/orders/42/refund/query');
+    expect((init as RequestInit).method).toBe('POST');
   });
 });

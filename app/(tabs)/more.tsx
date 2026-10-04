@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { AlertTriangle, BookOpen, CircleDollarSign, KeyRound, Layers3, LogOut, Megaphone, ServerCog, Settings2, ShieldAlert, ShieldCheck, UserRound } from 'lucide-react-native';
-import { Alert, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { useSnapshot } from 'valtio/react';
 
 import { Card, MenuRow, Page, SectionTitle } from '@/src/components/ui';
@@ -10,6 +10,16 @@ import { logoutRemote } from '@/src/services/auth';
 import { adminConfigState, logoutAdminAccount } from '@/src/store/admin-config';
 import { isAdmin, setWorkspaceMode } from '@/src/auth/session';
 import { theme } from '@/src/theme';
+
+function ManagementTile({ icon: Icon, title, subtitle, onPress, tone = 'primary' }: { icon: typeof UserRound; title: string; subtitle: string; onPress: () => void; tone?: 'primary' | 'warning' | 'danger' }) {
+  const color = tone === 'danger' ? theme.danger : tone === 'warning' ? theme.warning : theme.primary;
+  const background = tone === 'danger' ? theme.dangerSoft : tone === 'warning' ? theme.warningSoft : theme.primarySoft;
+  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ width: '48%', minHeight: 104, borderRadius: 18, borderWidth: 1, borderColor: theme.border, backgroundColor: pressed ? theme.muted : theme.card, padding: 14, opacity: pressed ? 0.86 : 1 })}>
+    <View style={{ width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: background }}><Icon size={17} color={color} /></View>
+    <Text numberOfLines={1} style={{ color: theme.text, fontSize: 13, fontWeight: '900', marginTop: 11 }}>{title}</Text>
+    <Text numberOfLines={2} style={{ color: theme.subtext, fontSize: 10, lineHeight: 15, marginTop: 4 }}>{subtitle}</Text>
+  </Pressable>;
+}
 
 export default function MoreScreen() {
   const config = useSnapshot(adminConfigState);
@@ -23,34 +33,34 @@ export default function MoreScreen() {
 
   return (
     <Page title={'\u66f4\u591a'} subtitle={'\u914d\u7f6e\u3001\u5b89\u5168\u4e0e\u8f85\u52a9\u7ba1\u7406\u529f\u80fd'}>
-      <Card><View><Text style={{ color: theme.faint, fontSize: 11 }}>{'\u7ba1\u7406\u64cd\u4f5c'}</Text><Text style={{ color: theme.text, fontSize: 13, marginTop: 5 }}>{VEXLUNE_HUB_URL}</Text><Text style={{ color: theme.faint, fontSize: 11, marginTop: 12 }}>{'\u6a21\u578b API\uff08\u4ec5\u5c55\u793a\uff09'}</Text><Text style={{ color: theme.text, fontSize: 13, marginTop: 5 }}>{VEXLUNE_API_URL}</Text></View></Card>
-      <SectionTitle title={'\u7ba1\u7406'} />
-      <Card>
-        {isAdmin(config.user) ? <><MenuRow icon={UserRound} title={'\u6211\u7684\u7528\u6237\u5de5\u4f5c\u53f0'} subtitle={'\u67e5\u770b\u81ea\u5df1\u7684\u4f59\u989d\u3001\u5bc6\u94a5\u3001\u7528\u91cf\u4e0e\u8ba2\u5355\uff1b\u4e0d\u4f1a\u5207\u6362\u6216\u5192\u5145\u5176\u4ed6\u7528\u6237'} onPress={() => { setWorkspaceMode('user'); router.replace('/user'); }} /><View style={{ height: 1, backgroundColor: theme.border }} /></> : null}
-        <MenuRow icon={AlertTriangle} title={'\u5f02\u5e38\u4e2d\u5fc3'} subtitle={'\u805a\u5408\u6700\u8fd1\u5931\u8d25\u4e0e\u5f53\u524d\u9875\u8d26\u53f7\u5f02\u5e38'} onPress={() => router.push('/exceptions')} />
-        <View style={{ height: 1, backgroundColor: theme.border }} />
-        <MenuRow icon={Layers3} title={'\u5206\u7ec4\u4e0e\u6a21\u578b'} subtitle={'\u5206\u7ec4\u72b6\u6001\u3001\u8d26\u53f7\u6570\u4e0e\u500d\u7387'} onPress={() => router.push('/groups')} />
-        <View style={{ height: 1, backgroundColor: theme.border }} />
-        <MenuRow icon={KeyRound} title="API Key" subtitle={'\u6309\u7528\u6237\u67e5\u770b\u5bc6\u94a5\u3001\u914d\u989d\u548c\u4f7f\u7528\u60c5\u51b5'} onPress={() => router.push('/users')} />
-        <View style={{ height: 1, backgroundColor: theme.border }} />
-        <MenuRow icon={ServerCog} title={'\u8fde\u63a5\u4e0e\u5b89\u5168'} subtitle={'Token\u3001\u751f\u7269\u8bc6\u522b\u4e0e\u9ad8\u7ea7\u5730\u5740'} onPress={() => router.push('/settings')} />
-        <View style={{ height: 1, backgroundColor: theme.border }} />
-        <MenuRow icon={Megaphone} title={'\u516c\u544a\u4e0e\u901a\u77e5'} subtitle={'\u53d1\u5e03\u3001\u64a4\u56de\u548c\u67e5\u770b\u516c\u544a\u6295\u653e\u72b6\u6001'} onPress={() => router.push('/admin-announcements')} />
-        <View style={{ height: 1, backgroundColor: theme.border }} />
-        <MenuRow icon={CircleDollarSign} title={'\u8ba2\u5355\u4e0e\u8d44\u91d1'} subtitle={'\u67e5\u770b\u8ba2\u5355\u5e76\u6267\u884c\u53d7\u5ba1\u8ba1\u7684\u652f\u4ed8\u64cd\u4f5c'} onPress={() => router.push('/admin-orders')} />
-        <View style={{ height: 1, backgroundColor: theme.border }} />
-        <MenuRow icon={ShieldAlert} title={'\u5ba1\u8ba1\u4e0e\u544a\u8b66'} subtitle={'\u5ba1\u8ba1\u65e5\u5fd7\u3001\u544a\u8b66\u72b6\u6001\u548c\u5408\u89c4\u68c0\u67e5'} onPress={() => router.push('/admin-security')} />
+      <Card style={{ padding: 18, backgroundColor: theme.card }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13 }}>
+          <View style={{ width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.primarySoft }}><UserRound color={theme.primary} size={22} /></View>
+          <View style={{ flex: 1 }}><Text style={{ color: theme.text, fontSize: 16, fontWeight: '900' }}>{config.user?.username || config.user?.email || '管理员'}</Text><Text style={{ color: theme.subtext, fontSize: 12, marginTop: 4 }}>{config.user?.email || '已连接 Vexlune Hub'}</Text></View>
+          <View style={{ borderRadius: 999, backgroundColor: theme.successSoft, paddingHorizontal: 9, paddingVertical: 5 }}><Text style={{ color: theme.success, fontSize: 10, fontWeight: '900' }}>ADMIN</Text></View>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}><View style={{ flex: 1, borderRadius: 12, backgroundColor: theme.cardRaised, padding: 10 }}><Text style={{ color: theme.faint, fontSize: 10 }}>Hub 地址</Text><Text numberOfLines={1} style={{ color: theme.text, fontSize: 11, fontWeight: '800', marginTop: 4 }}>{VEXLUNE_HUB_URL}</Text></View><View style={{ flex: 1, borderRadius: 12, backgroundColor: theme.cardRaised, padding: 10 }}><Text style={{ color: theme.faint, fontSize: 10 }}>模型 API</Text><Text numberOfLines={1} style={{ color: theme.text, fontSize: 11, fontWeight: '800', marginTop: 4 }}>{VEXLUNE_API_URL}</Text></View></View>
       </Card>
-      <SectionTitle title={'\u5e94\u7528'} />
-      <Card>
-        <MenuRow icon={ShieldCheck} title={'\u5b89\u5168\u8bbe\u8ba1'} subtitle={'\u51ed\u636e\u4fdd\u5b58\u4e0e\u6743\u9650\u8bf4\u660e'} onPress={() => router.push('/about')} />
+      <SectionTitle title={'管理工具'} />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 }}>
+        {isAdmin(config.user) ? <ManagementTile icon={UserRound} title={'我的工作台'} subtitle={'个人额度与密钥'} onPress={() => { setWorkspaceMode('user'); router.replace('/user'); }} /> : null}
+        <ManagementTile icon={AlertTriangle} title={'异常中心'} subtitle={'失败请求与账号异常'} tone="danger" onPress={() => router.push('/exceptions')} />
+        <ManagementTile icon={Layers3} title={'分组与模型'} subtitle={'分组状态与倍率'} onPress={() => router.push('/groups')} />
+        <ManagementTile icon={KeyRound} title={'API Key'} subtitle={'用户密钥与配额'} onPress={() => router.push('/users')} />
+        <ManagementTile icon={Megaphone} title={'公告通知'} subtitle={'发布与阅读范围'} onPress={() => router.push('/admin-announcements')} />
+        <ManagementTile icon={CircleDollarSign} title={'订单资金'} subtitle={'履约与退款审计'} tone="warning" onPress={() => router.push('/admin-orders')} />
+        <ManagementTile icon={ShieldAlert} title={'审计告警'} subtitle={'记录与处理状态'} tone="danger" onPress={() => router.push('/admin-security')} />
+        <ManagementTile icon={ServerCog} title={'连接安全'} subtitle={'地址与生物识别'} onPress={() => router.push('/settings')} />
+      </View>
+      <SectionTitle title={'应用'} />
+      <Card style={{ paddingVertical: 4 }}>
+        <MenuRow icon={ShieldCheck} title={'安全设计'} subtitle={'凭据保存与权限说明'} onPress={() => router.push('/about')} />
         <View style={{ height: 1, backgroundColor: theme.border }} />
-        <MenuRow icon={BookOpen} title={'\u5173\u4e8e\u4e0e\u5f00\u6e90\u8bb8\u53ef'} subtitle="Vexlune Mobile Console 1.0.1" onPress={() => router.push('/about')} />
+        <MenuRow icon={BookOpen} title={'关于与开源许可'} subtitle="Vexlune Mobile Console 1.0.1" onPress={() => router.push('/about')} />
         <View style={{ height: 1, backgroundColor: theme.border }} />
-        <MenuRow icon={Settings2} title={'\u7cfb\u7edf\u8bbe\u7f6e'} subtitle={'\u5f53\u524d\u7248\u672c\u4ec5\u5b89\u5168\u5730\u5c55\u793a\u914d\u7f6e\uff0c\u4e0d\u76f2\u76ee\u63d0\u4ea4'} onPress={() => router.push('/settings')} />
+        <MenuRow icon={Settings2} title={'系统设置'} subtitle={'显示与连接配置'} onPress={() => router.push('/settings')} />
       </Card>
-      <SectionTitle title={'\u4f1a\u8bdd'} />
-      <Card><MenuRow icon={LogOut} title={'\u9000\u51fa\u767b\u5f55'} subtitle={'\u6e05\u9664 SecureStore \u51ed\u636e\u548c\u67e5\u8be2\u7f13\u5b58'} onPress={logout} danger /></Card>
+      <Pressable accessibilityRole="button" onPress={logout} style={({ pressed }) => ({ minHeight: 52, marginTop: 20, borderRadius: 16, borderWidth: 1, borderColor: theme.dangerSoft, backgroundColor: pressed ? theme.dangerSoft : theme.card, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.85 : 1 })}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><LogOut color={theme.danger} size={17} /><Text style={{ color: theme.danger, fontSize: 13, fontWeight: '900' }}>退出管理员账号</Text></View></Pressable>
     </Page>
   );
 }
