@@ -6,6 +6,7 @@ import {
   createTurnstileBridgeContext,
   isUsableTurnstileToken,
   parseTurnstilePageMessage,
+  shouldRenderTurnstileTransport,
 } from '@/src/lib/turnstile';
 
 describe('dedicated Turnstile bridge contract', () => {
@@ -63,5 +64,12 @@ describe('dedicated Turnstile bridge contract', () => {
   it('changes the WebView instance key when local refresh advances', () => {
     expect(buildTurnstileWebViewKey('login', 2, 0)).toBe('login-2-0');
     expect(buildTurnstileWebViewKey('login', 2, 1)).not.toBe(buildTurnstileWebViewKey('login', 2, 0));
+  });
+
+  it('mounts the real challenge transport only after an explicit submit request', () => {
+    expect(shouldRenderTurnstileTransport('silent', true, false)).toBe(false);
+    expect(shouldRenderTurnstileTransport('silent', null, true)).toBe(false);
+    expect(shouldRenderTurnstileTransport('silent', true, true)).toBe(true);
+    expect(shouldRenderTurnstileTransport('inline', true, true)).toBe(true);
   });
 });

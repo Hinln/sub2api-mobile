@@ -47,6 +47,7 @@ export type ParsedTurnstileMessage =
   | null;
 
 export type TurnstileStatus = 'loading' | 'disabled' | 'waiting' | 'ready' | 'token' | 'error';
+export type TurnstilePresentation = 'inline' | 'silent';
 
 export type TurnstileBridgeContext = {
   origin: string;
@@ -65,6 +66,18 @@ export function isUsableTurnstileToken(token: string | undefined | null): token 
 export function canSubmitTurnstile(status: TurnstileStatus, token: string | undefined | null): boolean {
   if (status === 'disabled') return true;
   return status === 'token' && isUsableTurnstileToken(token);
+}
+
+/**
+ * The native transport is created only after a user submits the form. Silent
+ * mode changes presentation only; it never makes an enabled provider optional.
+ */
+export function shouldRenderTurnstileTransport(
+  presentation: TurnstilePresentation,
+  enabled: boolean | null,
+  challengeRequested: boolean,
+): boolean {
+  return enabled === true && challengeRequested;
 }
 
 /**

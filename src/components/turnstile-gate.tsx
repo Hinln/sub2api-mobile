@@ -11,7 +11,9 @@ import {
   parseTurnstilePageMessage,
   TURNSTILE_LOCAL_REFRESH_MS,
   TURNSTILE_PAGE_VERSION,
+  shouldRenderTurnstileTransport,
   type TurnstileAction,
+  type TurnstilePresentation,
   type TurnstileStatus,
 } from '@/src/lib/turnstile';
 import { recordTurnstileDiagnostic } from '@/src/lib/turnstile-diagnostics';
@@ -23,13 +25,21 @@ type GateProps = {
   resetKey?: number;
   /** The native submit action reveals the dedicated challenge surface. */
   consentRequestKey?: number;
+  /**
+   * Keep the challenge transport out of the auth form. The dedicated page is
+   * still mounted after submit and its real token is still required by the
+   * server; this only controls the native presentation. Interactive provider
+   * challenges cannot be completed while silent, so callers should retain the
+   * inline mode for flows where a human challenge must be shown.
+   */
+  mode?: TurnstilePresentation;
   onToken: (token: string) => void;
   onStatus?: (status: TurnstileStatus) => void;
 };
 
 type ShouldStartLoadRequest = WebViewNavigation & { isTopFrame?: boolean };
 
-export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onToken, onStatus }: GateProps) {
+export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, mode = 'inline', onToken, onStatus }: GateProps) {
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [error, setError] = useState('');
@@ -260,7 +270,68 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
   }
 
   if (Platform.OS === 'web' || !ALLOWED_ACTIONS.has(action)) return null;
-  if (loading) return <View style={{ minHeight: 72, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={theme.primary} /></View>;
+  const silent = mode === 'silent';
+  if (loading) return silent ? null : <View style={{ minHeight: 72, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={theme.primary} /></View>;
+  if (silent) {
+    // No status card is rendered in the auth flow. Keeping this transport
+    // mounted only after an explicit submit avoids a persistent verification
+    // box while preserving the same-origin WebView and bridge checks.
+    if (!shouldRenderTurnstileTransport(mode, enabled, challengeRequested)) return null;
+    // Keep a normal widget viewport so the provider can render its managed
+    // challenge. It stays in the native tree (to avoid clipped/offscreen
+    // WebView optimizations) but is fully transparent and non-interactive;
+    // the token still must come from the official callback and server
+    // Siteverify.
+    return <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: 320, height: 180, opacity: 0 }}>
+      <WebView
+        key={buildTurnstileWebViewKey(action, resetKey, instanceKey)}
+        ref={webViewRef}
+        style={{ width: 320, height: 180 }}
+        source={{ uri: pageUrl }}
+        originWhitelist={[context.origin, 'https://challenges.cloudflare.com', 'about:blank', 'about:srcdoc']}
+        javaScriptEnabled
+        domStorageEnabled
+        thirdPartyCookiesEnabled
+        sharedCookiesEnabled
+        onLoadStart={() => {
+          recordTurnstileDiagnostic({ phase: 'page-load', action, requestId: context.requestId, status: 'started' });
+        }}
+        onLoadEnd={() => {
+          recordTurnstileDiagnostic({ phase: 'page-load', action, requestId: context.requestId, status: 'loaded', pageVersion: TURNSTILE_PAGE_VERSION, durationMs: Date.now() - startedAtRef.current });
+          scheduleTimeout();
+        }}
+        onMessage={onMessage}
+        onShouldStartLoadWithRequest={allowNavigation}
+        onError={(event) => {
+          if (!isMainDocumentUrl(event.nativeEvent.url)) return;
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+          widgetReadyRef.current = false;
+          consumedRef.current = false;
+          setWidgetReady(false);
+          setInteractive(false);
+          onTokenRef.current('');
+          setError('安全验证页面加载失败，请检查网络后重试。');
+          recordTurnstileDiagnostic({ phase: 'page-load', action, requestId: context.requestId, status: 'failed', errorCode: 'webview_error' });
+          onStatusRef.current?.('error');
+        }}
+        onHttpError={(event) => {
+          if (!isMainDocumentUrl(event.nativeEvent.url)) return;
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+          widgetReadyRef.current = false;
+          consumedRef.current = false;
+          setWidgetReady(false);
+          setInteractive(false);
+          onTokenRef.current('');
+          setError(`安全验证页面返回异常（${event.nativeEvent.statusCode}）。`);
+          recordTurnstileDiagnostic({ phase: 'page-load', action, requestId: context.requestId, status: 'http-error', httpStatus: event.nativeEvent.statusCode });
+          onStatusRef.current?.('error');
+        }}
+        accessibilityLabel="turnstile-webview"
+      />
+    </View>;
+  }
   if (enabled === false) return <Text style={{ color: theme.subtext, fontSize: 12, lineHeight: 18, marginTop: 12 }}>当前未启用安全验证。</Text>;
   if (enabled !== true) return <Text style={{ color: theme.danger, fontSize: 12, lineHeight: 18, marginTop: 12 }}>{error || '安全验证暂不可用，请稍后重试。'}</Text>;
 
