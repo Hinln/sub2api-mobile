@@ -30,7 +30,7 @@
 | iPhoneOS Release unsigned | 通过 | 使用原生 Xcode 工具链生成 arm64 archive/app；未签名包不能安装真机。 |
 | iOS signed archive/IPA | 通过（当前提交） | 提交 `23e83c1af0412e82c7d0cfb68ebac542fdd21505` 已完成 archive/export，IPA SHA-256 为 `27d8f9bbfdc2aa9883d15307ee6ab7326e55212fcf5ca24c5610865638385570`，解包 App 通过 `codesign --verify --deep --strict`。TestFlight 处理、实体 iPhone 和线上 API 验收仍未完成。 |
 | Production API / private bridge probe | 只读探测未通过专用页检查 | `scripts/verify-mobile-origin.sh` 确认公开设置为 JSON 且 Turnstile 已启用，也确认未暴露 Secret；线上 `/mobile/turnstile` 返回旧 SPA 壳，入口 bundle 不含 `MobileTurnstile`，所以不能视为已部署。没有调用生产 `/mobile/captcha/*`，没有部署私有 backend bridge。 |
-| Turnstile token refresh lifecycle | 通过（源码修复 + 自动化检查） | 本地 240 秒刷新现在会重建专用 WebView 文档并生成新 tuple；原生消息来源同时校验同源 `/mobile/turnstile` 路径，避免 hash-only 导航或同源其他页面导致陈旧/伪造消息。 |
+| Turnstile token refresh lifecycle | 源码检查通过；设备联调待完成 | 本地 240 秒刷新现在会重建专用 WebView 文档并生成新 tuple；原生消息来源同时校验同源 `/mobile/turnstile` 路径，避免 hash-only 导航或同源其他页面导致陈旧/伪造消息。自动化覆盖 tuple/config 合同，真实 240 秒 WebView 重建仍需 iOS 设备运行验证。 |
 | Android | 暂缓 | 当前范围不开发、不构建、不签名 Android；恢复范围后另行补齐证据。 |
 
 ## 必测非生产链路
