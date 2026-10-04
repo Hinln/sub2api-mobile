@@ -44,6 +44,7 @@
 | iOS 模拟器安装启动 | 通过，bundle `com.vexlune.mobile` |
 | 当前提交签名 IPA | 通过，提交 `77c03f3`，SHA-256 `e51c476499cb186c869ff6b14d3efcff64a3497da9be12b17d0923295228b501`，dSYM UUID `CBC5924B-9EB3-332A-9337-033714D7BBEB` |
 | 生产 `/mobile/turnstile` 线上联调 | 未通过：线上返回旧 SPA 壳，入口 bundle 不含 `MobileTurnstile` 路由 |
+| 生产 HTTP 头只读审计 | 通过 | `/login`、`/mobile/turnstile` 为 HTML 200，settings 为 JSON 200；均为 `no-cache`/`DYNAMIC`，现有 CSP 已允许 `https://challenges.cloudflare.com` script/frame。 |
 | 真实挑战与真实账号登录 | 未完成：需要部署后由授权账号完成一次交互 |
 | Android 实机 | 未测试：本阶段只交付 iOS |
 
