@@ -1,6 +1,6 @@
 # API Gap Report
 
-Updated: 2026-10-04 (Asia/Shanghai).
+Updated: 2026-10-05 (Asia/Shanghai).
 
 ## Authority and release boundary
 

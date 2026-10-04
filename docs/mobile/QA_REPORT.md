@@ -29,10 +29,11 @@
 | iOS Simulator Release | 通过 | 使用仓库内已提交的 `ios/VexluneMobileConsole.xcworkspace` 和 Xcode 26.6 `xcodebuild` 生成 arm64/x86_64 `.app`；没有 Expo/EAS 云构建。 |
 | iPhoneOS Release unsigned | 通过 | 使用原生 Xcode 工具链生成 arm64 archive/app；未签名包不能安装真机。 |
 | iOS signed archive/IPA | 通过（当前提交） | 提交 `77c03f3b752ec00e5dd3b56716b5021716c96fa5` 已完成 archive/export，IPA SHA-256 为 `e51c476499cb186c869ff6b14d3efcff64a3497da9be12b17d0923295228b501`，archive dSYM UUID 为 `CBC5924B-9EB3-332A-9337-033714D7BBEB`，解包 App 通过 `codesign --verify --deep --strict`。TestFlight 处理、实体 iPhone 和线上 API 验收仍未完成。 |
-| Production API / private bridge probe | 只读探测未通过专用页检查 | `scripts/verify-mobile-origin.sh` 确认公开设置为 JSON 且 Turnstile 已启用，也确认未暴露 Secret；线上 `/mobile/turnstile` 返回旧 SPA 壳，入口 bundle 不含 `MobileTurnstile`，所以不能视为已部署。没有调用生产 `/mobile/captcha/*`，没有部署私有 backend bridge。 |
+| Production API / private bridge probe | 只读探测未通过专用页检查（2026-10-05 重跑） | `scripts/verify-mobile-origin.sh` 确认公开设置为 JSON 且 Turnstile 已启用，也确认未暴露 Secret；脚本唯一失败为 `the deployed entry bundle does not contain the dedicated MobileTurnstile route`。线上 `/mobile/turnstile` 仍返回旧 SPA 壳，不能视为已部署。没有调用生产 `/mobile/captcha/*`，没有部署私有 backend bridge。 |
 | Production HTTP headers | 通过（只读） | 2026-10-04 读取 `/login`、`/mobile/turnstile` 和 `/api/v1/settings/public`：分别为 HTML 200、HTML 200、JSON 200；三者 `cache-control: no-cache`、`cf-cache-status: DYNAMIC`，现有 CSP 已允许 `https://challenges.cloudflare.com` 的 script/frame。路由内容仍是旧入口 bundle，不能替代部署验收。 |
 | iOS simulator production-key login | 通过 | 已安装签名 Debug 原生包；真实生产 site key 返回 `widget-ready` 与 `token received`，认证请求 accepted，随后显示普通用户“个人工作台”。无密码、Cookie、token 或会话值进入日志；实体 iPhone/TestFlight 仍待验收。 |
 | Official v0.2.13 clean patch | 通过（临时干净检出） | `docs/official-v0.2.13-turnstile.patch` 在官方 tag `3040209f205472038c1ba745a1bedd2edd9053b1` 上 `git apply --check` 通过；应用后 `vue-tsc -b` 与 `vite build` 通过，并生成 `MobileTurnstileView` chunk。官方锁文件在当前 pnpm overrides 校验下无法 frozen install，构建使用已验证的同版本依赖树，未修改生产。 |
+| Local frontend Turnstile route | 通过（本地） | 在同工作区 `sub2api/frontend` 执行 `pnpm run typecheck`、`pnpm run test:run`（333 个文件、2498 项测试）、`pnpm run lint:check`、`pnpm run build`；构建产物包含 `MobileTurnstileView-*.js` 与对应 CSS。该产物尚未部署到任何服务器。 |
 | Turnstile token refresh lifecycle | 源码与本地合同测试通过；设备联调待完成 | 本地 240 秒刷新现在会重建专用 WebView 文档并生成新 tuple；原生消息来源同时校验同源 `/mobile/turnstile` 路径，避免 hash-only 导航或同源其他页面导致陈旧/伪造消息。自动化覆盖 tuple/config 和实例 key 合同，真实 240 秒 WebView 重建仍需 iOS 设备运行验证。 |
 | Android | 暂缓 | 当前范围不开发、不构建、不签名 Android；恢复范围后另行补齐证据。 |
 

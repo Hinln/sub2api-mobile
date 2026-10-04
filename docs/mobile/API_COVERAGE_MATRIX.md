@@ -1,6 +1,6 @@
 # API Coverage Matrix
 
-Updated: 2026-10-04 (Asia/Shanghai).
+Updated: 2026-10-05 (Asia/Shanghai).
 
 The release contract is the official Sub2API `v0.2.13` tag
 (`3040209f205472038c1ba745a1bedd2edd9053b1`). The mobile repository consumes

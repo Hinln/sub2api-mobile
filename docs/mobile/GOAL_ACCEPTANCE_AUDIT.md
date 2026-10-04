@@ -1,6 +1,6 @@
 # Goal 0–8 验收审计
 
-审计日期：2026-10-04（Asia/Shanghai）。本表按
+审计日期：2026-10-05（Asia/Shanghai）。本表按
 `prompts/08_Codex目标模式分阶段执行提示词.md` 和 `prompts/09` 的验收条件维护。
 “源代码完成”只代表当前 checkout 的代码、文档和自动化检查已证明；它不代替
 真实 staging、Cloudflare、支付 provider、TestFlight 或实体设备证据。
@@ -17,7 +17,7 @@
 | 0 | 移动仓库有可回退分支、依赖/构建基线及已记录失败 | `Hinln/sub2api-mobile` 当前交付分支与本地构建记录；API 基线为官方 v0.2.13；构建限制记录在 `docs/mobile/QA_REPORT.md`/`docs/BUILD_BLOCKERS.md` | 源码已完成 |
 | 1 | 路由、DTO、权限、错误和缺口进入真实矩阵 | `API_COVERAGE_MATRIX.md`、`API_GAP_REPORT.md`、`CURRENT_ARCHITECTURE.md`，并注明私有仓库与 public reference 的边界 | 源码已完成 |
 | 2 | 一个正式 V Logo、共享设计系统、会话/API/query 基础设施 | `src/components/vexlune-logo.tsx`、`src/theme.ts`、`src/lib/admin-fetch.ts`、SecureStore/query 清理测试 | 源码已完成 |
-| 3 | 邮箱密码登录/注册、`/auth/me` 角色路由、refresh/logout、TOTP/provider captcha | `src/services/auth.ts`、原生底部协议提示、同源 `/mobile/turnstile` 专用页与严格 WebView 消息桥；Vitest 覆盖 401/refresh、TOTP、HTML challenge 和 bridge tuple | 官方合同对齐已完成；部署与真实环境待验 |
+| 3 | 邮箱密码登录/注册、`/auth/me` 角色路由、refresh/logout、TOTP/provider captcha | `src/services/auth.ts`、原生底部协议提示、同源 `/mobile/turnstile` 专用页与严格 WebView 消息桥；移动端 Vitest 59/59，前端专用页本地 typecheck/build/test 通过 | 官方合同对齐已完成；部署与真实环境待验 |
 | 4 | 普通用户工作台每个可见控件连接真实接口且写操作可重试 | `src/services/user.ts` 与 `app/user*.tsx`；API key、usage、公告、订阅和订单服务接线；传输层幂等/重试边界有测试 | 源码完成；支付 sandbox 待验 |
 | 5 | 管理员工作台、渐进披露和高风险操作的权限/审计/幂等 | `src/services/admin*.ts`、管理员路由、后端 AdminAuth/audit/step-up；管理员服务测试 | 源码完成；管理员 staging 待验 |
 | 6 | 官方后端合同与不支持项进入缺口报告 | `API_GAP_REPORT.md`、`API_COVERAGE_MATRIX.md`；没有后端迁移或 private bridge 部署 | 合同审计完成；不支持项保持阻塞 |
