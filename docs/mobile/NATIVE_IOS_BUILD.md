@@ -53,10 +53,11 @@ App Store/TestFlight 归档使用 `scripts/export-ios-appstore.sh`。脚本在 a
 源码 commit 标记，避免复用旧源码归档；源码或分支变化后会自动重新 archive。只有
 已人工核验归档内容时，才设置 `IOS_REUSE_ARCHIVE=1` 跳过这个保护。
 
-当前 Turnstile 提交 `23e83c1af0412e82c7d0cfb68ebac542fdd21505` 已导出并签名验证
-`build/appstore-export-turnstile/VexluneMobileConsole.ipa`；SHA-256 为
-`27d8f9bbfdc2aa9883d15307ee6ab7326e55212fcf5ca24c5610865638385570`，包内版本为
-`1.0.1 (2)`。该 IPA 尚未上传 App Store Connect。
+当前 Turnstile 提交 `32dedab2883aedcbf93c7a1d803bbafaee484fce` 已导出并签名验证
+`build/appstore-export/VexluneMobileConsole.ipa`；SHA-256 为
+`6b82d9ebe482d15885d4f986bb64498e768506e8ffd2355ea1690065459e031e`，archive dSYM UUID 为
+`54E47192-6BBA-32DC-AFE3-F059DA104365`，包内版本为 `1.0.1 (2)`。该 IPA 尚未上传
+App Store Connect。
 
 ## JavaScript 打包
 

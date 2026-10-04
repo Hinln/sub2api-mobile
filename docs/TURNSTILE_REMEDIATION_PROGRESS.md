@@ -42,7 +42,7 @@
 | 官方 `v0.2.13` 干净补丁 | 通过 | 在 tag `3040209f205472038c1ba745a1bedd2edd9053b1` 临时检出应用最小补丁，`git apply --check`、`vue-tsc -b` 和 `vite build` 均通过；没有部署或修改生产。 |
 | iOS 原生 Xcode Release Simulator 构建 | 通过，`VexluneMobileConsole.app` |
 | iOS 模拟器安装启动 | 通过，bundle `com.vexlune.mobile` |
-| 当前提交签名 IPA | 通过，提交 `23e83c1`，SHA-256 `27d8f9bbfdc2aa9883d15307ee6ab7326e55212fcf5ca24c5610865638385570` |
+| 当前提交签名 IPA | 通过，提交 `32dedab`，SHA-256 `6b82d9ebe482d15885d4f986bb64498e768506e8ffd2355ea1690065459e031e`，dSYM UUID `54E47192-6BBA-32DC-AFE3-F059DA104365` |
 | 生产 `/mobile/turnstile` 线上联调 | 未通过：线上返回旧 SPA 壳，入口 bundle 不含 `MobileTurnstile` 路由 |
 | 真实挑战与真实账号登录 | 未完成：需要部署后由授权账号完成一次交互 |
 | Android 实机 | 未测试：本阶段只交付 iOS |
