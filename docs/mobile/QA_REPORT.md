@@ -28,7 +28,7 @@
 | Go 后端测试 | 未运行 | 当前开发机没有 Go 工具链；本轮未修改或部署后端，不能把私有 checkout 的测试结果当作官方 v0.2.13 证据。 |
 | iOS Simulator Release | 通过 | 使用仓库内已提交的 `ios/VexluneMobileConsole.xcworkspace` 和 Xcode 26.6 `xcodebuild` 生成 arm64/x86_64 `.app`；没有 Expo/EAS 云构建。 |
 | iPhoneOS Release unsigned | 通过 | 使用原生 Xcode 工具链生成 arm64 archive/app；未签名包不能安装真机。 |
-| iOS signed archive/IPA | 通过（当前提交） | 提交 `32dedab2883aedcbf93c7a1d803bbafaee484fce` 已完成 archive/export，IPA SHA-256 为 `6b82d9ebe482d15885d4f986bb64498e768506e8ffd2355ea1690065459e031e`，archive dSYM UUID 为 `54E47192-6BBA-32DC-AFE3-F059DA104365`，解包 App 通过 `codesign --verify --deep --strict`。TestFlight 处理、实体 iPhone 和线上 API 验收仍未完成。 |
+| iOS signed archive/IPA | 通过（当前提交） | 提交 `77c03f3b752ec00e5dd3b56716b5021716c96fa5` 已完成 archive/export，IPA SHA-256 为 `e51c476499cb186c869ff6b14d3efcff64a3497da9be12b17d0923295228b501`，archive dSYM UUID 为 `CBC5924B-9EB3-332A-9337-033714D7BBEB`，解包 App 通过 `codesign --verify --deep --strict`。TestFlight 处理、实体 iPhone 和线上 API 验收仍未完成。 |
 | Production API / private bridge probe | 只读探测未通过专用页检查 | `scripts/verify-mobile-origin.sh` 确认公开设置为 JSON 且 Turnstile 已启用，也确认未暴露 Secret；线上 `/mobile/turnstile` 返回旧 SPA 壳，入口 bundle 不含 `MobileTurnstile`，所以不能视为已部署。没有调用生产 `/mobile/captcha/*`，没有部署私有 backend bridge。 |
 | Official v0.2.13 clean patch | 通过（临时干净检出） | `docs/official-v0.2.13-turnstile.patch` 在官方 tag `3040209f205472038c1ba745a1bedd2edd9053b1` 上 `git apply --check` 通过；应用后 `vue-tsc -b` 与 `vite build` 通过，并生成 `MobileTurnstileView` chunk。官方锁文件在当前 pnpm overrides 校验下无法 frozen install，构建使用已验证的同版本依赖树，未修改生产。 |
 | Turnstile token refresh lifecycle | 源码与本地合同测试通过；设备联调待完成 | 本地 240 秒刷新现在会重建专用 WebView 文档并生成新 tuple；原生消息来源同时校验同源 `/mobile/turnstile` 路径，避免 hash-only 导航或同源其他页面导致陈旧/伪造消息。自动化覆盖 tuple/config 和实例 key 合同，真实 240 秒 WebView 重建仍需 iOS 设备运行验证。 |

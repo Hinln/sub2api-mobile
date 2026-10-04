@@ -11,7 +11,7 @@
 - iPhoneOS Release 未签名构建通过，产物为 build/ios-device/Build/Products/Release-iphoneos/VexluneMobileConsole.app，主程序为 arm64；已验证可打包为 IPA，压缩包完整性通过。
 - 本机存在 Apple Development: YONGCHI PAN (KRVKFG5D67) 与 iPhone Distribution: Sichuan Xiashi Network Technology Service Co., Ltd 证书，Team ID 为 6KW552MWV6；已提交的 `ios/` 工程包含 Debug/Release 的 `DEVELOPMENT_TEAM`，原生构建不依赖 prebuild。
 - 已创建并安装 App Store provisioning profile `Vexlune Mobile Console App Store 20261003 Distribu`，Bundle ID 为 `com.vexlune.mobile`，有效期至 2027-10-03。
-- 当前 Turnstile 提交 `32dedab2883aedcbf93c7a1d803bbafaee484fce` 已重新导出并验证签名 IPA：`build/appstore-export/VexluneMobileConsole.ipa`，SHA-256 `6b82d9ebe482d15885d4f986bb64498e768506e8ffd2355ea1690065459e031e`；archive dSYM UUID 为 `54E47192-6BBA-32DC-AFE3-F059DA104365`；解包后的 App 通过 `codesign --verify --deep --strict`。尚未上传 App Store Connect。
+- 当前 Turnstile 提交 `77c03f3b752ec00e5dd3b56716b5021716c96fa5` 已重新导出并验证签名 IPA：`build/appstore-export/VexluneMobileConsole.ipa`，SHA-256 `e51c476499cb186c869ff6b14d3efcff64a3497da9be12b17d0923295228b501`；archive dSYM UUID 为 `CBC5924B-9EB3-332A-9337-033714D7BBEB`；解包后的 App 通过 `codesign --verify --deep --strict`。尚未上传 App Store Connect。
 
 ## 尚未完成的发布条件
 

@@ -11,7 +11,7 @@
 - iOS 原生工程：已提交（`ios/`），不运行 Expo prebuild
 - iOS Simulator Release：通过；arm64/x86_64
 - iPhoneOS Release：通过；arm64。
-- 当前 Turnstile 提交 `32dedab2883aedcbf93c7a1d803bbafaee484fce` 已重新完成 App Store Distribution archive/export；产物为 `build/appstore-export/VexluneMobileConsole.ipa`，版本 `1.0.1 (2)`，SHA-256 `6b82d9ebe482d15885d4f986bb64498e768506e8ffd2355ea1690065459e031e`，archive dSYM UUID `54E47192-6BBA-32DC-AFE3-F059DA104365`；解包后的 App 通过 `codesign --verify --deep --strict`。
+- 当前 Turnstile 提交 `77c03f3b752ec00e5dd3b56716b5021716c96fa5` 已重新完成 App Store Distribution archive/export；产物为 `build/appstore-export/VexluneMobileConsole.ipa`，版本 `1.0.1 (2)`，SHA-256 `e51c476499cb186c869ff6b14d3efcff64a3497da9be12b17d0923295228b501`，archive dSYM UUID `CBC5924B-9EB3-332A-9337-033714D7BBEB`；解包后的 App 通过 `codesign --verify --deep --strict`。
 - 本机证书：Apple Development: YONGCHI PAN (KRVKFG5D67)、iPhone Distribution: Sichuan Xiashi Network Technology Service Co., Ltd；Team ID 6KW552MWV6
 - App Store profile：`Vexlune Mobile Console App Store 20261003 Distribu`，Bundle ID `com.vexlune.mobile`，有效期至 2027-10-03
 - `app.json` 与版本化 `ios/` 工程固定 `ios.appleTeamId=6KW552MWV6` 和 Debug/Release 的 `DEVELOPMENT_TEAM`
