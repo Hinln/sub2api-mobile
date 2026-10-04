@@ -1,0 +1,303 @@
+diff --git a/deploy/MOBILE_TURNSTILE.md b/deploy/MOBILE_TURNSTILE.md
+new file mode 100644
+index 0000000..64d7616
+--- /dev/null
++++ b/deploy/MOBILE_TURNSTILE.md
+@@ -0,0 +1,69 @@
++# Native mobile Turnstile page
++
++The Vexlune Hub iOS client loads the same-origin HTTPS route
++`/mobile/turnstile`. This is a normal public frontend route containing only
++the official Cloudflare Turnstile widget and a constrained
++`ReactNativeWebView.postMessage` bridge. It is not a login page and it does not
++introduce a private captcha exchange endpoint.
++
++The page reads `GET /api/v1/settings/public` and uses only the public
++`turnstile_site_key`. The native app supplies a fresh `version`, `requestId`,
++`nonce`, and action (`login`, `register`, or `forgot_password`) in the URL
++fragment. Every bridge message repeats and is checked against that tuple. The
++token is passed once to the existing auth endpoint as `turnstile_token`; the
++official backend remains the only component that calls Cloudflare Siteverify.
++The Secret Key stays in the backend configuration and is never present in the
++frontend bundle, route fragment, or app package.
++
++## Deployment checklist
++
++1. Build the frontend from the reviewed commit with `pnpm build` in
++   `frontend/`. The build writes `backend/internal/web/dist`; deploy that
++   bundle with the existing Sub2API release process.
++2. Keep the normal SPA fallback enabled for `/mobile/turnstile`, while making
++   sure the route is not redirected to `/login` and that `/api/v1/settings/public`
++   remains JSON.
++3. Keep the existing CSP. It already allows the official script and iframe:
++   `https://challenges.cloudflare.com` in `script-src` and `frame-src`. Do not
++   add `unsafe-eval`, arbitrary origins, or a proxy for Cloudflare's script.
++4. Purge only stale HTML/configuration caches for the site after rollout. The
++   page bundle may use normal content-hash caching; the HTML shell and public
++   settings must be revalidated.
++5. Confirm the configured widget authorizes hostname `hub.vexlune.com` (hostname
++   entries contain no protocol, port, or path). Do not enable arbitrary
++   hostnames as a workaround.
++
++## Post-deployment probes
++
++Run these from a machine that can reach the production hostname:
++
++```sh
++BASE_URL="https://hub.vexlune.com"
++
++# The route must return the SPA shell with a 200 and must not redirect to login.
++curl --fail-with-body --silent --show-error --include \
++  "$BASE_URL/mobile/turnstile#version=1&requestId=v1-login-probe-abcdefgh&nonce=probe-12345678&action=login"
++
++# Public settings must remain JSON and expose no secret.
++curl --fail-with-body --silent --show-error \
++  -H 'Accept: application/json' "$BASE_URL/api/v1/settings/public"
++```
++
++The first response will contain the built app shell; route correctness is
++confirmed by loading it in a browser/WebView and observing the page's
++`ready` handshake. A shell response by itself is not token or login evidence.
++Complete one real challenge in staging or with an approved test account, then
++verify that the existing login/register endpoint accepts the token and that a
++replay is rejected. Do not put a production Secret Key or test token in logs.
++
++## Rollback
++
++If the route serves the wrong page, the SDK is blocked, or native bridge
++handshake fails, stop the mobile rollout and redeploy the previous frontend
++bundle. Restore the prior `backend/internal/web/dist` artifact and invalidate
++only the affected HTML cache. Do not disable Turnstile, bypass Cloudflare, or
++change the auth endpoints as a rollback shortcut. No database migration or
++backend version change is required by this page.
++
++Production deployment, service restart, CDN cache purge, and Cloudflare widget
++hostname/key changes require explicit operator confirmation before execution.
+diff --git a/frontend/src/router/index.ts b/frontend/src/router/index.ts
+index 1881ff3..b9dd00a 100644
+--- a/frontend/src/router/index.ts
++++ b/frontend/src/router/index.ts
+@@ -148,6 +148,15 @@ const routes: RouteRecordRaw[] = [
+       titleKey: 'auth.forgotPasswordTitle'
+     }
+   },
++  {
++    path: '/mobile/turnstile',
++    name: 'MobileTurnstile',
++    component: () => import('@/views/public/MobileTurnstileView.vue'),
++    meta: {
++      requiresAuth: false,
++      title: 'Security Verification'
++    }
++  },
+   {
+     path: '/reset-password',
+     name: 'ResetPassword',
+@@ -751,7 +760,7 @@ let authInitialized = false
+ const navigationLoading = useNavigationLoadingState()
+ // 延迟初始化预加载，传入 router 实例
+ let routePrefetch: ReturnType<typeof useRoutePrefetch> | null = null
+-const BACKEND_MODE_ALLOWED_PATHS = ['/login', '/key-usage', '/setup', '/payment/result', '/payment/airwallex', '/legal']
++const BACKEND_MODE_ALLOWED_PATHS = ['/login', '/key-usage', '/setup', '/payment/result', '/payment/airwallex', '/legal', '/mobile/turnstile']
+ const BACKEND_MODE_CALLBACK_PATHS = [
+   '/auth/callback',
+   '/auth/linuxdo/callback',
+diff --git a/frontend/src/views/public/MobileTurnstileView.vue b/frontend/src/views/public/MobileTurnstileView.vue
+new file mode 100644
+index 0000000..9c984da
+--- /dev/null
++++ b/frontend/src/views/public/MobileTurnstileView.vue
+@@ -0,0 +1,193 @@
++<template>
++  <main class="mobile-turnstile-page" aria-live="polite">
++    <section class="turnstile-card" aria-label="安全验证">
++      <img class="brand-mark" src="/logo.svg" alt="" aria-hidden="true">
++      <h1>安全验证</h1>
++      <p v-if="state === 'loading'">正在加载官方安全验证…</p>
++      <p v-else-if="state === 'ready' || state === 'interactive'">请完成下方安全验证</p>
++      <p v-else-if="state === 'success'">验证已完成</p>
++      <p v-else class="error-text">{{ errorMessage }}</p>
++      <div ref="containerRef" class="turnstile-container" :class="{ hidden: state === 'loading' || state === 'error' || state === 'unsupported' || state === 'disabled' }"></div>
++      <button v-if="state === 'error' || state === 'unsupported'" type="button" class="retry-button" @click="initialize">重新验证</button>
++    </section>
++  </main>
++</template>
++
++<script setup lang="ts">
++import { onBeforeUnmount, onMounted, ref } from 'vue'
++
++type Action = 'login' | 'register' | 'forgot_password'
++type State = 'loading' | 'ready' | 'interactive' | 'success' | 'error' | 'unsupported' | 'disabled'
++declare global {
++  interface Window {
++    ReactNativeWebView?: { postMessage: (message: string) => void }
++  }
++}
++
++const BRIDGE_VERSION = 1
++const MAX_ERROR_LENGTH = 128
++const state = ref<State>('loading')
++const errorMessage = ref('官方安全验证组件未加载，请检查网络后重试。')
++const containerRef = ref<HTMLElement | null>(null)
++let widgetId: string | undefined
++let scriptElement: HTMLScriptElement | undefined
++let context: { requestId: string; nonce: string; action: Action } | null = null
++let sentSuccess = false
++let disposed = false
++let generation = 0
++
++function post(type: string, fields: Record<string, unknown> = {}) {
++  if (disposed || !context || !window.ReactNativeWebView || typeof window.ReactNativeWebView.postMessage !== 'function') return
++  window.ReactNativeWebView.postMessage(JSON.stringify({
++    version: BRIDGE_VERSION,
++    type,
++    requestId: context.requestId,
++    nonce: context.nonce,
++    action: context.action,
++    ...fields,
++  }))
++}
++
++function readContext() {
++  const params = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash)
++  const requestId = params.get('requestId') || ''
++  const nonce = params.get('nonce') || ''
++  const action = params.get('action')
++  if (params.get('version') !== String(BRIDGE_VERSION) || !/^[A-Za-z0-9._~-]{8,128}$/.test(requestId) || !/^[A-Za-z0-9._~-]{8,128}$/.test(nonce) || !['login', 'register', 'forgot_password'].includes(action || '')) {
++    return null
++  }
++  return { requestId, nonce, action: action as Action }
++}
++
++function setError(message: string, errorCode = 'page_error') {
++  if (disposed) return
++  state.value = 'error'
++  errorMessage.value = message
++  post('error', { errorCode: errorCode.slice(0, MAX_ERROR_LENGTH) })
++}
++
++function loadSdk(): Promise<void> {
++  if (window.turnstile) return Promise.resolve()
++  if (scriptElement) {
++    return new Promise((resolve, reject) => {
++      scriptElement?.addEventListener('load', () => resolve(), { once: true })
++      scriptElement?.addEventListener('error', () => reject(new Error('sdk_load_failed')), { once: true })
++    })
++  }
++  return new Promise((resolve, reject) => {
++    const script = document.createElement('script')
++    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
++    script.async = true
++    script.defer = true
++    script.onload = () => resolve()
++    script.onerror = () => {
++      scriptElement = undefined
++      reject(new Error('sdk_load_failed'))
++    }
++    scriptElement = script
++    document.head.appendChild(script)
++  })
++}
++
++async function initialize() {
++  disposed = false
++  const currentGeneration = ++generation
++  if (widgetId && window.turnstile) {
++    try { window.turnstile.remove(widgetId) } catch { /* provider cleanup is best effort */ }
++  }
++  widgetId = undefined
++  sentSuccess = false
++  state.value = 'loading'
++  errorMessage.value = '官方安全验证组件未加载，请检查网络后重试。'
++  context = readContext()
++  if (!context) {
++    state.value = 'unsupported'
++    errorMessage.value = '验证页面参数无效，请返回应用后重试。'
++    return
++  }
++  if (!window.ReactNativeWebView || typeof window.ReactNativeWebView.postMessage !== 'function') {
++    state.value = 'unsupported'
++    errorMessage.value = '当前环境不支持安全验证。'
++    post('unsupported', { errorCode: 'native_bridge_missing' })
++    return
++  }
++
++  try {
++    const response = await fetch('/api/v1/settings/public', { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
++    if (disposed || currentGeneration !== generation) return
++    const payload = await response.json() as { data?: Record<string, unknown> } & Record<string, unknown>
++    const settings = (payload.data && typeof payload.data === 'object' ? payload.data : payload) as Record<string, unknown>
++    if (settings.turnstile_enabled === false) {
++      if (settings.aliyun_captcha_enabled === true || settings.tencent_captcha_enabled === true) {
++        setError('当前启用的安全验证供应商不受 APP 支持，请联系管理员。', 'provider_unsupported')
++      } else {
++        state.value = 'disabled'
++        post('disabled')
++      }
++      return
++    }
++    const siteKey = typeof settings.turnstile_site_key === 'string' ? settings.turnstile_site_key.trim() : ''
++    if (!response.ok || settings.turnstile_enabled !== true || !siteKey) {
++      setError('安全验证配置异常，请联系管理员。', 'config_invalid')
++      return
++    }
++    await loadSdk()
++    if (disposed || currentGeneration !== generation) return
++    if (!window.turnstile || !containerRef.value) throw new Error('sdk_unavailable')
++    const renderOptions = {
++      sitekey: siteKey,
++      action: context.action,
++      theme: 'light',
++      size: 'flexible',
++      callback: (token: unknown) => {
++        if (sentSuccess || typeof token !== 'string' || token.length < 20 || token.length > 2048 || token.trim() !== token) return
++        sentSuccess = true
++        state.value = 'success'
++        post('success', { token })
++      },
++      'before-interactive-callback': () => {
++        state.value = 'interactive'
++        post('before-interactive')
++      },
++      'after-interactive-callback': () => post('after-interactive'),
++      'expired-callback': () => {
++        sentSuccess = false
++        state.value = 'ready'
++        post('expired')
++      },
++      'error-callback': () => {
++        sentSuccess = false
++        setError('官方安全验证组件未加载，请检查网络后重试。', 'turnstile_error')
++      },
++    } as unknown as Parameters<NonNullable<typeof window.turnstile>['render']>[1]
++    widgetId = window.turnstile.render(containerRef.value, renderOptions)
++    state.value = 'ready'
++    post('ready')
++  } catch (error) {
++    if (disposed || currentGeneration !== generation) return
++    setError('官方安全验证组件未加载，请检查网络后重试。', error instanceof Error ? error.message : 'sdk_unavailable')
++  }
++}
++
++onMounted(() => { void initialize() })
++onBeforeUnmount(() => {
++  disposed = true
++  generation += 1
++  if (widgetId && window.turnstile) {
++    try { window.turnstile.remove(widgetId) } catch { /* provider cleanup is best effort */ }
++  }
++  widgetId = undefined
++})
++</script>
++
++<style scoped>
++.mobile-turnstile-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; margin: 0; padding: 16px; background: #f8faff; color: #142452; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
++.turnstile-card { width: min(100%, 420px); min-height: 154px; box-sizing: border-box; padding: 20px; border: 1px solid #dce5f4; border-radius: 18px; background: #fff; box-shadow: 0 12px 30px rgba(74, 97, 148, .1); text-align: center; }
++.brand-mark { width: 30px; height: 30px; margin: 0 auto 8px; border-radius: 10px; background: #eef0ff; object-fit: contain; }
++h1 { margin: 0; font-size: 16px; font-weight: 800; }
++p { margin: 8px 0 12px; color: #7382a5; font-size: 13px; }
++.error-text { color: #c73d53; }
++.turnstile-container { min-height: 65px; display: flex; justify-content: center; align-items: center; }
++.turnstile-container.hidden { display: none; }
++.retry-button { border: 0; border-radius: 10px; padding: 9px 16px; background: #6d6cf4; color: #fff; font-weight: 700; }
++</style>
