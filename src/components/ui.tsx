@@ -1,4 +1,4 @@
-import { Activity, ChartNoAxesCombined, KeyRound, Menu, Users, type LucideIcon } from 'lucide-react-native';
+import { ChartNoAxesCombined, ChevronRight, FileText, Home, Settings2, UserRound, Users, type LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { router, usePathname } from 'expo-router';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
@@ -17,52 +17,53 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
   right?: ReactNode;
 }) {
   const pathname = usePathname();
-  const standalone = pathname.startsWith('/admin-') || pathname === '/exceptions' || pathname === '/about';
-  const activePath = standalone ? '/more' : pathname;
+  const standalone = !['/', '/monitor', '/users', '/admin-orders', '/settings'].includes(pathname);
+  const activePath = pathname === '/' ? '/' : pathname.startsWith('/monitor') ? '/monitor' : pathname.startsWith('/users') ? '/users' : pathname.startsWith('/admin-orders') ? '/admin-orders' : pathname.startsWith('/settings') ? '/settings' : '/';
   const navItems = [
-    { path: '/monitor', label: '概览', Icon: ChartNoAxesCombined },
-    { path: '/accounts', label: '上游账号', Icon: KeyRound },
-    { path: '/users', label: '用户管理', Icon: Users },
-    { path: '/logs', label: '请求日志', Icon: Activity },
-    { path: '/more', label: '更多', Icon: Menu },
+    { path: '/', label: '首页', Icon: Home },
+    { path: '/monitor', label: '监控', Icon: ChartNoAxesCombined },
+    { path: '/users', label: '用户', Icon: Users },
+    { path: '/admin-orders', label: '订单', Icon: FileText },
+    { path: '/settings', label: '设置', Icon: Settings2 },
   ] as const;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.page }}>
+      <View pointerEvents="none" style={{ position: 'absolute', top: -110, right: -120, width: 300, height: 300, borderRadius: 150, backgroundColor: theme.primarySoft, opacity: 0.58 }} />
+      <View pointerEvents="none" style={{ position: 'absolute', top: 240, left: -190, width: 360, height: 360, borderRadius: 180, backgroundColor: '#DFF4FF', opacity: 0.48 }} />
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 10, paddingBottom: 112 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 118 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} /> : undefined}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <VexluneLogo size={40} />
-            <View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-                <Text style={{ color: theme.text, fontSize: 19, fontWeight: '900', letterSpacing: -0.2 }}>Vexlune Hub</Text>
-                <View style={{ borderRadius: 999, backgroundColor: theme.primarySoft, paddingHorizontal: 7, paddingVertical: 3 }}>
-                  <Text style={{ color: theme.primary, fontSize: 9, fontWeight: '900', letterSpacing: 0.4 }}>管理后台</Text>
-                </View>
-              </View>
-              <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 3 }}>稳定运行 · 高效管理</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11, flex: 1 }}>
+            <VexluneLogo size={48} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: theme.text, fontSize: 21, fontWeight: '900', letterSpacing: -0.4 }}>Vexlune Hub</Text>
+              <Text numberOfLines={1} style={{ color: theme.text, fontSize: 18, lineHeight: 23, fontWeight: '800', marginTop: 2 }}>{title}</Text>
             </View>
           </View>
-          {right ? <View style={{ alignItems: 'flex-end' }}>{right}</View> : null}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginLeft: 10 }}>
+            <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: theme.primarySoft, alignItems: 'center', justifyContent: 'center' }}><UserRound color={theme.primary} size={21} /></View>
+            <View><Text style={{ color: theme.text, fontSize: 11, fontWeight: '900' }}>管理员</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 2 }}>管理端已连接</Text></View>
+            <ChevronRight color={theme.faint} size={16} />
+          </View>
         </View>
-        <View style={{ marginBottom: 18 }}>
-          <Text style={{ color: theme.text, fontSize: 28, lineHeight: 34, fontWeight: '900', letterSpacing: -0.6 }}>{title}</Text>
-          {subtitle ? <Text style={{ color: theme.subtext, fontSize: 13, lineHeight: 20, marginTop: 5 }}>{subtitle}</Text> : null}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>
+          <Text style={{ flex: 1, color: theme.subtext, fontSize: 12, lineHeight: 18 }}>{subtitle || '管理员专用 · 真实服务端数据'}</Text>
+          {right ? <View style={{ alignItems: 'flex-end' }}>{right}</View> : null}
         </View>
         {children}
       </ScrollView>
-      {standalone ? <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 8, paddingBottom: 18 }}>
+      {standalone ? <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 7, paddingBottom: 18 }}>
         {navItems.map((item) => {
           const selected = activePath === item.path;
           const Icon = item.Icon;
-          return <Pressable key={item.path} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => router.replace(item.path)} style={{ flex: 1, alignItems: 'center', gap: 4 }}>
-            <Icon color={selected ? theme.primary : theme.faint} size={21} strokeWidth={selected ? 2.5 : 2} />
-            <Text style={{ color: selected ? theme.primary : theme.faint, fontSize: 11, fontWeight: selected ? '900' : '700' }}>{item.label}</Text>
+          return <Pressable key={item.path} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => router.replace(item.path)} style={{ flex: 1, alignItems: 'center', gap: 4, paddingVertical: 8, marginHorizontal: 3, borderRadius: 18, backgroundColor: selected ? theme.primarySoft : 'transparent' }}>
+            <Icon color={selected ? theme.primary : theme.faint} size={23} strokeWidth={selected ? 2.5 : 2} />
+            <Text style={{ color: selected ? theme.primary : theme.faint, fontSize: 12, fontWeight: selected ? '900' : '700' }}>{item.label}</Text>
           </Pressable>;
         })}
       </View> : null}
@@ -71,7 +72,7 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
 }
 
 export function Card({ children, style }: { children: ReactNode; style?: object }) {
-  return <View style={[{ backgroundColor: theme.card, borderRadius: 18, borderWidth: 1, borderColor: theme.border, padding: 14 }, style]}>{children}</View>;
+  return <View style={[{ backgroundColor: theme.card, borderRadius: 22, borderWidth: 1, borderColor: '#E5ECF8', padding: 16, shadowColor: '#7C95C7', shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 2 }, style]}>{children}</View>;
 }
 
 export function StateCard({ loading, error, empty, onRetry, emptyText }: {
@@ -96,12 +97,14 @@ export function StateCard({ loading, error, empty, onRetry, emptyText }: {
   );
 }
 
-export function Metric({ label, value, tone = 'default' }: { label: string; value: string; tone?: 'default' | 'success' | 'danger' | 'warning' }) {
+export function Metric({ label, value, tone = 'default', icon: Icon, trend }: { label: string; value: string; tone?: 'default' | 'success' | 'danger' | 'warning'; icon?: LucideIcon; trend?: string }) {
   const color = tone === 'success' ? theme.success : tone === 'danger' ? theme.danger : tone === 'warning' ? theme.warning : theme.text;
   return (
     <View style={{ minWidth: 0, flex: 1, backgroundColor: theme.cardRaised, borderRadius: 16, padding: 13 }}>
+      {Icon ? <View style={{ width: 28, height: 28, borderRadius: 10, backgroundColor: tone === 'success' ? theme.successSoft : tone === 'warning' ? theme.warningSoft : theme.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}><Icon color={tone === 'success' ? theme.success : tone === 'warning' ? theme.warning : theme.primary} size={15} /></View> : null}
       <Text style={{ color: theme.subtext, fontSize: 11 }}>{label}</Text>
       <Text numberOfLines={1} adjustsFontSizeToFit style={{ color, fontSize: 20, fontWeight: '900', marginTop: 7 }}>{value}</Text>
+      {trend ? <Text numberOfLines={1} style={{ color: trend.startsWith('-') ? theme.danger : theme.success, fontSize: 10, fontWeight: '800', marginTop: 5 }}>{trend}</Text> : null}
     </View>
   );
 }

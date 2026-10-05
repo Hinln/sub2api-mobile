@@ -27,3 +27,18 @@
 - 产物：`build/ios-ui-audit/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`。
 - 模拟器已安装并启动；概览、上游账号、用户管理、请求日志、更多、分组与模型、订单与资金均可打开。
 - `pnpm typecheck` 通过；Vitest 12 个文件、66 项测试通过；目标文件 ESLint 通过；`git diff --check` 通过。
+
+## 2026-10-05 管理员后台第二轮参考图
+
+本轮新增的管理员专用参考图保存在工作区 `design-reference/admin-ui-generated-1.png` 至
+`design-reference/admin-ui-generated-6.png`。它们统一采用浅蓝背景、宽留白、白色大圆角卡片、
+单一浅色 V Logo、紫蓝主色和五栏底部导航，分别覆盖概览、用户、监控、订单、安全日志和系统设置。
+
+已按这组图调整当前源码：公共页面壳层增大 Logo、标题和导航选中胶囊，减轻卡片边框；首页指标改为
+四列真实字段卡片，快捷入口改为四列紧凑磁贴；监控指标改为在线节点、请求/分钟和 Token/分钟三列，
+所有数值仍来自官方 v0.2.13 管理接口。接口没有延迟、成功率或支付渠道字段时继续显示已有真实字段或空态，
+没有补造参考图中的示例数字。
+
+最新原生 Release Simulator 构建使用 `build/ios-ui-audit-latest/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`，
+Xcode 构建成功并安装启动。当前模拟器未保存可用 Admin Key，因此本轮只能实际核验登录首屏；管理员工作台
+需要在模拟器中输入真实 Admin Key 后再做逐页截图验收，不能把未联调页面声称为已通过。
