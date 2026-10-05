@@ -26,7 +26,7 @@
 
 - [x] Xcode 中选择 Team `6KW552MWV6`，Bundle ID 与 App ID 匹配，受控 provisioning profile 与签名身份已验证。
 - [x] ASC 版本与工程 `CFBundleShortVersionString=1.0.1` 已对齐；build number 为 `2`，上传前仍需保持两者一致。
-- [x] 当前工作树提交 `164e5b6` 的原生 `archive` 和 `-exportArchive` 已完成，解包后的 App 通过 `codesign --verify --deep --strict`，IPA SHA-256 为 `cb873980772981853e19afee193ac37dc07154eaca32396b8701b6ed38603641`，archive dSYM UUID 为 `CBC5924B-9EB3-332A-9337-033714D7BBEB`；不使用 Expo/EAS 云构建或托管签名。
+- [x] 当前工作树提交 `468d76e` 的原生 `archive` 和 `-exportArchive` 已完成，解包后的 App 通过 `codesign --verify --deep --strict`，IPA SHA-256 为 `46ff4bfa94e5720fb8fbe103eaa91ae8f4092d8db90b7c66e42a934ab3180da0`，archive dSYM UUID 为 `CBC5924B-9EB3-332A-9337-033714D7BBEB`；不使用 Expo/EAS 云构建或托管签名。
 - [x] iOS 26.5 Simulator 已安装并启动当前 Release `.app`（iPhone 17 Pro Max，UDID `1453B2BD-6F79-4861-9090-03284CF7E859`）；这只证明本机模拟器启动路径，不能替代实体 iPhone/TestFlight 验收。
 - [x] 当前 Turnstile 工作树已重新导出包内 App 并通过 `codesign --verify --deep --strict`；已记录 IPA SHA-256 和构建 commit。archive UUID 与 App Store Connect build ID 待上传后补录。
 - [ ] 上传完成后记录 App Store Connect build ID、处理状态和导出日志摘要。
