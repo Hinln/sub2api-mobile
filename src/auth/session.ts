@@ -10,6 +10,12 @@ const EXPIRES_AT_KEY = 'vexlune_expires_at_v2';
 const USER_KEY = 'vexlune_user_v2';
 const BIOMETRIC_KEY = 'vexlune_biometric_lock_v2';
 const BASE_URL_KEY = 'vexlune_hub_url_v2';
+/**
+ * The official Sub2API admin middleware accepts this credential in the
+ * `x-api-key` header. Keep it in the device keychain only; it must never be
+ * copied into AsyncStorage, logs, or a URL.
+ */
+export const ADMIN_API_KEY_KEY = 'vexlune_admin_api_key_v2';
 const IS_WEB = Platform.OS === 'web';
 
 // Keep this store deliberately small. Server data and permissions live in Query;
@@ -24,7 +30,7 @@ export type SessionState = {
   advancedUrlEnabled: boolean;
   /** Compatibility display field for the old settings screen. */
   saving: boolean;
-  /** @deprecated API-key authentication was removed; retained only for source compatibility. */
+  /** Official Sub2API administrator credential sent as `x-api-key`. */
   adminApiKey: string;
   accessToken: string;
   refreshToken: string;
@@ -72,8 +78,14 @@ async function deleteSecure(key: string) {
   try { await SecureStore.deleteItemAsync(key); } catch { /* idempotent cleanup */ }
 }
 
-export function isAuthenticated(state: Pick<SessionState, 'accessToken' | 'user'> = sessionState) {
-  return Boolean(state.accessToken && state.user);
+export type AuthStateLike = Pick<SessionState, 'accessToken' | 'user'> & Partial<Pick<SessionState, 'adminApiKey'>>;
+
+export function hasAdminApiKey(state: Partial<Pick<SessionState, 'adminApiKey'>> = sessionState) {
+  return Boolean(state.adminApiKey?.trim());
+}
+
+export function isAuthenticated(state: AuthStateLike = sessionState) {
+  return hasAdminApiKey(state) || Boolean(state.accessToken && state.user);
 }
 
 export function isAdmin(user: AuthUser | null | undefined) {
@@ -86,13 +98,13 @@ export async function hydrateSession() {
     readSecure(ACCESS_TOKEN_KEY), readSecure(REFRESH_TOKEN_KEY), readSecure(EXPIRES_AT_KEY),
     readSecure(USER_KEY), readSecure(BIOMETRIC_KEY), readSecure(BASE_URL_KEY),
   ]);
+  const adminApiKey = await readSecure(ADMIN_API_KEY_KEY);
   sessionState.accessToken = accessToken ?? '';
-  // Deliberately never hydrate or persist the removed admin API-key field.
-  sessionState.adminApiKey = '';
+  sessionState.adminApiKey = adminApiKey?.trim() ?? '';
   sessionState.refreshToken = refreshToken ?? '';
   sessionState.expiresAt = Number(expiresAt ?? 0) || 0;
   sessionState.user = user ? safeParseUser(user) : null;
-  sessionState.workspaceMode = isAdmin(sessionState.user) ? 'admin' : 'user';
+  sessionState.workspaceMode = sessionState.adminApiKey || isAdmin(sessionState.user) ? 'admin' : 'user';
   sessionState.biometricEnabled = biometric === 'true';
   if (baseUrl) {
     try { sessionState.baseUrl = normalizeHubUrl(baseUrl); } catch { sessionState.baseUrl = VEXLUNE_HUB_URL; }
@@ -105,7 +117,10 @@ export async function hydrateSession() {
   // normal refresh attempt first. Network failures keep the cached session so
   // the app can recover when connectivity returns; an explicit auth failure
   // clears credentials and cannot leave a stale administrator workspace open.
-  if (sessionState.accessToken) {
+  // Admin API-key sessions do not have a JWT or refresh token. The key is
+  // validated by the administrator login flow and then sent directly on
+  // admin requests. Do not call /auth/me with an empty bearer token here.
+  if (sessionState.accessToken && !sessionState.adminApiKey) {
     try {
       if (sessionState.expiresAt > 0 && Date.now() >= sessionState.expiresAt && sessionState.refreshToken) {
         const { refreshSession } = await import('@/src/services/auth');
@@ -147,16 +162,66 @@ export async function saveSession(input: { accessToken: string; refreshToken?: s
     input.refreshToken ? writeSecure(REFRESH_TOKEN_KEY, input.refreshToken) : deleteSecure(REFRESH_TOKEN_KEY),
     writeSecure(EXPIRES_AT_KEY, String(expiresAt)),
     writeSecure(USER_KEY, JSON.stringify(input.user)),
+    // A JWT session and an Admin API-key session are mutually exclusive. This
+    // also prevents an old key from taking precedence over a freshly logged-in
+    // JWT session in adminFetch.
+    deleteSecure(ADMIN_API_KEY_KEY),
     baseUrl === VEXLUNE_HUB_URL ? deleteSecure(BASE_URL_KEY) : writeSecure(BASE_URL_KEY, baseUrl),
   ]);
   sessionState.baseUrl = baseUrl;
   sessionState.advancedUrlEnabled = baseUrl !== VEXLUNE_HUB_URL;
   sessionState.accessToken = accessToken;
+  sessionState.adminApiKey = '';
   sessionState.refreshToken = input.refreshToken ?? '';
   sessionState.expiresAt = expiresAt;
   sessionState.user = input.user;
   sessionState.workspaceMode = isAdmin(input.user) ? 'admin' : 'user';
   sessionState.locked = false;
+}
+
+/**
+ * Persist the official Sub2API Admin API Key in the iOS/Android keychain.
+ * Admin-key and JWT credentials are mutually exclusive. The key is trimmed
+ * once at the boundary and never returned by this function.
+ */
+export async function saveAdminApiKey(input: { adminApiKey: string; baseUrl?: string }) {
+  const adminApiKey = input.adminApiKey.trim();
+  if (!adminApiKey) throw new Error('ADMIN_API_KEY_REQUIRED');
+  const baseUrl = normalizeHubUrl(input.baseUrl ?? sessionState.baseUrl);
+  await Promise.all([
+    writeSecure(ADMIN_API_KEY_KEY, adminApiKey),
+    deleteSecure(ACCESS_TOKEN_KEY),
+    deleteSecure(REFRESH_TOKEN_KEY),
+    deleteSecure(EXPIRES_AT_KEY),
+    deleteSecure(USER_KEY),
+    baseUrl === VEXLUNE_HUB_URL ? deleteSecure(BASE_URL_KEY) : writeSecure(BASE_URL_KEY, baseUrl),
+  ]);
+  sessionState.baseUrl = baseUrl;
+  sessionState.advancedUrlEnabled = baseUrl !== VEXLUNE_HUB_URL;
+  sessionState.adminApiKey = adminApiKey;
+  sessionState.accessToken = '';
+  sessionState.refreshToken = '';
+  sessionState.expiresAt = 0;
+  sessionState.user = null;
+  sessionState.workspaceMode = 'admin';
+  sessionState.locked = false;
+}
+
+/** Replace the in-memory key while a login request is being validated. */
+export function setAdminApiKey(value: string) {
+  const adminApiKey = value.trim();
+  if (!adminApiKey) throw new Error('ADMIN_API_KEY_REQUIRED');
+  sessionState.adminApiKey = adminApiKey;
+  sessionState.accessToken = '';
+  sessionState.refreshToken = '';
+  sessionState.expiresAt = 0;
+  sessionState.user = null;
+  sessionState.workspaceMode = 'admin';
+}
+
+export async function clearAdminApiKey() {
+  await deleteSecure(ADMIN_API_KEY_KEY);
+  sessionState.adminApiKey = '';
 }
 
 export async function updateAccessToken(input: { accessToken: string; refreshToken?: string; expiresIn?: number }) {
@@ -211,7 +276,7 @@ export async function setBaseUrl(value: string) {
 }
 
 export async function clearSession() {
-  await Promise.all([ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, EXPIRES_AT_KEY, USER_KEY].map(deleteSecure));
+  await Promise.all([ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, EXPIRES_AT_KEY, USER_KEY, ADMIN_API_KEY_KEY].map(deleteSecure));
   sessionState.accessToken = '';
   sessionState.adminApiKey = '';
   sessionState.refreshToken = '';

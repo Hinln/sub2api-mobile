@@ -43,7 +43,7 @@ export default function RootLayout() {
   const [authenticating, setAuthenticating] = useState(false);
 
   const unlock = useCallback(async () => {
-    if (Platform.OS === 'web' || !adminConfigState.biometricEnabled || !adminConfigState.accessToken) {
+    if (Platform.OS === 'web' || !adminConfigState.biometricEnabled || (!adminConfigState.adminApiKey && !adminConfigState.accessToken)) {
       setUnlocked(true);
       return;
     }
@@ -66,7 +66,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state !== 'active' && adminConfigState.biometricEnabled && adminConfigState.accessToken) setUnlocked(false);
+      if (state !== 'active' && adminConfigState.biometricEnabled && (adminConfigState.adminApiKey || adminConfigState.accessToken)) setUnlocked(false);
     });
     return () => subscription.remove();
   }, []);
@@ -85,17 +85,12 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style={resolvedThemeMode(appearance.mode) === 'dark' ? 'light' : 'dark'} />
       <QueryClientProvider client={queryClient}>
-        {!config.hydrated || !appearance.hydrated ? <LoadingScreen /> : Platform.OS !== 'web' && config.biometricEnabled && Boolean(config.accessToken) && !unlocked ? <LockedScreen unlock={() => void unlock()} /> : (
+        {!config.hydrated || !appearance.hydrated ? <LoadingScreen /> : Platform.OS !== 'web' && config.biometricEnabled && Boolean(config.adminApiKey || config.accessToken) && !unlocked ? <LockedScreen unlock={() => void unlock()} /> : (
           <Stack key={appearance.mode} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.page } }}>
             <Stack.Screen name="(tabs)" />
             {/* Auth tabs share one visual surface. Disable stack gestures and
                 push animations so switching does not expose a second page. */}
             <Stack.Screen name="login" options={{ animation: 'none', gestureEnabled: false }} />
-            <Stack.Screen name="register" options={{ animation: 'none', gestureEnabled: false }} />
-            <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
-            <Stack.Screen name="reset-password" options={{ headerShown: false }} />
-            <Stack.Screen name="user" />
-            <Stack.Screen name="user-settings" options={{ headerShown: false }} />
             <Stack.Screen name="users/[id]" options={{ headerShown: true, title: '\u7528\u6237\u8be6\u60c5', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
             <Stack.Screen name="users/create-user" options={{ headerShown: true, title: '\u521b\u5efa\u7528\u6237', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
             <Stack.Screen name="accounts/[id]" options={{ headerShown: true, title: '\u8d26\u53f7\u8be6\u60c5', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />

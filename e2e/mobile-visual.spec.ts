@@ -17,7 +17,8 @@ async function mockAdminApi(page: Page) {
   await page.route('https://hub.vexlune.com/api/v1/admin/**', async (route) => {
     const url = new URL(route.request().url());
     let data: unknown = {};
-    if (url.pathname.endsWith('/settings')) data = { site_name: 'Vexlune Hub' };
+    if (url.pathname.endsWith('/settings/admin-api-key')) data = { exists: true, masked_key: 'admin-****' };
+    else if (url.pathname.endsWith('/settings')) data = { site_name: 'Vexlune Hub' };
     else if (url.pathname.endsWith('/dashboard/stats')) data = { total_users: 128, today_new_users: 4, active_users: 39, total_api_keys: 83, active_api_keys: 76, total_accounts: 12, normal_accounts: 10, error_accounts: 2, total_requests: 92000, total_cost: 540, total_tokens: 120000000, today_requests: 1842, today_cost: 18.42, today_tokens: 4830000, today_input_tokens: 3510000, today_output_tokens: 1320000, rpm: 26, tpm: 64000 };
     else if (url.pathname.endsWith('/dashboard/trend')) data = { start_date: '2026-08-01', end_date: '2026-08-02', granularity: 'hour', trend: Array.from({ length: 24 }, (_, i) => ({ date: `2026-08-02T${String(i).padStart(2, '0')}:00:00Z`, requests: 30 + (i * 17) % 95, input_tokens: 1000, output_tokens: 500, cache_creation_tokens: 0, cache_read_tokens: 300, total_tokens: 1800, cost: 0.2, actual_cost: 0.1 })) };
     else if (url.pathname.endsWith('/system/version')) data = { version: 'v1.8.0', uptime: 86400 };
@@ -52,8 +53,8 @@ for (const size of sizes) {
       await assertNoHorizontalOverflow(page);
       await page.screenshot({ path: path.join(folder, 'login.png'), fullPage: true });
 
-      await page.getByLabel('admin-token').fill('admin-visual-test-token');
-      await page.getByLabel('connect').click();
+      await page.getByLabel('admin-api-key').fill('admin-visual-test-token');
+      await page.getByRole('button', { name: '进入管理控制台' }).click();
       await expect(page.getByText('\u6982\u89c8', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
       await assertNoHorizontalOverflow(page);
       await page.screenshot({ path: path.join(folder, 'dashboard.png'), fullPage: true });

@@ -63,7 +63,7 @@ export default function SettingsScreen() {
       <Card>
         <Text style={{ color: theme.faint, fontSize: 11 }}>{'\u5f53\u524d\u9762\u677f\u5730\u5740'}</Text><Text selectable style={{ color: theme.text, fontSize: 14, marginTop: 6 }}>{config.baseUrl}</Text>
         <View style={{ height: 1, backgroundColor: theme.border, marginVertical: 16 }} />
-        <Text style={{ color: theme.subtext, fontSize: 12, lineHeight: 18 }}>{'\u5f53\u524d\u4f1a\u8bdd\u4f7f\u7528\u670d\u52a1\u7aef\u7b7e\u53d1\u7684 Bearer Token\uff1b\u79fb\u52a8\u7aef\u4e0d\u4f1a\u63a5\u6536\u6216\u4fdd\u5b58\u7ba1\u7406\u5458 API Key\u3002'}</Text>
+        <Text style={{ color: theme.subtext, fontSize: 12, lineHeight: 18 }}>{'\u5f53\u524d\u4f7f\u7528\u5b98\u65b9 Sub2API Admin Key\uff0c\u901a\u8fc7 HTTPS \u7684 x-api-key \u8bf7\u6c42\u5934\u8bbf\u95ee\u7ba1\u7406\u63a5\u53e3\uff1b\u5bc6\u94a5\u53ea\u4fdd\u5b58\u5728\u7cfb\u7edf SecureStore\u3002'}</Text>
       </Card>
 
       <SectionTitle title={'\u9ad8\u7ea7\u8bbe\u7f6e'} />

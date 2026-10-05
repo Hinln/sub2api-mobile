@@ -1,31 +1,59 @@
-# 项目审计
+# 项目审计（管理员专用产品）
 
-## 基线
+更新日期：2026-10-05（Asia/Shanghai）。
 
-- 上游：`https://github.com/ckken/sub2api-mobile.git`
-- 原始分支：`main`
-- 原始提交：`3177500 feat: streamline account overview list workflow`
-- 开发分支：`codex/vexlune-hub`
-- 后端源：`Hinln/sub2api@5ea52f8`（`Wei-Shaw/sub2api` 仅作公开参考）
-- 工作区开始时为空，无用户未提交修改。
+## 基线与仓库边界
 
-## 发现
+- 移动端仓库：`Hinln/sub2api-mobile`，当前开发分支为
+  `codex/vexlune-hub`。
+- 官方后端合同：`Wei-Shaw/sub2api` 的 `v0.2.13` tag，commit
+  `3040209f205472038c1ba745a1bedd2edd9053b1`。
+- `Hinln/sub2api` 与本地 hardening 分支只用于审计；生产保持官方
+  `v0.2.13`。本轮没有修改生产服务器、数据库、Cloudflare 规则/secret 或服务
+  进程。
+- 用户原有未提交的 `ios/VexluneMobileConsole/Info.plist` 修改必须保留，不能
+  覆盖或代提交。
 
-1. 上游是 Expo 54 / React Native 0.81 / Expo Router / TypeScript 项目，可复用请求层、页面和类型结构。
-2. `app.json` 绑定了上游 Expo owner、Project ID、Update URL、Bundle ID、Scheme 与图标；已全部解除。
-3. 上游默认允许任意服务器地址并维护多服务器资料；Vexlune 版本改为固定 Hub 地址，地址覆盖收进风险明确的高级设置。
-4. 后端仍为旧网页客户端保留 `x-api-key` 兼容路径，但本版本移动端只使用邮箱密码 + Bearer JWT/refresh，绝不保存或发送管理员 API Key。
-5. 原请求层无超时、Request ID、状态型错误、取消、幂等重试约束与 401 全局清理；已重构。
-6. 原登录和用户页面存在中文乱码，主题是浅色米色，导航只有概览/用户/服务器；已重构为完整中文深色五栏导航。
-7. 原项目没有单元测试、API Client 测试、Playwright、多视口截图或无签名 iOS 工作流；已补齐。
-8. 权限仅保留网络、安全存储和生物识别；未配置推送、定位、相机、相册、麦克风、通讯录、蓝牙、广告追踪、iCloud、App Groups、Associated Domains 或后台模式。
+## 产品定位审计结论
 
-## 品牌与原生配置结论
+Vexlune Hub 已从面向普通用户的客户端切换为管理员专用控制台。登录首屏只接受
+官方 Sub2API Admin Key；不提供邮箱密码登录、注册、找回密码、TOTP 登录、普通
+用户工作台、个人 API Key、用户用量、用户账单或终端公告入口。管理员仍可通过
+官方 `/api/v1/admin/*` 路由管理用户、上游账号、分组、日志、设置和支付运营。
 
-- 名称：Vexlune Mobile Console
-- 短品牌：Vexlune
-- Bundle ID：`com.vexlune.mobile`
-- Scheme：`vexlunemobile`
-- Updates：禁用
-- 云构建项目绑定：无；iOS 使用版本化原生工程并由 CI 直接执行 CocoaPods/Xcode，Android 仍按后续范围使用原生 Gradle 工作流；原生包不依赖 Expo/EAS 云构建
-- 图标：全新黑紫几何 V，RGB、无 Alpha
+## 关键实现核对
+
+1. **认证合同**：官方 AdminAuth 接受 `x-api-key: <admin-api-key>`，并在
+   `GET /api/v1/admin/settings/admin-api-key` 返回状态；完整 key 不通过该状态
+   接口返回。官方 JWT 是另一路兼容能力，产品不向管理员展示 JWT 登录。
+2. **凭据边界**：`src/auth/session.ts` 使用 SecureStore/Keychain，设置
+   `WHEN_UNLOCKED_THIS_DEVICE_ONLY`；Admin Key 不写入 AsyncStorage、URL、日志或
+   Query cache。
+3. **权限错误**：`401 INVALID_ADMIN_KEY` 清除本地 key；`403 FORBIDDEN` 保留
+   会话并展示服务端拒绝；`423 ADMIN_COMPLIANCE_ACK_REQUIRED` 要求在官方后台
+   完成合规确认，APP 不绕过；`429` 尊重服务端限流。
+4. **请求边界**：`src/lib/admin-fetch.ts` 统一发送 `x-api-key`，删除继承的
+   Bearer header，解析官方响应 envelope，保留脱敏 request ID，并拒绝 HTML/
+   Cloudflare challenge 被当作成功。
+5. **退出**：官方 `v0.2.13` 没有 Admin-Key-specific logout；本地退出删除
+   SecureStore key、内存会话和 Query cache。官方后台重新生成/删除 key 后，旧
+   key 的下一次请求应收到 401。
+6. **构建**：iOS 使用仓库内 Xcode workspace、CocoaPods 和 `xcodebuild`；不使用
+   Expo/EAS 云构建。Android 暂缓。
+
+## 历史问题与处理
+
+- 原项目包含邮箱密码、注册和用户页面；这些内容不再属于产品入口，后续修改不得
+  把它们重新接回登录导航。
+- 原有文档把 Bearer JWT 描述为移动端主认证，与当前 Admin Key 产品合同冲突；本
+  审计同步修订 `docs/mobile/*` 与 `docs/admin-key/README.md`。
+- 生产 `/mobile/turnstile` 专用页仍有历史部署证据缺口；它与 Admin Key 合同无关，
+  不能被用来声称管理员登录已通过，也不能以部署私有 bridge 方式修复。
+
+## 待验证项
+
+- 在批准的可撤销环境和实体 iPhone 上完成真实 Admin Key 成功只读请求。
+- 记录失效 key 的 401、合规 423、权限 403、429 限流和退出/冷启动证据；日志只保留
+  状态、reason 和 request ID，不保留 key。
+- TestFlight 上传、处理和生产发布仍是外部操作；任何服务器、Cloudflare、数据库或
+  secret 变更都需要单独批准并提供回滚步骤。

@@ -1,17 +1,13 @@
-import { Link, Redirect, router } from 'expo-router';
-import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Sparkles } from 'lucide-react-native';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, InteractionManager, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Redirect, router } from 'expo-router';
+import { ArrowRight, Eye, EyeOff, KeyRound, ShieldCheck, Sparkles } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
 import { AuthBackdrop } from '@/src/components/auth-backdrop';
-import { LoginAgreementNotice } from '@/src/components/login-agreement';
-import { TurnstileGate } from '@/src/components/turnstile-gate';
 import { VexluneLogo } from '@/src/components/vexlune-logo';
-import { isAdmin } from '@/src/auth/session';
-import { AuthApiError, completeTwoFactor, getPublicSettings, login } from '@/src/services/auth';
-import { adminConfigState, hasAuthenticatedSession } from '@/src/store/admin-config';
-import { canSubmitTurnstile, isUsableTurnstileToken, type TurnstileStatus } from '@/src/lib/turnstile';
+import { acceptAdminCompliance, getAdminComplianceStatus, validateAdminApiKey, type AdminComplianceStatus } from '@/src/services/admin-auth';
+import { hasAuthenticatedAdminSession, adminConfigState } from '@/src/store/admin-config';
 
 // CommonJS entry avoids import.meta in Expo Metro's classic web bundle.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -24,7 +20,6 @@ const authColors = {
   line: '#DCE5F4',
   field: '#FFFFFFD9',
   primary: '#6D6CF4',
-  primarySoft: '#EEF0FF',
   danger: '#C73D53',
 };
 
@@ -32,8 +27,8 @@ function GradientAction({ label, busy, disabled, onPress }: { label: string; bus
   return (
     <Pressable accessibilityRole="button" disabled={disabled || busy} onPress={onPress} style={{ height: 56, borderRadius: 17, overflow: 'hidden', opacity: disabled ? 0.62 : 1 }}>
       <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute' }}>
-        <Defs><SvgLinearGradient id="authButton" x1="0" y1="0" x2="1" y2="0"><Stop offset="0" stopColor="#B492FF" /><Stop offset="0.52" stopColor="#6D7CF4" /><Stop offset="1" stopColor="#68D7F0" /></SvgLinearGradient></Defs>
-        <Rect x="0" y="0" width="100" height="100" rx="17" fill="url(#authButton)" />
+        <Defs><SvgLinearGradient id="adminKeyButton" x1="0" y1="0" x2="1" y2="0"><Stop offset="0" stopColor="#B492FF" /><Stop offset="0.52" stopColor="#6D7CF4" /><Stop offset="1" stopColor="#68D7F0" /></SvgLinearGradient></Defs>
+        <Rect x="0" y="0" width="100" height="100" rx="17" fill="url(#adminKeyButton)" />
       </Svg>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 11 }}>
         {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '900' }}>{label}</Text>}
@@ -43,131 +38,80 @@ function GradientAction({ label, busy, disabled, onPress }: { label: string; bus
   );
 }
 
-function AuthField({ icon, label, helper, children }: { icon: ReactNode; label: string; helper: string; children: ReactNode }) {
-  return <View style={{ marginTop: 16 }}>
-    <Text style={{ color: authColors.ink, fontSize: 13, fontWeight: '800', marginBottom: 7 }}>{label}</Text>
-    <View style={{ minHeight: 54, borderRadius: 16, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.field, flexDirection: 'row', alignItems: 'center', paddingLeft: 15 }}>
-      {icon}
-      {children}
-    </View>
-    <Text style={{ color: authColors.subtext, fontSize: 11, lineHeight: 17, marginTop: 6 }}>{helper}</Text>
-  </View>;
-}
-
-function AuthTabs({ onRegister }: { onRegister: () => void }) {
-  return <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: authColors.line, marginBottom: 20 }}>
-    <View style={{ flex: 1, alignItems: 'center', paddingBottom: 13, borderBottomWidth: 3, borderBottomColor: authColors.primary }}><Text style={{ color: authColors.ink, fontSize: 19, fontWeight: '900' }}>登录</Text></View>
-    <Pressable accessibilityRole="tab" onPress={onRegister} style={{ flex: 1, alignItems: 'center', paddingBottom: 13 }}><Text style={{ color: authColors.faint, fontSize: 19, fontWeight: '800' }}>注册</Text></Pressable>
-  </View>;
-}
-
 export default function LoginScreen() {
   const config = useSnapshot(adminConfigState);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [totpCode, setTotpCode] = useState('');
-  const [tempToken, setTempToken] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [adminKey, setAdminKey] = useState('');
+  const [showKey, setShowKey] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [turnstileReset, setTurnstileReset] = useState(0);
-  const [agreementSubmitAttempt, setAgreementSubmitAttempt] = useState(0);
-  const turnstileStatusRef = useRef<TurnstileStatus>('loading');
-  const turnstileTokenRef = useRef('');
-  const pendingSubmitRef = useRef(false);
-  const submitInFlightRef = useRef(false);
-  const authNavigationTaskRef = useRef<{ cancel: () => void } | null>(null);
-  const [registrationEnabled, setRegistrationEnabled] = useState<boolean | null>(null);
-  const [passwordResetEnabled, setPasswordResetEnabled] = useState<boolean | null>(null);
+  const [complianceKey, setComplianceKey] = useState('');
+  const [compliance, setCompliance] = useState<AdminComplianceStatus | null>(null);
+  const [complianceConfirmed, setComplianceConfirmed] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    void getPublicSettings().then((settings) => {
-      if (!active) return;
-      setRegistrationEnabled(settings.registration_enabled !== false);
-      setPasswordResetEnabled(settings.password_reset_enabled === true);
-    }).catch(() => { if (active) { setRegistrationEnabled(false); setPasswordResetEnabled(false); } });
-    return () => { active = false; };
-  }, []);
+  if (hasAuthenticatedAdminSession(config) && !busy) return <Redirect href="/monitor" />;
 
-  useEffect(() => () => {
-    authNavigationTaskRef.current?.cancel();
-  }, []);
-
-  function navigateToRegister() {
-    // iOS 26 can crash inside UIKit's UIFieldEditor when a secure TextInput is
-    // torn down in the same native batch as the next auth screen mounts. Let
-    // the current field apply the non-secure prop first, then replace the route.
-    setShowPassword(true);
-    authNavigationTaskRef.current?.cancel();
-    authNavigationTaskRef.current = InteractionManager.runAfterInteractions(() => {
-      requestAnimationFrame(() => router.replace('/register'));
-    });
+  function errorMessage(reason: unknown) {
+    const candidate = reason as { status?: unknown; code?: unknown; message?: unknown } | null;
+    const status = Number(candidate?.status ?? 0);
+    const code = String(candidate?.code ?? '').toUpperCase();
+    if (status === 401 || code === 'INVALID_ADMIN_KEY' || code === '401') return 'Admin Key 无效或已被撤销，请检查后重试。';
+    if (status === 423 || code === 'ADMIN_COMPLIANCE_ACK_REQUIRED') return '管理员合规确认尚未完成，请先在管理后台完成确认。';
+    if (status === 403 || code === 'FORBIDDEN') return '此 Admin Key 没有管理员权限。';
+    if (status === 429 || code === 'RATE_LIMITED') return '尝试次数过多，请稍后再试。';
+    if (typeof candidate?.message === 'string' && candidate.message.trim()) return candidate.message;
+    return '验证失败，请检查网络后重试。';
   }
 
-  if (hasAuthenticatedSession(config) && !busy) return <Redirect href={isAdmin(config.user) && config.workspaceMode !== 'user' ? '/monitor' : '/user'} />;
-
-  function handleTurnstileStatus(status: TurnstileStatus) {
-    turnstileStatusRef.current = status;
-    if (status === 'disabled' && pendingSubmitRef.current && !submitInFlightRef.current) {
-      pendingSubmitRef.current = false;
-      void submit('');
-    }
-  }
-
-  function invalidatePendingSubmit() {
-    pendingSubmitRef.current = false;
-  }
-
-  function handleTurnstileToken(token: string) {
-    turnstileTokenRef.current = token;
-    if (isUsableTurnstileToken(token)) {
-      turnstileStatusRef.current = 'token';
-      if (pendingSubmitRef.current && !submitInFlightRef.current) {
-        pendingSubmitRef.current = false;
-        void submit(token);
-      }
-    }
-  }
-
-  async function submit(overrideToken?: string) {
-    if (submitInFlightRef.current) return;
+  async function submit() {
+    if (busy) return;
+    const key = adminKey.trim();
     setError('');
-    if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) return setError('请输入有效邮箱');
-    if (!password) return setError('请输入密码');
-    const token = overrideToken ?? turnstileTokenRef.current;
-    if (!canSubmitTurnstile(turnstileStatusRef.current, token)) {
-      pendingSubmitRef.current = true;
-      setAgreementSubmitAttempt((value) => value + 1);
-      if (turnstileStatusRef.current === 'error') {
-        turnstileTokenRef.current = '';
-        setTurnstileReset((value) => value + 1);
-        setError('安全验证组件加载失败，正在重新加载，请完成验证后再试。');
-      } else {
-        setError('请先完成 Cloudflare 人机验证，完成后将自动继续登录。');
-      }
-      return;
-    }
-    pendingSubmitRef.current = false;
-    setAgreementSubmitAttempt((value) => value + 1);
+    if (!key) { setError('请输入 Admin Key'); return; }
     setBusy(true);
-    submitInFlightRef.current = true;
     try {
-      const result = await login({ email: email.trim().toLowerCase(), password, turnstile_token: token || undefined });
-      if (result.requires_2fa && result.temp_token) { setTempToken(result.temp_token); return; }
-      router.replace(isAdmin(result.user ?? null) ? '/monitor' : '/user');
+      // Validate with the official admin route before persisting the credential.
+      // The helper sends x-api-key directly; it never places the key in a URL
+      // or logs it. A successful response proves this is an active admin key.
+      await validateAdminApiKey(key);
+      router.replace('/monitor');
     } catch (reason) {
-      turnstileTokenRef.current = ''; setTurnstileReset((value) => value + 1);
-      setError(reason instanceof AuthApiError && reason.challenge ? '请先完成 Cloudflare 人机验证，再重试登录。' : reason instanceof Error ? reason.message : '登录失败，请稍后重试');
-    } finally { submitInFlightRef.current = false; setBusy(false); }
+      if (Number((reason as { status?: unknown })?.status ?? 0) === 423 || String((reason as { code?: unknown })?.code ?? '').toUpperCase() === 'ADMIN_COMPLIANCE_ACK_REQUIRED') {
+        try {
+          const status = await getAdminComplianceStatus(key);
+          if (status.required !== false) {
+            setComplianceKey(key);
+            setCompliance(status);
+            setComplianceConfirmed(false);
+          } else {
+            await validateAdminApiKey(key);
+            router.replace('/monitor');
+          }
+        } catch (complianceError) {
+          setError(errorMessage(complianceError));
+        }
+      } else {
+      setError(errorMessage(reason));
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
-  async function submitTwoFactor() {
-    if (!/^\d{6}$/.test(totpCode)) { setError('请输入 6 位验证码'); return; }
-    setBusy(true); setError('');
-    try { const result = await completeTwoFactor(tempToken, totpCode); router.replace(isAdmin(result.user ?? null) ? '/monitor' : '/user'); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : '二次验证失败，请重试'); }
-    finally { setBusy(false); }
+  async function confirmCompliance() {
+    if (busy || !complianceKey || !compliance || !complianceConfirmed) return;
+    setBusy(true);
+    setError('');
+    try {
+      await acceptAdminCompliance(complianceKey, compliance.ack_phrase_zh || '', 'zh');
+      await validateAdminApiKey(complianceKey);
+      setComplianceKey('');
+      setCompliance(null);
+      router.replace('/monitor');
+    } catch (reason) {
+      setError(errorMessage(reason));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return <AuthBackdrop>
@@ -175,33 +119,49 @@ export default function LoginScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 28 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={{ alignItems: 'center', marginBottom: 23 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 15 }}><Sparkles color="#8C7DF7" size={14} /><Text style={{ color: '#7D8DB5', fontSize: 12, letterSpacing: 1 }}>让 AI 创造更好的你</Text></View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 15 }}><Sparkles color="#8C7DF7" size={14} /><Text style={{ color: '#7D8DB5', fontSize: 12, letterSpacing: 1 }}>安全、清晰、随时掌控</Text></View>
             <VexluneLogo size={62} />
             <Text style={{ color: authColors.ink, fontSize: 31, fontWeight: '900', letterSpacing: 0.2, marginTop: 12 }}>Vexlune Hub</Text>
-            <Text style={{ color: authColors.ink, fontSize: 16, letterSpacing: 8, marginTop: 4 }}>AI 平台入口</Text>
-            <Text style={{ color: authColors.subtext, fontSize: 13, letterSpacing: 2, marginTop: 11 }}>连接智能 · 激发无限可能</Text>
+            <Text style={{ color: authColors.ink, fontSize: 16, letterSpacing: 8, marginTop: 4 }}>管理控制台</Text>
+            <Text style={{ color: authColors.subtext, fontSize: 13, letterSpacing: 2, marginTop: 11 }}>管理员专用 · 真实服务端数据</Text>
           </View>
 
           <View style={{ backgroundColor: '#FFFFFFD9', borderRadius: 26, borderWidth: 1, borderColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 21, paddingBottom: 19, shadowColor: '#7189B8', shadowOpacity: 0.12, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 5 }}>
-            {tempToken ? <>
-              <Text style={{ color: authColors.ink, fontSize: 20, fontWeight: '900' }}>需要二次验证</Text><Text style={{ color: authColors.subtext, fontSize: 13, lineHeight: 20, marginTop: 8 }}>请输入验证器中的 6 位验证码。</Text>
-              <TextInput accessibilityLabel="totp-code" value={totpCode} onChangeText={(value) => { setTotpCode(value.replace(/\D/g, '').slice(0, 6)); setError(''); }} keyboardType="number-pad" maxLength={6} placeholder="000000" placeholderTextColor={authColors.faint} style={{ marginTop: 18, color: authColors.ink, backgroundColor: authColors.field, borderRadius: 16, borderWidth: 1, borderColor: error ? authColors.danger : authColors.line, paddingHorizontal: 15, paddingVertical: 14, fontSize: 21, letterSpacing: 8, textAlign: 'center' }} />
-              {error ? <Text style={{ color: authColors.danger, fontSize: 13, lineHeight: 19, marginTop: 13 }}>{error}</Text> : null}
-              <View style={{ marginTop: 17 }}><GradientAction label="完成登录" busy={busy} onPress={() => void submitTwoFactor()} /></View>
-              <Pressable onPress={() => { setTempToken(''); setTotpCode(''); turnstileTokenRef.current = ''; pendingSubmitRef.current = false; setTurnstileReset((value) => value + 1); setError(''); }} style={{ alignItems: 'center', paddingTop: 16 }}><Text style={{ color: authColors.primary, fontWeight: '800', fontSize: 13 }}>返回登录</Text></Pressable>
+            {compliance ? <>
+              <Text style={{ color: authColors.ink, fontSize: 22, fontWeight: '900' }}>管理员合规确认</Text>
+              <Text style={{ color: authColors.subtext, fontSize: 13, lineHeight: 20, marginTop: 8 }}>服务器要求管理员先确认当前运营合规承诺，确认后才会开放管理接口。</Text>
+              <Pressable accessibilityRole="link" onPress={() => { const url = compliance.document_url_zh || compliance.document_url_en; if (url) void Linking.openURL(url); }} style={{ marginTop: 15 }}><Text style={{ color: '#2D63DA', fontSize: 13, fontWeight: '800' }}>打开官方合规文档</Text></Pressable>
+              <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: complianceConfirmed }} onPress={() => setComplianceConfirmed((value) => !value)} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 18 }}>
+                <View style={{ width: 22, height: 22, borderRadius: 7, borderWidth: 1, borderColor: complianceConfirmed ? authColors.primary : authColors.line, backgroundColor: complianceConfirmed ? authColors.primary : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>{complianceConfirmed ? <Text style={{ color: '#FFFFFF', fontWeight: '900' }}>✓</Text> : null}</View>
+                <Text style={{ flex: 1, color: authColors.ink, fontSize: 13, lineHeight: 20 }}>我已阅读、理解并同意 Sub2API 部署与运营合规承诺</Text>
+              </Pressable>
+              {error ? <Text accessibilityLiveRegion="polite" style={{ color: authColors.danger, fontSize: 13, lineHeight: 19, marginTop: 14 }}>{error}</Text> : null}
+              <View style={{ marginTop: 18 }}><GradientAction label="确认并进入控制台" busy={busy} disabled={!complianceConfirmed} onPress={() => void confirmCompliance()} /></View>
+              <Pressable onPress={() => { setCompliance(null); setComplianceKey(''); setComplianceConfirmed(false); setError(''); }} style={{ alignItems: 'center', paddingTop: 16 }}><Text style={{ color: authColors.primary, fontWeight: '800', fontSize: 13 }}>返回输入 Admin Key</Text></Pressable>
             </> : <>
-              <AuthTabs onRegister={navigateToRegister} />
-              <AuthField icon={<Mail color={authColors.subtext} size={20} />} label="邮箱地址" helper="请输入您的邮箱地址"><TextInput accessibilityLabel="email" value={email} onChangeText={(value) => { invalidatePendingSubmit(); setEmail(value); setError(''); }} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" textContentType="username" placeholder="name@example.com" placeholderTextColor={authColors.faint} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15 }} /></AuthField>
-              <AuthField icon={<LockKeyhole color={authColors.subtext} size={20} />} label="密码" helper="请输入密码（至少 6 位）"><TextInput accessibilityLabel="password" value={password} onChangeText={(value) => { invalidatePendingSubmit(); setPassword(value); setError(''); }} secureTextEntry={!showPassword} autoCapitalize="none" autoCorrect={false} textContentType="password" placeholder="请输入密码" placeholderTextColor={authColors.faint} onSubmitEditing={() => void submit()} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15 }} /><Pressable accessibilityLabel="toggle-password" onPress={() => setShowPassword((value) => !value)} style={{ padding: 13 }}>{showPassword ? <EyeOff color={authColors.subtext} size={19} /> : <Eye color={authColors.subtext} size={19} />}</Pressable></AuthField>
-              {passwordResetEnabled ? <View style={{ alignItems: 'flex-end', marginTop: 6 }}><Link href="/forgot-password" asChild><Pressable accessibilityRole="link"><Text style={{ color: '#2D63DA', fontSize: 13, fontWeight: '800' }}>忘记密码？</Text></Pressable></Link></View> : null}
-              <TurnstileGate action="login" resetKey={turnstileReset} consentRequestKey={agreementSubmitAttempt} onToken={handleTurnstileToken} onStatus={handleTurnstileStatus} />
-              {error ? <Text style={{ color: authColors.danger, fontSize: 13, lineHeight: 19, marginTop: 13 }}>{error}</Text> : null}
-              <View style={{ marginTop: 17 }}><GradientAction label="登录" busy={busy} onPress={() => void submit()} /></View>
-              {registrationEnabled === false ? <Text style={{ color: authColors.subtext, fontSize: 12, textAlign: 'center', marginTop: 15 }}>当前未开放公开注册</Text> : null}
-              <LoginAgreementNotice action="login" />
+            <Text style={{ color: authColors.ink, fontSize: 22, fontWeight: '900' }}>管理员登录</Text>
+            <Text style={{ color: authColors.subtext, fontSize: 13, lineHeight: 20, marginTop: 8 }}>使用官方 Sub2API Admin Key 进入控制台。</Text>
+
+            <View style={{ marginTop: 21 }}>
+              <Text style={{ color: authColors.ink, fontSize: 13, fontWeight: '800', marginBottom: 7 }}>Admin Key</Text>
+              <View style={{ minHeight: 56, borderRadius: 16, borderWidth: 1, borderColor: error ? authColors.danger : authColors.line, backgroundColor: authColors.field, flexDirection: 'row', alignItems: 'center', paddingLeft: 15 }}>
+                <KeyRound color={authColors.subtext} size={20} />
+                <TextInput accessibilityLabel="admin-api-key" value={adminKey} onChangeText={(value) => { setAdminKey(value); setError(''); }} autoCapitalize="none" autoCorrect={false} secureTextEntry={!showKey} textContentType="password" placeholder="admin-••••••••" placeholderTextColor={authColors.faint} onSubmitEditing={() => void submit()} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 15, fontSize: 15, letterSpacing: 0.4 }} />
+                <Pressable accessibilityLabel="toggle-admin-key" onPress={() => setShowKey((value) => !value)} style={{ padding: 13 }}>{showKey ? <EyeOff color={authColors.subtext} size={19} /> : <Eye color={authColors.subtext} size={19} />}</Pressable>
+              </View>
+              <Text style={{ color: authColors.subtext, fontSize: 11, lineHeight: 17, marginTop: 6 }}>密钥只保存在本机 SecureStore，并通过 HTTPS 发送到官方管理接口。</Text>
+            </View>
+
+            {error ? <Text accessibilityLiveRegion="polite" style={{ color: authColors.danger, fontSize: 13, lineHeight: 19, marginTop: 14 }}>{error}</Text> : null}
+            <View style={{ marginTop: 18 }}><GradientAction label="进入管理控制台" busy={busy} disabled={!adminKey.trim()} onPress={() => void submit()} /></View>
             </>}
           </View>
-          <View style={{ alignItems: 'center', marginTop: 24 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}><ShieldCheck color="#7C91B8" size={14} /><Text style={{ color: '#8798BA', fontSize: 11 }}>会话凭据仅保存于系统 SecureStore</Text></View><Text style={{ color: '#8295BA', fontSize: 10, letterSpacing: 4, marginTop: 23 }}>VEXLUNE HUB</Text><Text style={{ color: '#9AA8C4', fontSize: 9, letterSpacing: 2, marginTop: 6 }}>INTELLIGENCE FOR A BRIGHTER TOMORROW</Text></View>
+
+          <View style={{ alignItems: 'center', marginTop: 24 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}><ShieldCheck color="#7C91B8" size={14} /><Text style={{ color: '#8798BA', fontSize: 11 }}>凭据仅保存于系统 SecureStore</Text></View>
+            <Text style={{ color: '#8295BA', fontSize: 10, letterSpacing: 4, marginTop: 23 }}>VEXLUNE HUB</Text>
+            <Text style={{ color: '#9AA8C4', fontSize: 9, letterSpacing: 2, marginTop: 6 }}>ADMINISTRATOR CONSOLE</Text>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

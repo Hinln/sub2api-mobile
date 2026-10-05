@@ -1,64 +1,58 @@
-# Vexlune Hub QA 报告
+# Vexlune Hub QA 报告（管理员专用）
 
 检查日期：2026-10-05（Asia/Shanghai）。
 
-## 版本与环境边界
+## 产品与环境边界
 
-- API 合同基线是官方 Sub2API `v0.2.13`（tag commit
-  `3040209f205472038c1ba745a1bedd2edd9053b1`）。本轮没有修改或部署
-  `Hinln/sub2api`，没有执行生产迁移、生产写操作或 Cloudflare 配置变更。
-- 官方 `v0.2.13` 没有 `/mobile/captcha/*` 私有路由。认证验证码必须使用
-  `/api/v1/settings/public` 返回的公开 provider 配置和官方 widget/SDK，提交
-  `turnstile_token` 或 Tencent/Aliyun 的官方字段；`turnstile_nonce` 和私有
-  backend bridge 不属于发布验收，`/mobile/turnstile` 页面及其 tuple 仅作为
-  客户端 token transport 验收。
-- 首版只验收原生 iOS。Android 暂缓，不要求 APK/AAB、Android SDK 或 Android
-  签名证据。
+- APP 首屏只接受官方 Sub2API Admin Key；普通用户登录、注册、找回密码、TOTP
+  登录、个人 API Key、个人用量和用户支付不属于本版本。
+- API 合同是官方 Sub2API `v0.2.13` tag
+  (`3040209f205472038c1ba745a1bedd2edd9053b1`)。本轮没有修改/部署
+  `Hinln/sub2api`，没有生产迁移、服务重启、Cloudflare 规则或 secret 变更。
+- iOS 是本轮唯一发布平台；Android 暂缓。Xcode workspace/CocoaPods/`xcodebuild`
+  为构建路径，不使用 Expo/EAS 云构建。
 
-## 自动化证据
+## Admin Key 验收链路
 
-| 检查 | 结果 | 说明 |
+| 阶段 | 预期证据 | 当前状态 |
 |---|---|---|
-| TypeScript | 通过 | `pnpm exec tsc --noEmit` |
-| Vitest | 通过（60/60） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP、支付/用户服务契约（含官方订单 `keyword` 搜索、退款状态查询、退款资格与退款申请路由）、规范化 Hub origin、WebView 实例刷新 key、专用页被 `/login` 接管时的失败分类、提交门控和 `/mobile/turnstile` 专用页 WebView token bridge。测试不替代实体设备验收。 |
-| 生产路径占位扫描 | 通过 | `pnpm run verify:production-scan`；扫描 `app/` 与 `src/`，拒绝 mock/fixture/fake/sample、伪请求定时器、嵌入式 secret 和空 `onPress`。 |
-| ESLint | 通过 | `pnpm exec expo lint`；0 error、0 warning。 |
-| Web export | 通过 | `pnpm exec expo export --platform web`；只作静态路由/类型烟测，不是原生发布构建。 |
-| 官方 v0.2.13 合同审计 | 通过（源码审计） | 已核对 `/api/v1/settings/public`、认证 provider proof 字段、Bearer/2FA 路由；官方 tag 不含 `/mobile/captcha/*`。 |
-| Go 后端测试 | 未运行 | 当前开发机没有 Go 工具链；本轮未修改或部署后端，不能把私有 checkout 的测试结果当作官方 v0.2.13 证据。 |
-| iOS Simulator Release | 通过 | 使用仓库内已提交的 `ios/VexluneMobileConsole.xcworkspace` 和 Xcode 26.6 `xcodebuild` 生成 arm64/x86_64 `.app`；没有 Expo/EAS 云构建。 |
-| iPhoneOS Release unsigned | 通过 | 使用原生 Xcode 工具链生成 arm64 archive/app；未签名包不能安装真机。 |
-| iOS signed archive/IPA | 通过（当前 URI 代码，本机） | 使用当前实际 HTTPS `/mobile/turnstile` URI 代码完成 archive/export；提交 `ee85bf0` 的 IPA SHA-256 为 `1eb5ccf90baf7972324cd1e8ce10283ab6181cd373e0e6558ecea2d8f292facd`，Bundle 版本 `1.0.1 (2)`，解包 App 通过 `codesign --verify --deep --strict`。未上传 App Store Connect；TestFlight、实体 iPhone 和线上 API 验收仍未完成。 |
-| Production API / private bridge probe | 只读探测未通过专用页检查（2026-10-05 重跑） | `scripts/verify-mobile-origin.sh` 确认公开设置为 JSON 且 Turnstile 已启用，也确认未暴露 Secret；脚本唯一失败为 `the deployed entry bundle does not contain the dedicated MobileTurnstile route`。线上 `/mobile/turnstile` 仍返回旧 SPA 壳，不能视为已部署。没有调用生产 `/mobile/captcha/*`，没有部署私有 backend bridge。 |
-| Production HTTP headers | 通过（只读） | 2026-10-04 读取 `/login`、`/mobile/turnstile` 和 `/api/v1/settings/public`：分别为 HTML 200、HTML 200、JSON 200；三者 `cache-control: no-cache`、`cf-cache-status: DYNAMIC`，现有 CSP 已允许 `https://challenges.cloudflare.com` 的 script/frame。路由内容仍是旧入口 bundle，不能替代部署验收。 |
-| iOS simulator production-key login | 当前 URI 构建按预期 fail closed；真实 token 待部署后重测 | 当前 `ee85bf0`、Bundle `1.0.1 (2)` 模拟器构建提交虚拟测试账号后记录 `dedicated_page_wrong_route`，因为生产专用页仍未部署；没有伪造通过状态，也没有密码、Cookie、token 或会话值进入日志。旧 fallback 构建的成功链路只保留为历史证据，不能替代当前 URI 验收。 |
-| Official v0.2.13 clean patch | 构建通过；完整基线有 3 个无关失败 | `docs/official-v0.2.13-turnstile.patch` 在官方 tag `3040209f205472038c1ba745a1bedd2edd9053b1` 上 `git apply --check` 通过；`codex/v0.2.13-turnstile` 的 `vue-tsc --noEmit`、changed-file ESLint、路由守卫 35 tests 和 `vite build` 通过，并生成 `MobileTurnstileView-BLrKhilV.js`。完整前端测试为 335 files / 2585 passed / 3 unrelated failures（平台配额测试仍期望 5 个而源码返回 6 个）。官方锁文件在当前 pnpm overrides 校验下无法 frozen install，构建使用已验证的同版本依赖树，未修改生产。 |
-| Local frontend Turnstile route | 通过（官方 v0.2.13 本地预览） | `vite preview` 的真实 HTTP smoke 访问 `/mobile/turnstile` 返回 `200 text/html`，入口 bundle 含 `MobileTurnstile`，并加载 `MobileTurnstileView-BLrKhilV.js`；可发布 bundle 已打包为 `/Users/chuzu/Documents/sub2api-app/build/sub2api-v0.2.13-mobile-turnstile-dist-2f7800160.tar.gz`，SHA-256 `c55428d4278da8464958e57232356d57c32b88ebbea5708576e745298aa55b46`。该产物尚未部署到任何服务器。 |
-| Turnstile token refresh lifecycle | 源码与本地合同测试通过；设备联调待完成 | 当前 URI 版本的 240 秒刷新会重建专用 WebView 文档并生成新 tuple；原生消息来源同时校验同源 `/mobile/turnstile` 路径，避免 hash-only 导航或同源其他页面导致陈旧/伪造消息。自动化覆盖 tuple/config 和实例 key 合同，真实 240 秒 WebView 重建仍需 iOS 设备运行验证。 |
-| Android | 暂缓 | 当前范围不开发、不构建、不签名 Android；恢复范围后另行补齐证据。 |
+| 输入 | 空值不发请求；完整 key 只在内存中 trim | 源码已实现；需设备操作记录 |
+| 验证 | `GET /api/v1/admin/settings/admin-api-key`，仅 `x-api-key` header | 源码与 `tests/admin-auth.test.ts` 覆盖；真实 Hub 请求待批准环境执行 |
+| 成功 | `code: 0` 且 `data.exists === true` 后才写 SecureStore | 源码已实现；未把 key 写入日志/URL/body |
+| 401 | `INVALID_ADMIN_KEY` 清理本地 key，停留在 key 页 | 源码/测试覆盖；需设备确认 UI |
+| 403 | 服务端拒绝操作，保留会话并显示权限错误 | 错误映射已实现；需服务端策略场景验证 |
+| 423 | `ADMIN_COMPLIANCE_ACK_REQUIRED`，显示官方文档并要求管理员显式勾选确认后再 POST 官方 accept | 源码已实现；需可复现的合规环境验证 |
+| 429 | 尊重 `Retry-After`；只对安全读请求有界重试 | 请求层已实现；写请求不盲重试 |
+| 退出 | 删除 SecureStore key、清空 query cache、返回 `/login` | 源码已实现；官方没有 Admin-Key-specific logout |
+| 冷启动 | 只从 SecureStore 恢复 key，不请求 `/auth/me` 或刷新 JWT | 源码已实现；需实体 iPhone 记录 |
 
-## 必测非生产链路
+## 自动化与本地证据
 
-在批准的非生产环境和可撤销测试账号上完成：
+| 检查 | 结果/限制 |
+|---|---|
+| Admin Key service tests | `tests/admin-auth.test.ts` 覆盖成功验证、只发 `x-api-key`、拒绝 key 不落盘；使用工作区 Node 运行通过。 |
+| Admin fetch tests | `tests/admin-fetch.test.ts` 覆盖 header 覆盖、401/403、Cloudflare HTML、request ID、重试边界；通过。 |
+| TypeScript/ESLint/Vitest | `pnpm typecheck`、`pnpm lint -- --no-fix`、`pnpm exec vitest run` 通过；12 个测试文件、64 项测试通过。 |
+| 生产占位扫描 | `sh scripts/verify-production-scan.sh` 通过。 |
+| Web build | `pnpm web:build` 通过；Playwright 视觉测试未启动，因为本机未安装 Chromium headless shell。 |
+| iOS build | 原生 Xcode/CocoaPods simulator Release build 通过，未使用 Expo/EAS 云构建；安装并启动 iPhone 17 Pro Max simulator 后截图确认管理员 Key 首屏。 |
+| Production probe | 使用无效占位凭据验证：`x-api-key` 返回 `401 INVALID_ADMIN_KEY`，Bearer 形式返回 `401 INVALID_TOKEN`；只记录脱敏 request ID。真实 Admin Key 成功联调仍待用户提供可撤销凭据并明确批准。 |
 
-1. 读取 `/api/v1/settings/public`，按服务端启用的 provider 显示官方验证码控件；
-   提交一次性 provider token，不生成或传输私有 nonce。
-2. 邮箱密码登录、注册、密码找回和 TOTP；`/auth/me` 返回普通用户与管理员
-   时分别进入对应工作台。
-3. 401 只触发一次 refresh；刷新失败清空 SecureStore 和 Query cache。
-4. 普通用户读取 profile、API keys、usage、公告、订阅和订单。超时写操作先
-   查询服务端结果；只有官方 v0.2.13 明确提供的幂等语义才能用于自动重试。
-5. 管理员读取仪表盘、用户、余额、账号、分组、日志与设置；权限、审计和二次
-   确认以服务端返回为准。
-6. Cloudflare 返回 HTML challenge 时显示安全验证/重试提示，不把 HTML 当作成功
-   JSON；不修改生产 WAF 规则来绕过该边界。
+## 必测 iOS 场景
+
+1. 输入一个可撤销的真实 Admin Key，验证一次只读 dashboard 请求成功；日志只留
+   status/reason/request ID，绝不留 key。
+2. 输入错误/已删除 key，确认 401 后 key 被清除，冷启动不会重进控制台。
+3. 对可用环境触发 403 与 423，确认页面分别显示权限拒绝和官方合规提示，不能
+   自动“确认”或伪造成功。
+4. 在设置/官方后台重新生成 key，确认旧 key 401、新 key 可重新验证。
+5. 退出后检查 SecureStore 与 Query cache 清理；重新启动只显示 Admin Key 页面。
+6. 开启 Cloudflare challenge 时确认 HTML/challenge 不被当成 JSON 成功；APP 不发送
+   `cf_clearance`、secret 或私有 captcha nonce。
 
 ## 禁止通过项
 
-- 把私有 `GET /mobile/captcha/turnstile`、health probe、nonce 或 bridge 当作
-  官方 v0.2.13 能力，或以其测试结果替代真实合同证据。
-- 修改生产后端、迁移、经营设置、Cloudflare 路由，或在真实用户上执行加款、退款、
-  删除密钥和主动模型探测。
-- APP 发送 `x-api-key`、保存管理员 API key、包含 captcha secret、伪造 provider
-  token 或绕过 Cloudflare challenge。
-- 把 Android 构建、签名或真机验收列为本次发布的必需条件。
+- 用邮箱密码、JWT、普通用户账号或旧的用户工作台证明管理员专用版本通过。
+- 把 `403`/`423` 当作登录成功，或为了通过测试绕过 AdminAuth、合规 guard、Cloudflare。
+- 修改生产服务器、数据库、Cloudflare 规则/secret 或清除设备数据后再声称本地修复。
+- 将 Android、TestFlight 或未执行的线上联调写成已通过。

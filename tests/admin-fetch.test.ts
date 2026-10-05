@@ -14,6 +14,7 @@ describe('adminFetch', () => {
   beforeEach(() => {
     adminConfigState.baseUrl = 'https://hub.vexlune.com';
     adminConfigState.accessToken = 'access-test-token';
+    adminConfigState.adminApiKey = '';
     adminConfigState.refreshToken = '';
     vi.restoreAllMocks();
   });
@@ -25,6 +26,19 @@ describe('adminFetch', () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe('https://hub.vexlune.com/api/v1/admin/settings');
     expect(new Headers(init?.headers).get('authorization')).toBe('Bearer access-test-token');
+  });
+
+  it('uses the official x-api-key header when an Admin API Key is present', async () => {
+    adminConfigState.adminApiKey = 'admin-test-key';
+    adminConfigState.accessToken = 'stale-bearer-token';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ code: 0, data: { ok: true } }));
+
+    await expect(adminFetch<{ ok: boolean }>('/api/v1/admin/settings', {
+      headers: { Authorization: 'Bearer inherited-token' },
+    })).resolves.toEqual({ ok: true });
+    const headers = new Headers(fetchMock.mock.calls[0][1]?.headers);
+    expect(headers.get('x-api-key')).toBe('admin-test-key');
+    expect(headers.get('authorization')).toBeNull();
   });
 
   it('reads request id and status from JSON errors', async () => {

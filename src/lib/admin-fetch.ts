@@ -1,4 +1,4 @@
-import { updateAccessToken, sessionState, clearSession } from '@/src/auth/session';
+import { updateAccessToken, sessionState, clearAdminApiKey, clearSession } from '@/src/auth/session';
 import type { AuthResponse } from '@/src/types/auth';
 import type { ApiEnvelope } from '@/src/types/admin';
 
@@ -14,6 +14,11 @@ export type AdminRequestOptions = {
   retry?: number;
   /** Internal flag used by the refresh request to prevent a refresh loop. */
   skipRefresh?: boolean;
+  /**
+   * One-shot Admin API Key used by the key validation screen before the key is
+   * persisted. It is never logged or written to storage by this module.
+   */
+  adminApiKey?: string;
 };
 
 export class ApiError extends Error {
@@ -69,9 +74,14 @@ export function humanizeApiError(error: unknown) {
   if (error.isCloudflareChallenge || error.code === 'CLOUDFLARE_CHALLENGE') {
     return '需要完成安全验证后才能继续，请在验证页面完成 Turnstile';
   }
+  if (error.code === 'INVALID_ADMIN_KEY') return '管理员 API Key 无效或已被撤销，请重新生成后重试';
+  if (error.code === 'ADMIN_KEY_NOT_CONFIGURED') return '服务器未配置管理员 API Key，请先在官方后台生成';
+  if (error.code === 'STEP_UP_ADMIN_API_KEY_FORBIDDEN') return '此操作需要在官方管理后台完成二次验证';
+  if (error.code === 'ADMIN_COMPLIANCE_ACK_REQUIRED') return '请先在官方管理后台确认合规协议后再继续';
   const map: Record<number, string> = {
     401: '登录状态已失效，请重新登录',
     403: '没有权限执行此操作',
+    423: '管理员合规确认尚未完成，请先在官方管理后台完成确认',
     404: '请求的资源不存在',
     409: '数据已发生变化，请刷新后重试',
     422: '提交的数据不符合要求',
@@ -176,7 +186,7 @@ async function request<T>(path: string, init: RequestInit = {}, options: Interna
   let attempt = 0;
   let didRefresh = false;
 
-  if (options.authenticated && !options.skipRefresh && sessionState.expiresAt > 0 &&
+  if (options.authenticated && !options.skipRefresh && !sessionState.adminApiKey && sessionState.expiresAt > 0 &&
       Date.now() >= sessionState.expiresAt && sessionState.refreshToken) {
     try {
       await refreshAccessToken(options.signal);
@@ -196,9 +206,20 @@ async function request<T>(path: string, init: RequestInit = {}, options: Interna
     headers.set('Accept', 'application/json');
     if (init.body && !(typeof FormData !== 'undefined' && init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
     if (options.authenticated) {
-      const accessToken = sessionState.accessToken.trim();
-      if (!accessToken) throw new Error('ACCESS_TOKEN_REQUIRED');
-      headers.set('Authorization', `Bearer ${accessToken}`);
+      const adminApiKey = options.adminApiKey?.trim() || sessionState.adminApiKey.trim();
+      if (adminApiKey) {
+        // The official Sub2API middleware checks x-api-key before Authorization
+        // and rejects requests containing an invalid key even when a valid JWT
+        // is also present. Remove an inherited bearer header to keep the
+        // authentication mode unambiguous.
+        headers.delete('Authorization');
+        headers.set('x-api-key', adminApiKey);
+      } else {
+        const accessToken = sessionState.accessToken.trim();
+        if (!accessToken) throw new Error('ACCESS_TOKEN_REQUIRED');
+        headers.delete('x-api-key');
+        headers.set('Authorization', `Bearer ${accessToken}`);
+      }
     }
     if (options.idempotencyKey) headers.set('Idempotency-Key', options.idempotencyKey);
     try {
@@ -226,7 +247,10 @@ async function request<T>(path: string, init: RequestInit = {}, options: Interna
       const apiError = new ApiError(message, {
         status: response.status,
         requestId,
-        code: challenge ? 'CLOUDFLARE_CHALLENGE' : envelope ? String(envelope.code) : undefined,
+        // The official error envelope uses `reason` for stable machine codes
+        // such as INVALID_ADMIN_KEY while `code` is only the numeric HTTP-like
+        // status. Preserve the reason so the UI can apply a safe action.
+        code: challenge ? 'CLOUDFLARE_CHALLENGE' : typeof envelope?.reason === 'string' ? envelope.reason : envelope ? String(envelope.code) : undefined,
         retryAfter,
         isCloudflareChallenge: challenge,
       });
@@ -242,7 +266,15 @@ async function request<T>(path: string, init: RequestInit = {}, options: Interna
           throw apiError;
         }
       }
-      if (response.status === 401 && options.authenticated) unauthorizedHandler?.();
+      if (response.status === 401 && options.authenticated) {
+        // Invalid/revoked Admin API Keys have no refresh path. Clear only the
+        // persisted key for a one-shot validation request; a JWT session can
+        // still use its existing refresh handling below.
+        if ((options.adminApiKey?.trim() || sessionState.adminApiKey.trim()) && !options.skipRefresh) {
+          if (!options.adminApiKey || options.adminApiKey.trim() === sessionState.adminApiKey.trim()) await clearAdminApiKey();
+        }
+        unauthorizedHandler?.();
+      }
       if (attempt < maxRetries && RETRYABLE_STATUS.has(response.status) && !challenge) {
         attempt += 1;
         await sleep(Math.min(retryAfter ?? 350 * 2 ** attempt, 2_500), options.signal);
@@ -264,7 +296,7 @@ async function request<T>(path: string, init: RequestInit = {}, options: Interna
   }
 }
 
-/** Authenticated Hub API request. Uses JWT Bearer tokens and one-flight refresh. */
+/** Authenticated Hub API request. Uses Admin API Key (`x-api-key`) first, with JWT fallback. */
 export function adminFetch<T>(path: string, init: RequestInit = {}, options: AdminRequestOptions = {}) {
   return request<T>(path, init, { ...options, authenticated: true });
 }
