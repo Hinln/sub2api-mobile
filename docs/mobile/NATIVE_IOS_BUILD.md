@@ -53,9 +53,9 @@ App Store/TestFlight 归档使用 `scripts/export-ios-appstore.sh`。脚本在 a
 源码 commit 标记，避免复用旧源码归档；源码或分支变化后会自动重新 archive。只有
 已人工核验归档内容时，才设置 `IOS_REUSE_ARCHIVE=1` 跳过这个保护。
 
-当前 URI 代码提交 `3290b2e` 已导出并签名验证
-`build/appstore-export-https/VexluneMobileConsole.ipa`；SHA-256 为
-`174d3943b49faf55bc3c1fbbf8c4c3579e4f284764ef3ec6bfdb172e8d8b68b6`，archive dSYM UUID 为
+当前 URI 代码提交 `1627587` 已导出并签名验证
+`build/appstore-export-current/VexluneMobileConsole.ipa`；SHA-256 为
+`6eee690365567481fd77e2091d4c38a02213696a19b9cd5e957f6651ecb7d7d9`，archive dSYM UUID 为
 `CBC5924B-9EB3-332A-9337-033714D7BBEB`，包内版本为 `1.0.1 (2)`。该 IPA 尚未上传
 App Store Connect。
 
