@@ -42,10 +42,10 @@ export default function MonitorScreen() {
   const accounts = useQuery({ queryKey: ['dashboard-accounts'], queryFn: () => listAccounts('', { page_size: 50 }), staleTime: 30_000 });
   const trend = useQuery({ queryKey: ['dashboard-trend-24h'], queryFn: () => getDashboardTrend(range), staleTime: 30_000 });
   const failures = useQuery({ queryKey: ['dashboard-failures'], queryFn: () => listRequestErrors({ page_size: 5, resolved: false }), staleTime: 30_000 });
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [poolOpen, setPoolOpen] = useState(false);
-  const [trendOpen, setTrendOpen] = useState(false);
-  const [failuresOpen, setFailuresOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(true);
+  const [poolOpen, setPoolOpen] = useState(true);
+  const [trendOpen, setTrendOpen] = useState(true);
+  const [failuresOpen, setFailuresOpen] = useState(true);
 
   const queries = [stats, settings, version, accounts, trend, failures];
   const loading = stats.isLoading || accounts.isLoading;

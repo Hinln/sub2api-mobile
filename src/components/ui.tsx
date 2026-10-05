@@ -1,5 +1,6 @@
-import type { LucideIcon } from 'lucide-react-native';
+import { Activity, ChartNoAxesCombined, KeyRound, Menu, Users, type LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
+import { router, usePathname } from 'expo-router';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,6 +16,16 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
   onRefresh?: () => void;
   right?: ReactNode;
 }) {
+  const pathname = usePathname();
+  const standalone = pathname.startsWith('/admin-') || pathname === '/exceptions' || pathname === '/about';
+  const activePath = standalone ? '/more' : pathname;
+  const navItems = [
+    { path: '/monitor', label: '概览', Icon: ChartNoAxesCombined },
+    { path: '/accounts', label: '上游账号', Icon: KeyRound },
+    { path: '/users', label: '用户管理', Icon: Users },
+    { path: '/logs', label: '请求日志', Icon: Activity },
+    { path: '/more', label: '更多', Icon: Menu },
+  ] as const;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.page }}>
       <ScrollView
@@ -26,14 +37,15 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View style={{ width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }}>
-              <VexluneLogo size={27} />
-            </View>
+            <VexluneLogo size={40} />
             <View>
-              <Text style={{ color: theme.text, fontSize: 15, fontWeight: '900', letterSpacing: -0.2 }}>Vexlune Hub</Text>
-              <View style={{ alignSelf: 'flex-start', marginTop: 3, borderRadius: 999, backgroundColor: theme.primarySoft, paddingHorizontal: 7, paddingVertical: 3 }}>
-                <Text style={{ color: theme.primary, fontSize: 9, fontWeight: '900', letterSpacing: 0.4 }}>管理后台</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                <Text style={{ color: theme.text, fontSize: 19, fontWeight: '900', letterSpacing: -0.2 }}>Vexlune Hub</Text>
+                <View style={{ borderRadius: 999, backgroundColor: theme.primarySoft, paddingHorizontal: 7, paddingVertical: 3 }}>
+                  <Text style={{ color: theme.primary, fontSize: 9, fontWeight: '900', letterSpacing: 0.4 }}>管理后台</Text>
+                </View>
               </View>
+              <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 3 }}>稳定运行 · 高效管理</Text>
             </View>
           </View>
           {right ? <View style={{ alignItems: 'flex-end' }}>{right}</View> : null}
@@ -44,12 +56,22 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
         </View>
         {children}
       </ScrollView>
+      {standalone ? <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 8, paddingBottom: 18 }}>
+        {navItems.map((item) => {
+          const selected = activePath === item.path;
+          const Icon = item.Icon;
+          return <Pressable key={item.path} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => router.replace(item.path)} style={{ flex: 1, alignItems: 'center', gap: 4 }}>
+            <Icon color={selected ? theme.primary : theme.faint} size={21} strokeWidth={selected ? 2.5 : 2} />
+            <Text style={{ color: selected ? theme.primary : theme.faint, fontSize: 11, fontWeight: selected ? '900' : '700' }}>{item.label}</Text>
+          </Pressable>;
+        })}
+      </View> : null}
     </SafeAreaView>
   );
 }
 
 export function Card({ children, style }: { children: ReactNode; style?: object }) {
-  return <View style={[{ backgroundColor: theme.card, borderRadius: 20, borderWidth: 1, borderColor: theme.border, padding: 16 }, style]}>{children}</View>;
+  return <View style={[{ backgroundColor: theme.card, borderRadius: 18, borderWidth: 1, borderColor: theme.border, padding: 14 }, style]}>{children}</View>;
 }
 
 export function StateCard({ loading, error, empty, onRetry, emptyText }: {
