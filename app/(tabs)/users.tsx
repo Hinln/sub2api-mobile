@@ -57,6 +57,13 @@ export default function UsersScreen() {
   const stats = useQuery({ queryKey: ['dashboard-stats'], queryFn: getDashboardStats, staleTime: 30_000 });
   const items = users.data?.items ?? [];
   const total = users.data?.total;
+  const userCountLabel = users.isFetching
+    ? '正在统计'
+    : typeof total === 'number'
+      ? `共 ${count(total)} 个用户`
+      : users.error
+        ? '总数未获取'
+        : '--';
 
   return (
     <Page
@@ -120,7 +127,7 @@ export default function UsersScreen() {
         </Card>
       </View>
 
-      <SectionTitle title="用户列表" action={<Text style={{ color: theme.subtext, fontSize: 12 }}>{typeof total === 'number' ? `共 ${count(total)} 个用户` : '正在统计'}</Text>} />
+      <SectionTitle title="用户列表" action={<Text style={{ color: theme.subtext, fontSize: 12 }}>{userCountLabel}</Text>} />
       <StateCard loading={users.isLoading} error={users.error} empty={!users.isLoading && !users.error && items.length === 0} onRetry={() => void users.refetch()} emptyText="当前筛选条件下没有用户。" />
       <View style={{ gap: 10 }}>{items.map((user) => {
         const state = userTone(user);
@@ -131,14 +138,14 @@ export default function UsersScreen() {
               <View style={{ width: 43, height: 43, borderRadius: 15, backgroundColor: administrator ? theme.primarySoft : theme.cardRaised, alignItems: 'center', justifyContent: 'center' }}><UserRound color={administrator ? theme.primary : theme.subtext} size={21} /></View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><Text numberOfLines={1} style={{ flexShrink: 1, color: theme.text, fontSize: 15, fontWeight: '900' }}>{user.username || user.email}</Text>{administrator ? <Badge label="管理员" tone="primary" /> : null}</View>
-                <Text numberOfLines={1} style={{ color: theme.subtext, fontSize: 12, marginTop: 4 }}>{user.email}</Text>
+                {user.username && user.username !== user.email ? <Text numberOfLines={1} style={{ color: theme.subtext, fontSize: 12, marginTop: 4 }}>{user.email}</Text> : null}
               </View>
               <ChevronRight color={theme.faint} size={18} />
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, paddingTop: 11, borderTopWidth: 1, borderTopColor: theme.border }}>
               <Badge label={roleLabel(user.role)} tone="primary" />
               <Badge label={state.label} tone={state.tone} />
-              <Text numberOfLines={1} style={{ flex: 1, color: theme.subtext, fontSize: 11, textAlign: 'right' }}>{`余额 ${money(user.balance)} · 并发 ${user.current_concurrency ?? 0}/${user.concurrency ?? '--'}`}</Text>
+              <Text numberOfLines={1} style={{ flex: 1, color: theme.subtext, fontSize: 11, textAlign: 'right' }}>{`余额 ${money(user.balance)} · 并发 ${typeof user.current_concurrency === 'number' ? user.current_concurrency : '--'}/${typeof user.concurrency === 'number' ? user.concurrency : '--'}`}</Text>
             </View>
             <Text style={{ color: theme.faint, fontSize: 10, marginTop: 8 }}>{lastSeen(user.last_used_at)}</Text>
           </Card>

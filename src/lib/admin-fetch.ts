@@ -97,6 +97,7 @@ export function humanizeApiError(error: unknown) {
   if (error.code === 'ADMIN_KEY_NOT_CONFIGURED') return '服务器未配置管理员 API Key，请先在官方后台生成';
   if (error.code === 'STEP_UP_ADMIN_API_KEY_FORBIDDEN') return '此操作需要在官方管理后台完成二次验证';
   if (error.code === 'ADMIN_COMPLIANCE_ACK_REQUIRED') return '请先在官方管理后台确认合规协议后再继续';
+  if (error.code === 'ADMIN_CREDENTIAL_REQUIRED' || error.message === 'ACCESS_TOKEN_REQUIRED') return '管理凭据已失效，请重新输入 Admin Key';
   const map: Record<number, string> = {
     401: '登录状态已失效，请重新登录',
     403: '没有权限执行此操作',
@@ -236,7 +237,7 @@ async function request<T>(path: string, init: RequestInit = {}, options: Interna
         headers.set('x-api-key', adminApiKey);
       } else {
         const accessToken = sessionState.accessToken.trim();
-        if (!accessToken) throw new Error('ACCESS_TOKEN_REQUIRED');
+        if (!accessToken) throw new ApiError('ACCESS_TOKEN_REQUIRED', { status: 401, code: 'ADMIN_CREDENTIAL_REQUIRED' });
         headers.delete('x-api-key');
         headers.set('Authorization', `Bearer ${accessToken}`);
       }

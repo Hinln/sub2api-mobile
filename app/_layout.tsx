@@ -94,8 +94,8 @@ export default function RootLayout() {
             <Stack.Screen name="users/[id]" options={{ headerShown: true, title: '\u7528\u6237\u8be6\u60c5', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
             <Stack.Screen name="users/create-user" options={{ headerShown: true, title: '\u521b\u5efa\u7528\u6237', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
             <Stack.Screen name="accounts/[id]" options={{ headerShown: true, title: '\u8d26\u53f7\u8be6\u60c5', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
-            <Stack.Screen name="exceptions" options={{ headerShown: true, title: '\u5f02\u5e38\u4e2d\u5fc3', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
-            <Stack.Screen name="about" options={{ headerShown: true, title: '\u5173\u4e8e', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
+            <Stack.Screen name="exceptions" options={{ headerShown: false }} />
+            <Stack.Screen name="about" options={{ headerShown: true, title: '\u5173\u4e8e', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false, headerBackButtonDisplayMode: 'minimal' }} />
           </Stack>
         )}
       </QueryClientProvider>

@@ -21,6 +21,9 @@ export type AdminPaymentOrder = Record<string, unknown> & {
   status?: string;
   amount?: number;
   pay_amount?: number;
+  /** Gateway amount in the order's currency; the official UI labels this as 实付. */
+  currency?: string;
+  fee_rate?: number;
   payment_type?: string;
   user_email?: string;
   user_name?: string;
@@ -28,6 +31,9 @@ export type AdminPaymentOrder = Record<string, unknown> & {
 };
 
 export type AdminPaymentDashboard = {
+  /** Official /api/v1/admin/payment/dashboard response. Missing values remain
+   * unavailable in the UI; a numeric zero is shown only when the server
+   * explicitly returns zero. */
   today_amount?: Record<string, number>;
   total_amount?: Record<string, number>;
   avg_amount?: Record<string, number>;

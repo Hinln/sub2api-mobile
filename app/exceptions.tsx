@@ -3,7 +3,7 @@ import { AlertTriangle, ChevronRight, CircleAlert } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 
-import { Badge, Card, Page, SectionTitle, StateCard } from '@/src/components/ui';
+import { Badge, Card, Page, RefreshError, SectionTitle, StateCard } from '@/src/components/ui';
 import { listAccounts, listRequestErrors } from '@/src/services/admin';
 import { theme } from '@/src/theme';
 
@@ -21,11 +21,14 @@ export default function ExceptionsScreen() {
   const failed = logs.data?.items ?? [];
   const accountProblems = (accounts.data?.items ?? []).filter((account) => account.status === 'error' || Boolean(account.error_message));
   const refresh = () => { void logs.refetch(); void accounts.refetch(); };
+  const hasData = Boolean(logs.data || accounts.data);
+  const error = logs.error || accounts.error;
 
   return (
     <Page title={'异常中心'} subtitle={`基于最近 ${failed.length} 条失败日志与当前页账号列表，不代表全站完整审计`} refreshing={logs.isRefetching || accounts.isRefetching} onRefresh={refresh}>
-      <StateCard loading={logs.isLoading || accounts.isLoading} error={logs.error || accounts.error} onRetry={refresh} />
-      {!logs.isLoading && !accounts.isLoading && !(logs.error || accounts.error) ? <>
+      <StateCard loading={logs.isLoading || accounts.isLoading} error={!hasData ? error : undefined} onRetry={refresh} />
+      {!logs.isLoading && !accounts.isLoading && (hasData || !error) ? <>
+        <RefreshError error={hasData ? error : undefined} onRetry={refresh} />
         <View style={{ flexDirection: 'row', gap: 10 }}><Card style={{ flex: 1, backgroundColor: theme.dangerSoft }}><Text style={{ color: theme.danger, fontSize: 11 }}>{'最近失败'}</Text><Text style={{ color: theme.danger, fontSize: 25, fontWeight: '900', marginTop: 6 }}>{logs.data?.total ?? failed.length}</Text></Card><Card style={{ flex: 1 }}><Text style={{ color: theme.subtext, fontSize: 11 }}>{'异常账号（当前页）'}</Text><Text style={{ color: theme.text, fontSize: 25, fontWeight: '900', marginTop: 6 }}>{accountProblems.length}</Text></Card></View>
         <SectionTitle title={'失败请求'} />
         {failed.length ? <View style={{ gap: 9 }}>{failed.map((entry) => <Card key={entry.id}><View style={{ flexDirection: 'row', gap: 10 }}><CircleAlert color={theme.danger} size={18} /><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '800' }}>{summary(entry.status_code, entry.message)}</Text><Text numberOfLines={2} style={{ color: theme.subtext, fontSize: 12, lineHeight: 18, marginTop: 5 }}>{entry.message || `HTTP ${entry.status_code ?? '--'}`}</Text><Text style={{ color: theme.faint, fontSize: 11, marginTop: 6 }}>{`HTTP ${entry.status_code ?? '--'} · Request ID ${entry.request_id || '--'}`}</Text></View><Badge label={String(entry.status_code ?? 'ERR')} tone="danger" /></View></Card>)}</View> : <Card><Text style={{ color: theme.subtext, textAlign: 'center' }}>当前查询范围内没有失败日志</Text></Card>}

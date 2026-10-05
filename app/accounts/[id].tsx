@@ -43,7 +43,7 @@ export default function AccountDetailScreen() {
 
         <SectionTitle title={'\u8c03\u5ea6\u4fe1\u606f'} />
         <Card>{[
-          ['\u5f53\u524d\u5e76\u53d1', `${item.current_concurrency ?? 0} / ${item.concurrency ?? '--'}`], ['\u4f18\u5148\u7ea7', String(item.priority ?? '--')], ['\u6743\u91cd / \u500d\u7387', String(item.rate_multiplier ?? 1)], ['\u6700\u8fd1\u4f7f\u7528', item.last_used_at ? new Date(item.last_used_at).toLocaleString('zh-CN') : '--'], ['\u51b7\u5374\u622a\u6b62', item.rate_limit_reset_at ? new Date(item.rate_limit_reset_at).toLocaleString('zh-CN') : '--'], ['\u6240\u5c5e\u5206\u7ec4', item.groups?.map((group) => group.name).join(', ') || '--'],
+          ['\u5f53\u524d\u5e76\u53d1', `${typeof item.current_concurrency === 'number' ? item.current_concurrency : '--'} / ${typeof item.concurrency === 'number' ? item.concurrency : '--'}`], ['\u4f18\u5148\u7ea7', String(item.priority ?? '--')], ['\u6743\u91cd / \u500d\u7387', typeof item.rate_multiplier === 'number' ? String(item.rate_multiplier) : '--'], ['\u6700\u8fd1\u4f7f\u7528', item.last_used_at ? new Date(item.last_used_at).toLocaleString('zh-CN') : '--'], ['\u51b7\u5374\u622a\u6b62', item.rate_limit_reset_at ? new Date(item.rate_limit_reset_at).toLocaleString('zh-CN') : '--'], ['\u6240\u5c5e\u5206\u7ec4', item.groups?.map((group) => group.name).join(', ') || '--'],
         ].map(([label, value]) => <View key={label} style={{ flexDirection: 'row', gap: 12, paddingVertical: 9 }}><Text style={{ width: 100, color: theme.faint, fontSize: 12 }}>{label}</Text><Text selectable style={{ flex: 1, color: theme.text, fontSize: 12, textAlign: 'right' }}>{value}</Text></View>)}</Card>
 
         <SectionTitle title={'\u5b89\u5168\u64cd\u4f5c'} />

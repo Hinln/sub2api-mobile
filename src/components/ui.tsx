@@ -1,4 +1,4 @@
-import { ChartNoAxesCombined, ChevronRight, Home, Settings2, UserRound, Users, type LucideIcon } from 'lucide-react-native';
+import { ChartNoAxesCombined, Home, Settings2, UserRound, Users, type LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { router, usePathname } from 'expo-router';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
@@ -17,8 +17,13 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
   right?: ReactNode;
 }) {
   const pathname = usePathname();
-  const standalone = !['/', '/monitor', '/users', '/settings'].includes(pathname);
-  const activePath = pathname === '/' ? '/' : pathname.startsWith('/monitor') ? '/monitor' : pathname.startsWith('/users') ? '/users' : pathname.startsWith('/settings') ? '/settings' : '';
+  // Routes declared inside the tabs navigator already receive the native
+  // The four primary routes use the native tab bar. Secondary management
+  // routes keep the same four-item bar via this Page shell after their native
+  // tab bar is hidden in the tab navigator.
+  const tabRoutes = ['/', '/monitor', '/users', '/settings'];
+  const standalone = !tabRoutes.includes(pathname);
+  const activePath = pathname === '/' ? '/' : pathname.startsWith('/monitor') ? '/monitor' : pathname.startsWith('/users') ? '/users' : pathname.startsWith('/settings') ? '/settings' : '/settings';
   const navItems = [
     { path: '/', label: '首页', Icon: Home },
     { path: '/monitor', label: '监控', Icon: ChartNoAxesCombined },
@@ -31,7 +36,7 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
       <View pointerEvents="none" style={{ position: 'absolute', top: 240, left: -190, width: 360, height: 360, borderRadius: 180, backgroundColor: '#DFF4FF', opacity: 0.48 }} />
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 118 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 144 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} /> : undefined}
@@ -47,7 +52,6 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginLeft: 10 }}>
             <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: theme.primarySoft, alignItems: 'center', justifyContent: 'center' }}><UserRound color={theme.primary} size={21} /></View>
             <View><Text style={{ color: theme.text, fontSize: 11, fontWeight: '900' }}>管理员</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 2 }}>管理端已连接</Text></View>
-            <ChevronRight color={theme.faint} size={16} />
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>
@@ -96,6 +100,19 @@ export function StateCard({ loading, error, empty, onRetry, emptyText }: {
   );
 }
 
+/**
+ * Keeps already-rendered server data visible when a background refresh fails.
+ * A refetch error is a degraded refresh, not a reason to replace a usable
+ * workspace with a full-screen error card.
+ */
+export function RefreshError({ error, onRetry }: { error?: unknown; onRetry?: () => void }) {
+  if (!error) return null;
+  return <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 12, borderRadius: 14, backgroundColor: theme.warningSoft, borderWidth: 1, borderColor: '#F7DFA5', paddingHorizontal: 12, paddingVertical: 10 }}>
+    <Text numberOfLines={2} style={{ flex: 1, color: theme.warning, fontSize: 11, lineHeight: 16 }}>{`刷新失败：${humanizeApiError(error)}。已保留上次成功数据。`}</Text>
+    {onRetry ? <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={8} style={{ paddingHorizontal: 4, paddingVertical: 2 }}><Text style={{ color: theme.warning, fontSize: 11, fontWeight: '900' }}>重试</Text></Pressable> : null}
+  </View>;
+}
+
 export function Metric({ label, value, tone = 'default', icon: Icon, trend }: { label: string; value: string; tone?: 'default' | 'success' | 'danger' | 'warning'; icon?: LucideIcon; trend?: string }) {
   const color = tone === 'success' ? theme.success : tone === 'danger' ? theme.danger : tone === 'warning' ? theme.warning : theme.text;
   return (
@@ -109,7 +126,7 @@ export function Metric({ label, value, tone = 'default', icon: Icon, trend }: { 
 }
 
 export function SectionTitle({ title, action }: { title: string; action?: ReactNode }) {
-  return <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 22, marginBottom: 10 }}><Text style={{ color: theme.text, fontSize: 17, fontWeight: '800' }}>{title}</Text>{action}</View>;
+  return <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 22, marginBottom: 10 }}><Text style={{ color: theme.text, fontSize: 17, fontWeight: '800' }}>{title}</Text>{typeof action === 'string' ? <Text style={{ color: theme.subtext, fontSize: 12 }}>{action}</Text> : action}</View>;
 }
 
 export function Badge({ label, tone = 'muted' }: { label: string; tone?: 'muted' | 'success' | 'danger' | 'warning' | 'primary' }) {

@@ -1,6 +1,6 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import { router } from 'expo-router';
-import { Bell, FileText, Globe2, LockKeyhole, RotateCcw, Save, Settings2, ShieldCheck } from 'lucide-react-native';
+import { AlertTriangle, Bell, FileText, Globe2, Info, LockKeyhole, MoreHorizontal, RotateCcw, Save, Settings2, ShieldCheck } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, Platform, Pressable, Switch, Text, TextInput, View } from 'react-native';
 
@@ -88,6 +88,13 @@ export default function SettingsScreen() {
         <MenuRow icon={Bell} title="公告管理" subtitle="发布和管理站点公告" onPress={() => router.push('/admin-announcements')} />
         <View style={{ height: 1, backgroundColor: theme.border }} />
         <MenuRow icon={FileText} title="运行日志" subtitle="请求、异常和服务状态记录" onPress={() => router.push('/logs')} />
+        <View style={{ height: 1, backgroundColor: theme.border }} />
+        <MenuRow icon={AlertTriangle} title="异常中心" subtitle="失败请求与上游账号异常" onPress={() => router.push('/exceptions')} />
+      </Card>
+
+      <SectionTitle title="管理工具" />
+      <Card>
+        <MenuRow icon={MoreHorizontal} title="更多管理工具" subtitle="分组、订单、审计与连接安全" onPress={() => router.push('/more')} />
       </Card>
 
       <SectionTitle title="连接高级设置" />
@@ -95,7 +102,7 @@ export default function SettingsScreen() {
         <Text style={{ color: theme.faint, fontSize: 11 }}>当前面板地址</Text>
         <Text selectable style={{ color: theme.text, fontSize: 14, marginTop: 6 }}>{config.baseUrl}</Text>
         <View style={{ height: 1, backgroundColor: theme.border, marginVertical: 16 }} />
-        <Text style={{ color: theme.subtext, fontSize: 12, lineHeight: 18 }}>当前使用官方 Sub2API Admin Key，通过 HTTPS 的 x-api-key 请求头访问管理接口；密钥只保存在系统安全存储。</Text>
+        <Text style={{ color: theme.subtext, fontSize: 12, lineHeight: 18 }}>当前使用官方 Sub2API Admin Key，通过 HTTPS 的 x-api-key 请求头访问管理接口；验证后的密钥优先保存在设备安全存储，未提供 Keychain 权限的模拟器仅在本次运行内存保留。</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18 }}>
           <View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '800' }}>允许覆盖面板地址</Text><Text style={{ color: theme.subtext, fontSize: 11, lineHeight: 17, marginTop: 5 }}>仅用于灾备或测试；只允许 HTTPS。</Text></View>
           <Switch value={advanced} onValueChange={(value) => { setAdvanced(value); if (!value) setUrl(VEXLUNE_HUB_URL); }} trackColor={{ false: theme.muted, true: theme.primary }} />
@@ -109,6 +116,11 @@ export default function SettingsScreen() {
         <Text style={{ color: theme.text, fontWeight: '800' }}>主题</Text>
         <Text style={{ color: theme.subtext, fontSize: 11, lineHeight: 17, marginTop: 5 }}>默认使用浅色界面；主题选择会保存在本机。</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>{([['light', '浅色'], ['dark', '深色'], ['system', '跟随系统']] as [ThemeMode, string][]).map(([mode, label]) => <Pressable key={mode} onPress={() => void changeTheme(mode)} style={{ flex: 1, borderRadius: 12, paddingVertical: 10, alignItems: 'center', backgroundColor: appearance.mode === mode ? theme.primary : theme.cardRaised }}><Text style={{ color: appearance.mode === mode ? '#FFFFFF' : theme.subtext, fontSize: 12, fontWeight: '800' }}>{label}</Text></Pressable>)}</View>
+      </Card>
+
+      <SectionTitle title="应用" />
+      <Card>
+        <MenuRow icon={Info} title="关于与开源许可" subtitle="Vexlune Mobile Console 版本信息" onPress={() => router.push('/about')} />
       </Card>
 
       {message ? <Text style={{ color: message.includes('已验证') || message.includes('已保存') ? theme.success : theme.danger, fontSize: 13, lineHeight: 19, marginTop: 14 }}>{message}</Text> : null}

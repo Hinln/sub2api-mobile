@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, Bell, ChevronRight, CircleCheck, CircleDollarSign, KeyRound, Layers3, Megaphone, RefreshCw, Server, ShieldAlert, UsersRound } from 'lucide-react-native';
+import { Activity, AlertTriangle, Bell, ChevronRight, CircleCheck, CircleDollarSign, KeyRound, Layers3, Megaphone, RefreshCw, Server, ShieldAlert, UsersRound } from 'lucide-react-native';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { Badge, Card, Page, StateCard } from '@/src/components/ui';
+import { Badge, Card, Page, RefreshError, StateCard } from '@/src/components/ui';
 import { getAdminSettings, getDashboardStats, getDashboardTrend, getSystemVersion, listAccounts, listRequestErrors } from '@/src/services/admin';
 import { listAlertEvents } from '@/src/services/admin-extended';
 import { theme } from '@/src/theme';
@@ -16,10 +16,6 @@ type SparklineProps = {
   color?: string;
 };
 
-function money(value?: number) {
-  return typeof value === 'number' && Number.isFinite(value) ? `$${value.toFixed(2)}` : '--';
-}
-
 function count(value?: number) {
   return typeof value === 'number' && Number.isFinite(value) ? new Intl.NumberFormat('zh-CN').format(value) : '--';
 }
@@ -28,7 +24,49 @@ function count(value?: number) {
 function lastSevenDays() {
   const end = new Date();
   const start = new Date(end.getTime() - 6 * 24 * 60 * 60 * 1000);
-  return { start_date: start.toISOString().slice(0, 10), end_date: end.toISOString().slice(0, 10), granularity: 'day' as const };
+  const key = (value: Date) => `${value.getFullYear()}-${`${value.getMonth() + 1}`.padStart(2, '0')}-${`${value.getDate()}`.padStart(2, '0')}`;
+  return { start_date: key(start), end_date: key(end), granularity: 'day' as const };
+}
+
+function formatTrendDate(value: string, today: string) {
+  if (value === today) return '今天';
+  const match = /^(?:\d{4}-)?(\d{2})-(\d{2})$/.exec(value);
+  return match ? `${match[1]}/${match[2]}` : value.slice(0, 10);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function TrendChart({ points, unit, today }: { points: { date: string; value?: number }[]; unit: string; today: string }) {
+  const visible = points.slice(-7);
+  const values = visible.map((point) => point.value).filter(isFiniteNumber);
+  const max = Math.max(...values, 0);
+  if (!visible.length || !values.length) return <Text style={{ color: theme.subtext, textAlign: 'center', paddingVertical: 28 }}>当前时间范围没有可用的趋势数据</Text>;
+  const scale = max || 1;
+  const latest = visible[visible.length - 1];
+  return <View accessibilityLabel="monitor-trend" style={{ marginTop: 14 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'stretch' }}>
+      <View style={{ width: 43, height: 156, justifyContent: 'space-between', paddingBottom: 25 }}>
+        {[max, max / 2, 0].map((tick, index) => <Text key={`${tick}-${index}`} style={{ color: theme.faint, fontSize: 9, textAlign: 'right' }}>{count(tick)}{index === 0 ? ` ${unit}` : ''}</Text>)}
+      </View>
+      <View style={{ flex: 1, marginLeft: 8 }}>
+        <View style={{ height: 124, flexDirection: 'row', alignItems: 'stretch', gap: 5 }}>
+          {visible.map((point) => {
+            const hasValue = isFiniteNumber(point.value);
+            const height = hasValue ? Math.max(5, (point.value! / scale) * 100) : 4;
+            const isToday = point.date === today;
+            return <View key={point.date} accessibilityLabel={`${point.date} ${hasValue ? `${count(point.value)} ${unit}` : '未获取'}`} style={{ flex: 1, height: '100%', justifyContent: 'flex-end' }}><View style={{ height: `${height}%`, minHeight: 4, borderRadius: 5, backgroundColor: !hasValue ? theme.muted : isToday ? theme.primary : theme.primarySoft }} /></View>;
+          })}
+        </View>
+        <View style={{ flexDirection: 'row', gap: 5, marginTop: 7 }}>
+          {visible.map((point) => <Text key={`${point.date}-label`} numberOfLines={1} style={{ flex: 1, color: point.date === today ? theme.primary : theme.faint, fontSize: 9, fontWeight: point.date === today ? '800' : '500', textAlign: 'center' }}>{formatTrendDate(point.date, today)}</Text>)}
+        </View>
+      </View>
+    </View>
+    <Text style={{ color: theme.text, fontSize: 12, fontWeight: '800', marginTop: 10 }}>{latest && isFiniteNumber(latest.value) ? `${formatTrendDate(latest.date, today)} · ${count(latest.value)} ${unit}` : '最近一天数据未获取'}</Text>
+    <Text style={{ color: theme.subtext, fontSize: 10, marginTop: 4 }}>每柱为当日合计 · 单位：{unit} · 灰色表示未获取</Text>
+  </View>;
 }
 
 function uptimeLabel(value?: number) {
@@ -48,15 +86,12 @@ function Sparkline({ values, color = theme.primary }: SparklineProps) {
   </View>;
 }
 
-function KpiCard({ icon: Icon, label, value, trend, tone = 'primary', values }: { icon: typeof Activity; label: string; value: string; trend?: string; tone?: 'primary' | 'success' | 'warning' | 'danger'; values?: number[] }) {
+function KpiCard({ icon: Icon, label, value, tone = 'primary', values }: { icon: typeof Activity; label: string; value: string; tone?: 'primary' | 'success' | 'warning' | 'danger'; values?: number[] }) {
   const palette = tone === 'success' ? { icon: theme.success, soft: theme.successSoft } : tone === 'warning' ? { icon: theme.warning, soft: theme.warningSoft } : tone === 'danger' ? { icon: theme.danger, soft: theme.dangerSoft } : { icon: theme.primary, soft: theme.primarySoft };
-  const rising = trend?.startsWith('+');
-  const falling = trend?.startsWith('-');
   return <Card style={{ flex: 1, minWidth: 0, padding: 12 }}>
     <View style={{ width: 32, height: 32, borderRadius: 11, backgroundColor: palette.soft, alignItems: 'center', justifyContent: 'center' }}><Icon color={palette.icon} size={17} /></View>
     <Text numberOfLines={1} style={{ color: theme.subtext, fontSize: 11, marginTop: 9 }}>{label}</Text>
     <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: theme.text, fontSize: 18, fontWeight: '900', marginTop: 4 }}>{value}</Text>
-    {trend ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 5 }}>{rising ? <ArrowUpRight color={theme.success} size={12} /> : falling ? <ArrowDownRight color={theme.danger} size={12} /> : null}<Text style={{ color: rising ? theme.success : falling ? theme.danger : theme.faint, fontSize: 10, fontWeight: '800' }}>{trend}</Text></View> : null}
     <Sparkline values={values ?? []} color={palette.icon} />
   </Card>;
 }
@@ -88,22 +123,24 @@ export default function MonitorScreen() {
   const queries = [stats, settings, version, accounts, trend, failures, alerts];
   const loading = stats.isLoading || accounts.isLoading;
   const error = stats.error || accounts.error;
+  const hasPrimaryData = Boolean(stats.data || accounts.data);
+  const refreshError = error || settings.error || version.error || trend.error || failures.error || alerts.error;
   const refreshing = queries.some((query) => query.isRefetching);
   const refresh = () => { queries.forEach((query) => void query.refetch()); };
   const accountItems = accounts.data?.items ?? [];
-  const totalAccounts = stats.data?.total_accounts ?? accounts.data?.total ?? 0;
-  const availableAccounts = stats.data?.normal_accounts ?? accountItems.filter((item) => item.status !== 'error' && item.schedulable !== false).length;
-  const abnormal = stats.data?.error_accounts ?? accountItems.filter((item) => item.status === 'error' || Boolean(item.error_message)).length;
+  const totalAccounts = stats.data?.total_accounts ?? accounts.data?.total;
+  const availableAccounts = stats.data?.normal_accounts ?? (accountItems.length ? accountItems.filter((item) => item.status !== 'error' && item.schedulable !== false).length : undefined);
+  // The stats endpoint reports the whole instance, while the list endpoint is
+  // scoped to the rows returned to this screen. Prefer the larger observed
+  // value so an account carrying a concrete error_message cannot be hidden by
+  // a stale aggregate value of zero. The card remains explicit about the
+  // scope when only the current page supplied the evidence.
+  const listedAbnormal = accountItems.filter((item) => item.status === 'error' || Boolean(item.error_message)).length;
+  const reportedAbnormal = isFiniteNumber(stats.data?.error_accounts) && stats.data!.error_accounts >= 0 ? stats.data!.error_accounts : undefined;
+  const abnormal = reportedAbnormal === undefined ? (listedAbnormal > 0 ? listedAbnormal : undefined) : Math.max(reportedAbnormal, listedAbnormal);
   const trendItems = trend.data?.trend ?? [];
-  const trendValues = trendItems.map((point) => {
-    const value = trendMetric === 'requests' ? point.requests : trendMetric === 'total_tokens' ? point.total_tokens : point.actual_cost;
-    return typeof value === 'number' && Number.isFinite(value) ? value : 0;
-  });
-  const trendMax = Math.max(...trendValues, 1);
-  const trendLatest = trendValues.length ? trendValues[trendValues.length - 1] : undefined;
-  const trendFirst = trendValues.find((value) => value > 0);
-  const trendDelta = typeof trendLatest === 'number' && typeof trendFirst === 'number' && trendFirst > 0 ? `${((trendLatest - trendFirst) / trendFirst * 100 >= 0 ? '+' : '')}${((trendLatest - trendFirst) / trendFirst * 100).toFixed(1)}%` : '--';
-  const accountTrend = accountItems.map((item) => item.current_concurrency ?? 0);
+  const trendPoints = trendItems.map((point) => ({ date: point.date, value: trendMetric === 'requests' ? point.requests : trendMetric === 'total_tokens' ? point.total_tokens : point.actual_cost }));
+  const accountTrend = accountItems.map((item) => item.current_concurrency).filter(isFiniteNumber);
   const alertItems = alerts.data ?? [];
   const alertsAvailable = Array.isArray(alerts.data);
   const unresolvedAlerts = alertsAvailable ? alertItems.filter((item) => item.status !== 'resolved' && item.status !== 'manual_resolved') : [];
@@ -111,37 +148,37 @@ export default function MonitorScreen() {
   const recoveredAlerts = alertsAvailable ? alertItems.filter((item) => item.status === 'resolved' || item.status === 'manual_resolved') : [];
 
   return <Page title="运营概览" subtitle={`${settings.data?.site_name || 'Vexlune Hub'} · ${version.data?.version || '版本未知'}`} refreshing={refreshing} onRefresh={refresh} right={<Pressable accessibilityLabel="refresh-dashboard" onPress={refresh} style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: theme.cardRaised, alignItems: 'center', justifyContent: 'center' }}><RefreshCw color={theme.primary} size={19} /></Pressable>}>
-    <StateCard loading={loading} error={error} onRetry={refresh} />
-    {!loading && !error ? <>
+    <StateCard loading={loading} error={!hasPrimaryData ? refreshError : undefined} onRetry={refresh} />
+    {!loading && (hasPrimaryData || !refreshError) ? <>
+      <RefreshError error={hasPrimaryData ? refreshError : undefined} onRetry={refresh} />
       <Card style={{ paddingVertical: 15 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}><View style={{ width: 34, height: 34, borderRadius: 12, backgroundColor: theme.successSoft, alignItems: 'center', justifyContent: 'center' }}><CircleCheck color={theme.success} size={19} /></View><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '900' }}>Hub 服务状态</Text><Text style={{ color: theme.subtext, fontSize: 12, marginTop: 4 }}>{uptimeLabel(version.data?.uptime) || `最近刷新于 ${new Date().toLocaleTimeString('zh-CN')}`}</Text></View><Badge label="ONLINE" tone="success" /><ChevronRight color={theme.faint} size={17} /></View>
-        {abnormal > 0 ? <Pressable onPress={() => router.push('/exceptions')} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.border }}><AlertTriangle color={theme.danger} size={15} /><Text style={{ flex: 1, color: theme.danger, fontSize: 12, fontWeight: '700' }}>{`${abnormal} 个上游账号需要处理`}</Text><Text style={{ color: theme.danger, fontSize: 12, fontWeight: '800' }}>查看异常</Text><ChevronRight color={theme.danger} size={15} /></Pressable> : null}
+        {abnormal !== undefined && abnormal > 0 ? <Pressable onPress={() => router.push('/exceptions')} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.border }}><AlertTriangle color={theme.danger} size={15} /><Text style={{ flex: 1, color: theme.danger, fontSize: 12, fontWeight: '700' }}>{`${abnormal} 个上游账号需要处理`}</Text><Text style={{ color: theme.danger, fontSize: 12, fontWeight: '800' }}>查看异常</Text><ChevronRight color={theme.danger} size={15} /></Pressable> : null}
       </Card>
 
       <SectionHeader title="今日核心指标" />
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <KpiCard icon={Server} label="在线节点" value={`${count(availableAccounts)} / ${count(totalAccounts)}`} tone="success" values={accountTrend} />
-        <KpiCard icon={Activity} label="请求 / 分钟" value={count(stats.data?.rpm)} trend={trendDelta} values={trendItems.map((point) => point.requests)} />
+        <KpiCard icon={Activity} label="请求 / 分钟" value={count(stats.data?.rpm)} values={trendItems.map((point) => point.requests).filter(isFiniteNumber)} />
         <KpiCard icon={Layers3} label="Token / 分钟" value={count(stats.data?.tpm)} tone="warning" />
       </View>
 
-      <SectionHeader title="近 7 天趋势" action={trendDelta === '--' ? undefined : `${trendDelta} · ${trendMetric === 'requests' ? '请求量' : trendMetric === 'total_tokens' ? 'Token' : '实际计费'}`} />
+      <SectionHeader title="近 7 天趋势" />
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ flexDirection: 'row', gap: 7 }}>
             {([['requests', '请求量'], ['total_tokens', 'Token'], ['actual_cost', '实际计费']] as const).map(([value, label]) => <Pressable key={value} onPress={() => setTrendMetric(value)} style={{ borderRadius: 999, backgroundColor: trendMetric === value ? theme.primary : theme.cardRaised, paddingHorizontal: 11, paddingVertical: 7 }}><Text style={{ color: trendMetric === value ? '#FFFFFF' : theme.subtext, fontSize: 11, fontWeight: '800' }}>{label}</Text></Pressable>)}
           </View>
-          <Text style={{ color: theme.subtext, fontSize: 11 }}>{range.start_date.slice(5)}–{range.end_date.slice(5)}</Text>
+          <Text style={{ color: theme.subtext, fontSize: 11 }}>{range.start_date.slice(5)}–{range.end_date.slice(5)}（含今日）</Text>
         </View>
-        {trendValues.length ? <View style={{ height: 128, flexDirection: 'row', alignItems: 'flex-end', gap: 5, marginTop: 18 }}>{trendValues.map((value, index) => <View key={`${trend.data?.trend[index]?.date ?? index}`} accessibilityLabel={`trend-${index}`} style={{ flex: 1, minHeight: 4, height: `${Math.max(5, (value / trendMax) * 100)}%`, borderRadius: 4, backgroundColor: index === trendValues.length - 1 ? theme.primary : theme.primarySoft }} />)}</View> : <Text style={{ color: theme.subtext, textAlign: 'center', paddingVertical: 28 }}>当前时间范围没有趋势数据</Text>}
-        {trendLatest !== undefined ? <Text style={{ color: theme.text, fontSize: 12, fontWeight: '800', marginTop: 11 }}>{trendMetric === 'requests' ? `${count(trendLatest)} 次请求` : trendMetric === 'total_tokens' ? `${count(trendLatest)} Token` : money(trendLatest)}</Text> : null}
+        <TrendChart points={trendPoints} unit={trendMetric === 'requests' ? '次' : trendMetric === 'total_tokens' ? 'Token' : '金额'} today={range.end_date} />
       </Card>
 
       <SectionHeader title="服务状态" action="查看全部" onAction={() => router.push('/accounts')} />
       <Card>
         <View style={{ gap: 10 }}>{accountItems.slice(0, 4).map((account) => {
           const unhealthy = account.status === 'error' || account.schedulable === false || Boolean(account.error_message);
-          return <Pressable key={account.id} onPress={() => router.push(`/accounts/${account.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 3 }}><View style={{ width: 32, height: 32, borderRadius: 11, backgroundColor: unhealthy ? theme.warningSoft : theme.primarySoft, alignItems: 'center', justifyContent: 'center' }}><KeyRound color={unhealthy ? theme.warning : theme.primary} size={16} /></View><View style={{ flex: 1 }}><Text numberOfLines={1} style={{ color: theme.text, fontSize: 13, fontWeight: '900' }}>{account.name}</Text><Text numberOfLines={1} style={{ color: theme.subtext, fontSize: 11, marginTop: 3 }}>{`${account.platform} · 并发 ${account.current_concurrency ?? 0}/${account.concurrency ?? '--'}`}</Text></View><Badge label={unhealthy ? '需处理' : '运行中'} tone={unhealthy ? 'warning' : 'success'} /><ChevronRight color={theme.faint} size={16} /></Pressable>;
+          return <Pressable key={account.id} onPress={() => router.push(`/accounts/${account.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 3 }}><View style={{ width: 32, height: 32, borderRadius: 11, backgroundColor: unhealthy ? theme.warningSoft : theme.primarySoft, alignItems: 'center', justifyContent: 'center' }}><KeyRound color={unhealthy ? theme.warning : theme.primary} size={16} /></View><View style={{ flex: 1 }}><Text numberOfLines={1} style={{ color: theme.text, fontSize: 13, fontWeight: '900' }}>{account.name}</Text><Text numberOfLines={1} style={{ color: theme.subtext, fontSize: 11, marginTop: 3 }}>{`${account.platform} · 并发 ${isFiniteNumber(account.current_concurrency) ? account.current_concurrency : '--'}/${isFiniteNumber(account.concurrency) ? account.concurrency : '--'}`}</Text></View><Badge label={unhealthy ? '需处理' : '运行中'} tone={unhealthy ? 'warning' : 'success'} /><ChevronRight color={theme.faint} size={16} /></Pressable>;
         })}</View>
         <Pressable onPress={() => router.push('/accounts')} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingTop: 11, borderTopWidth: 1, borderTopColor: theme.border }}><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '800' }}>管理上游账号</Text><ChevronRight color={theme.primary} size={15} /></Pressable>
       </Card>

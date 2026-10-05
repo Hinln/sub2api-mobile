@@ -150,7 +150,7 @@ export default function LoginScreen() {
                 <TextInput accessibilityLabel="admin-api-key" value={adminKey} onChangeText={(value) => { setAdminKey(value); setError(''); }} autoCapitalize="none" autoCorrect={false} secureTextEntry={!showKey} textContentType="password" placeholder="admin-••••••••" placeholderTextColor={authColors.faint} onSubmitEditing={() => void submit()} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 15, fontSize: 15, letterSpacing: 0.4 }} />
                 <Pressable accessibilityLabel="toggle-admin-key" onPress={() => setShowKey((value) => !value)} style={{ padding: 13 }}>{showKey ? <EyeOff color={authColors.subtext} size={19} /> : <Eye color={authColors.subtext} size={19} />}</Pressable>
               </View>
-              <Text style={{ color: authColors.subtext, fontSize: 11, lineHeight: 17, marginTop: 6 }}>凭据仅保存在本机安全存储，并通过 HTTPS 发送到官方管理接口。</Text>
+              <Text style={{ color: authColors.subtext, fontSize: 11, lineHeight: 17, marginTop: 6 }}>验证后优先保存至设备安全存储；未提供 Keychain 权限的模拟器仅保留在本次运行内存。请求通过 HTTPS 的 x-api-key 发送到官方管理接口。</Text>
             </View>
 
             {error ? <Text accessibilityLiveRegion="polite" style={{ color: authColors.danger, fontSize: 13, lineHeight: 19, marginTop: 14 }}>{error}</Text> : null}
@@ -159,7 +159,7 @@ export default function LoginScreen() {
           </View>
 
           <View style={{ alignItems: 'center', marginTop: 24 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}><ShieldCheck color="#7C91B8" size={14} /><Text style={{ color: '#8798BA', fontSize: 11 }}>端到端加密 · 管理员专用</Text></View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}><ShieldCheck color="#7C91B8" size={14} /><Text style={{ color: '#8798BA', fontSize: 11 }}>HTTPS 加密传输 · 管理员专用</Text></View>
             <Text style={{ color: '#8295BA', fontSize: 10, letterSpacing: 4, marginTop: 23 }}>VEXLUNE HUB</Text>
             <Text style={{ color: '#9AA8C4', fontSize: 9, letterSpacing: 2, marginTop: 6 }}>ADMINISTRATOR CONSOLE</Text>
           </View>

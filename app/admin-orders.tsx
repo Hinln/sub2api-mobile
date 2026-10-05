@@ -5,7 +5,7 @@ import { Activity, CircleDollarSign, Clock3, FileText, RefreshCw, RotateCcw, XCi
 
 import { Badge, Card, Metric, Page, SectionTitle, StateCard } from '@/src/components/ui';
 import { humanizeApiError } from '@/src/lib/admin-fetch';
-import { formatOptionalMoney, formatOptionalNumber } from '@/src/lib/formatters';
+import { formatOptionalNumber } from '@/src/lib/formatters';
 import { newIdempotencyKey } from '@/src/lib/idempotency';
 import { cancelAdminPaymentOrder, getAdminPaymentDashboard, listAdminPaymentOrders, queryAdminPaymentRefund, refundAdminPaymentOrder, retryAdminPaymentOrder, type AdminPaymentOrder } from '@/src/services/admin-extended';
 import { theme } from '@/src/theme';
@@ -29,6 +29,24 @@ function formatAmounts(amounts?: Record<string, number>) {
       return `${currency} ${value.toFixed(2)}`;
     }
   }).join(' · ');
+}
+
+function formatOrderAmount(value: unknown, currency?: string) {
+  if (value === null || value === undefined || value === '') return '--';
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '--';
+  if (!currency) return `${number.toFixed(4)}（币种未返回）`;
+  try {
+    return new Intl.NumberFormat('zh-CN', { style: 'currency', currency }).format(number);
+  } catch {
+    return `${currency} ${number.toFixed(4)}`;
+  }
+}
+
+function formatCreditedAmount(value: unknown) {
+  if (value === null || value === undefined || value === '') return '--';
+  const number = Number(value);
+  return Number.isFinite(number) ? new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'USD' }).format(number) : '--';
 }
 
 function statusLabel(status?: string) {
@@ -67,7 +85,7 @@ export default function AdminOrdersScreen() {
   }
 
   const daily = data?.daily_series ?? [];
-  const dailyCounts = daily.map((point) => point.count ?? 0);
+  const dailyCounts = daily.map((point) => point.count).filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
   const maxDaily = Math.max(...dailyCounts, 1);
 
   return <Page title="订单与收入" subtitle="支付概览 · 账单流水 · 退款处理" refreshing={dashboard.isRefetching || orders.isRefetching} onRefresh={() => { void dashboard.refetch(); void orders.refetch(); }}>
@@ -75,15 +93,16 @@ export default function AdminOrdersScreen() {
     {action.error ? <Text style={{ color: theme.danger }}>{humanizeApiError(action.error)}</Text> : null}
 
     <View style={{ flexDirection: 'row', gap: 8 }}>
-      <Metric icon={CircleDollarSign} label="今日收入" value={formatAmounts(data?.today_amount)} tone="success" />
+      <Metric icon={CircleDollarSign} label="今日实付" value={formatAmounts(data?.today_amount)} tone="success" />
       <Metric icon={FileText} label="今日订单" value={formatOptionalNumber(data?.today_count)} />
       <Metric icon={Clock3} label="待处理" value={formatOptionalNumber(data?.pending_orders)} tone="warning" />
-      <Metric icon={Activity} label="总流水" value={formatAmounts(data?.total_amount)} />
+      <Metric icon={Activity} label="累计实付" value={formatAmounts(data?.total_amount)} />
     </View>
+    <Text style={{ color: theme.faint, fontSize: 10, lineHeight: 15, marginTop: 8 }}>实付统计读取服务端 pay_amount 与订单币种；订单卡片同时标明到账额度（amount，官方按 USD 计价）。“--”表示字段未返回，“0”表示服务端明确返回 0。</Text>
 
     <SectionTitle title="近 30 天订单趋势" action={daily.length ? `共 ${formatOptionalNumber(data?.total_count)} 单` : undefined} />
     <Card>
-      {daily.length ? <><View style={{ height: 112, flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>{daily.slice(-30).map((point, index) => <View key={`${point.date}-${index}`} accessibilityLabel={`order-trend-${index}`} style={{ flex: 1, minHeight: 4, height: `${Math.max(5, ((point.count ?? 0) / maxDaily) * 100)}%`, borderRadius: 4, backgroundColor: index === daily.slice(-30).length - 1 ? theme.primary : theme.primarySoft }} />)}</View><View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 9 }}><Text style={{ color: theme.faint, fontSize: 10 }}>{daily[0]?.date?.slice(5) || '--'}</Text><Text style={{ color: theme.faint, fontSize: 10 }}>{daily[daily.length - 1]?.date?.slice(5) || '--'}</Text></View><Text style={{ color: theme.subtext, fontSize: 11, marginTop: 8 }}>每日订单数量（按服务端支付统计返回）</Text></> : <Text style={{ color: theme.subtext, textAlign: 'center', paddingVertical: 24 }}>当前时间范围没有趋势数据</Text>}
+      {daily.length ? <><View style={{ height: 112, flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>{daily.slice(-30).map((point, index) => <View key={`${point.date}-${index}`} accessibilityLabel={`order-trend-${index}`} style={{ flex: 1, minHeight: 4, height: `${typeof point.count === 'number' && Number.isFinite(point.count) ? Math.max(5, (point.count / maxDaily) * 100) : 4}%`, borderRadius: 4, backgroundColor: typeof point.count !== 'number' || !Number.isFinite(point.count) ? theme.muted : index === daily.slice(-30).length - 1 ? theme.primary : theme.primarySoft }} />)}</View><View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 9 }}><Text style={{ color: theme.faint, fontSize: 10 }}>{daily[0]?.date?.slice(5) || '--'}</Text><Text style={{ color: theme.faint, fontSize: 10 }}>{daily[daily.length - 1]?.date?.slice(5) || '--'}</Text></View><Text style={{ color: theme.subtext, fontSize: 11, marginTop: 8 }}>每日订单数量（按服务端支付统计返回）</Text></> : <Text style={{ color: theme.subtext, textAlign: 'center', paddingVertical: 24 }}>当前时间范围没有趋势数据</Text>}
     </Card>
 
     <SectionTitle title="订单列表" action={<Text style={{ color: theme.subtext, fontSize: 12 }}>{orders.data ? `共 ${formatOptionalNumber(orders.data.total)} 条` : '正在统计'}</Text>} />
@@ -96,7 +115,7 @@ export default function AdminOrdersScreen() {
       const canRetry = normalized === 'FAILED';
       const canRefund = ['COMPLETED', 'PARTIALLY_REFUNDED', 'REFUND_REQUESTED', 'REFUND_FAILED'].includes(normalized);
       const refundPending = normalized === 'REFUND_PENDING' || normalized === 'REFUNDING';
-      return <Card key={item.id} style={{ padding: 15 }}><View style={{ flexDirection: 'row', gap: 11, alignItems: 'flex-start' }}><View style={{ width: 39, height: 39, borderRadius: 13, backgroundColor: state.tone === 'danger' ? theme.dangerSoft : state.tone === 'warning' ? theme.warningSoft : theme.primarySoft, alignItems: 'center', justifyContent: 'center' }}><CircleDollarSign color={state.tone === 'danger' ? theme.danger : state.tone === 'warning' ? theme.warning : theme.primary} size={18} /></View><View style={{ flex: 1, minWidth: 0 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Text numberOfLines={1} style={{ flex: 1, color: theme.text, fontWeight: '900' }}>#{item.out_trade_no || item.id}</Text><Badge label={state.label} tone={state.tone} /></View><Text numberOfLines={1} style={{ color: theme.subtext, fontSize: 12, marginTop: 5 }}>{item.user_email || item.user_name || '--'} · {paymentLabel(item.payment_type)}</Text><Text style={{ color: theme.faint, fontSize: 11, marginTop: 6 }}>{formatOptionalMoney(item.pay_amount ?? item.amount)} · {item.created_at ? new Date(item.created_at).toLocaleString('zh-CN') : '--'}</Text></View><Pressable accessibilityLabel="refresh-orders" onPress={() => void orders.refetch()} style={{ padding: 7 }}><RefreshCw color={theme.primary} size={16} /></Pressable></View>{canCancel || canRetry || canRefund || refundPending ? <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>{canCancel ? <Pressable disabled={action.isPending} onPress={() => confirm(item, 'cancel')} style={{ flex: 1, borderRadius: 10, paddingVertical: 9, backgroundColor: theme.dangerSoft, alignItems: 'center' }}><XCircle color={theme.danger} size={14} /><Text style={{ color: theme.danger, fontSize: 12, fontWeight: '800' }}>取消</Text></Pressable> : null}{canRetry ? <Pressable disabled={action.isPending} onPress={() => confirm(item, 'retry')} style={{ flex: 1, borderRadius: 10, paddingVertical: 9, backgroundColor: theme.primarySoft, alignItems: 'center' }}><RotateCcw color={theme.primary} size={14} /><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '800' }}>重试履约</Text></Pressable> : null}{canRefund ? <Pressable disabled={action.isPending} onPress={() => confirm(item, 'refund')} style={{ flex: 1, borderRadius: 10, paddingVertical: 9, backgroundColor: theme.warningSoft, alignItems: 'center' }}><Text style={{ color: theme.warning, fontSize: 12, fontWeight: '800' }}>退款</Text></Pressable> : null}{refundPending ? <Pressable disabled={action.isPending} onPress={() => queryRefund(item)} style={{ flex: 1, borderRadius: 10, paddingVertical: 9, backgroundColor: theme.warningSoft, alignItems: 'center' }}><Text style={{ color: theme.warning, fontSize: 12, fontWeight: '800' }}>查询退款状态</Text></Pressable> : null}</View> : null}</Card>;
+      return <Card key={item.id} style={{ padding: 15 }}><View style={{ flexDirection: 'row', gap: 11, alignItems: 'flex-start' }}><View style={{ width: 39, height: 39, borderRadius: 13, backgroundColor: state.tone === 'danger' ? theme.dangerSoft : state.tone === 'warning' ? theme.warningSoft : theme.primarySoft, alignItems: 'center', justifyContent: 'center' }}><CircleDollarSign color={state.tone === 'danger' ? theme.danger : state.tone === 'warning' ? theme.warning : theme.primary} size={18} /></View><View style={{ flex: 1, minWidth: 0 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Text numberOfLines={1} style={{ flex: 1, color: theme.text, fontWeight: '900' }}>#{item.out_trade_no || item.id}</Text><Badge label={state.label} tone={state.tone} /></View><Text numberOfLines={1} style={{ color: theme.subtext, fontSize: 12, marginTop: 5 }}>{item.user_email || item.user_name || '--'} · {paymentLabel(item.payment_type)}</Text><Text style={{ color: theme.text, fontSize: 12, fontWeight: '800', marginTop: 7 }}>实付：{formatOrderAmount(item.pay_amount, item.currency)}</Text><Text style={{ color: theme.faint, fontSize: 11, marginTop: 3 }}>到账额度：{formatCreditedAmount(item.amount)} · {item.created_at ? new Date(item.created_at).toLocaleString('zh-CN') : '--'}</Text></View><Pressable accessibilityLabel="refresh-orders" onPress={() => void orders.refetch()} style={{ padding: 7 }}><RefreshCw color={theme.primary} size={16} /></Pressable></View>{canCancel || canRetry || canRefund || refundPending ? <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>{canCancel ? <Pressable disabled={action.isPending} onPress={() => confirm(item, 'cancel')} style={{ flex: 1, borderRadius: 10, paddingVertical: 9, backgroundColor: theme.dangerSoft, alignItems: 'center' }}><XCircle color={theme.danger} size={14} /><Text style={{ color: theme.danger, fontSize: 12, fontWeight: '800' }}>取消</Text></Pressable> : null}{canRetry ? <Pressable disabled={action.isPending} onPress={() => confirm(item, 'retry')} style={{ flex: 1, borderRadius: 10, paddingVertical: 9, backgroundColor: theme.primarySoft, alignItems: 'center' }}><RotateCcw color={theme.primary} size={14} /><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '800' }}>重试履约</Text></Pressable> : null}{canRefund ? <Pressable disabled={action.isPending} onPress={() => confirm(item, 'refund')} style={{ flex: 1, borderRadius: 10, paddingVertical: 9, backgroundColor: theme.warningSoft, alignItems: 'center' }}><Text style={{ color: theme.warning, fontSize: 12, fontWeight: '800' }}>退款</Text></Pressable> : null}{refundPending ? <Pressable disabled={action.isPending} onPress={() => queryRefund(item)} style={{ flex: 1, borderRadius: 10, paddingVertical: 9, backgroundColor: theme.warningSoft, alignItems: 'center' }}><Text style={{ color: theme.warning, fontSize: 12, fontWeight: '800' }}>查询退款状态</Text></Pressable> : null}</View> : null}</Card>;
     })}</View>
   </Page>;
 }
