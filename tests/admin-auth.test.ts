@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.mock('expo-secure-store', () => ({}));
 vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
 
-import { acceptAdminCompliance, getAdminComplianceStatus, validateAdminApiKey } from '@/src/services/admin-auth';
+import { acceptAdminCompliance, getAdminComplianceStatus, validateAdminApiKey, ADMIN_KEY_VALIDATION_TIMEOUT_MS } from '@/src/services/admin-auth';
 import { clearSession, sessionState } from '@/src/auth/session';
 import { humanizeApiError } from '@/src/lib/admin-fetch';
 
@@ -39,6 +39,31 @@ describe('Admin API Key authentication', () => {
     expect(error).toMatchObject({ status: 401, code: 'INVALID_ADMIN_KEY' });
     expect(humanizeApiError(error)).toContain('无效');
     expect(sessionState.adminApiKey).toBe('');
+  });
+
+  it('allows the slow first edge response observed in production', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => new Promise((resolve, reject) => {
+        const responseTimer = setTimeout(() => resolve(new Response(JSON.stringify({
+          code: 0,
+          data: { exists: true, masked_key: 'admin-••••1234' },
+        }), { status: 200, headers: { 'content-type': 'application/json' } })), 33_800);
+        init?.signal?.addEventListener('abort', () => {
+          clearTimeout(responseTimer);
+          reject(new DOMException('Aborted', 'AbortError'));
+        }, { once: true });
+      }));
+
+      const pending = validateAdminApiKey('admin-slow-edge-key');
+      await vi.advanceTimersByTimeAsync(33_800);
+      await expect(pending).resolves.toMatchObject({ exists: true });
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(ADMIN_KEY_VALIDATION_TIMEOUT_MS).toBeGreaterThan(33_800);
+      expect(sessionState.adminApiKey).toBe('admin-slow-edge-key');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('keeps compliance requests on the official key header and sends the explicit phrase', async () => {

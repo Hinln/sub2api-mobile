@@ -7,7 +7,7 @@
 | `pnpm install --frozen-lockfile --offline --ignore-scripts` | 通过 |
 | TypeScript `pnpm exec tsc --noEmit` | 通过（使用工作区 bundled Node 运行时） |
 | ESLint `pnpm exec expo lint` | 通过，0 error、0 warning |
-| Vitest `pnpm exec vitest run` | 12 文件、64 测试通过 |
+| Vitest `pnpm exec vitest run` | 12 文件、65 测试通过 |
 | Expo Web `pnpm exec expo export --platform web` | 通过，Metro 处理 3014 个模块 |
 | iOS 原生工程 | 已提交 `ios/`；构建流程不运行 Expo prebuild |
 | iOS Simulator Release | 通过；产物包含 arm64/x86_64 |

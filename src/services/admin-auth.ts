@@ -1,6 +1,15 @@
 import { clearAdminApiKey, saveAdminApiKey, sessionState } from '@/src/auth/session';
 import { adminFetch, ApiError } from '@/src/lib/admin-fetch';
 
+/**
+ * Cloudflare can take longer than the normal 15 second API budget to finish
+ * the first edge/QUIC request. The production probe observed a successful
+ * admin-key status response after roughly 34 seconds, so the one-shot login
+ * validation gets the documented 60 second caller override. Other admin
+ * requests keep the normal client timeout.
+ */
+export const ADMIN_KEY_VALIDATION_TIMEOUT_MS = 60_000;
+
 /** Response returned by the official v0.2.13 admin key status endpoint. */
 export type AdminApiKeyStatus = {
   exists: boolean;
@@ -29,6 +38,7 @@ export async function validateAdminApiKey(value: string): Promise<AdminApiKeySta
   const status = await adminFetch<AdminApiKeyStatus>('/api/v1/admin/settings/admin-api-key', {}, {
     adminApiKey,
     retry: 0,
+    timeoutMs: ADMIN_KEY_VALIDATION_TIMEOUT_MS,
   });
 
   if (!status || status.exists !== true || typeof status.masked_key !== 'string') {

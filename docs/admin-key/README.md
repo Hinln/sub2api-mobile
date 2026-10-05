@@ -45,6 +45,8 @@ Accept: application/json
 
 - 首屏只收集 Admin Key；空值不发请求。
 - 首次验证只使用 `x-api-key`，不同时发送 Bearer。
+- 首次验证单独允许最长 60 秒，以覆盖已观察到的 Cloudflare/HTTP2 首次边缘连接
+  延迟；其他管理请求仍使用 15 秒客户端预算，不做无限重试。
 - 成功后保存到 iOS SecureStore/Keychain，并使用
   `WHEN_UNLOCKED_THIS_DEVICE_ONLY`。key 不进入 AsyncStorage、Query cache、URL、
   JSON body、剪贴板、截图、分析事件或崩溃报告。

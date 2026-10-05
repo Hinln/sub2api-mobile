@@ -17,7 +17,7 @@
 | 阶段 | 预期证据 | 当前状态 |
 |---|---|---|
 | 输入 | 空值不发请求；完整 key 只在内存中 trim | 源码已实现；需设备操作记录 |
-| 验证 | `GET /api/v1/admin/settings/admin-api-key`，仅 `x-api-key` header | 源码与 `tests/admin-auth.test.ts` 覆盖；真实 Hub 请求待批准环境执行 |
+| 验证 | `GET /api/v1/admin/settings/admin-api-key`，仅 `x-api-key` header | 源码与 `tests/admin-auth.test.ts` 覆盖；首次 Cloudflare/HTTP2 边缘请求允许单次 60 秒预算；真实 Hub Key 联调仍待批准环境执行 |
 | 成功 | `code: 0` 且 `data.exists === true` 后才写 SecureStore | 源码已实现；未把 key 写入日志/URL/body |
 | 401 | `INVALID_ADMIN_KEY` 清理本地 key，停留在 key 页 | 源码/测试覆盖；需设备确认 UI |
 | 403 | 服务端拒绝操作，保留会话并显示权限错误 | 错误映射已实现；需服务端策略场景验证 |
@@ -32,11 +32,12 @@
 |---|---|
 | Admin Key service tests | `tests/admin-auth.test.ts` 覆盖成功验证、只发 `x-api-key`、拒绝 key 不落盘；使用工作区 Node 运行通过。 |
 | Admin fetch tests | `tests/admin-fetch.test.ts` 覆盖 header 覆盖、401/403、Cloudflare HTML、request ID、重试边界；通过。 |
-| TypeScript/ESLint/Vitest | `pnpm typecheck`、`pnpm lint -- --no-fix`、`pnpm exec vitest run` 通过；12 个测试文件、64 项测试通过。 |
+| TypeScript/ESLint/Vitest | `pnpm typecheck`、`pnpm lint -- --no-fix`、`pnpm exec vitest run` 通过；12 个测试文件、65 项测试通过。 |
 | 生产占位扫描 | `sh scripts/verify-production-scan.sh` 通过。 |
 | Web build | `pnpm web:build` 通过；Playwright 视觉测试未启动，因为本机未安装 Chromium headless shell。 |
 | iOS build | 原生 Xcode/CocoaPods simulator Release build 通过，未使用 Expo/EAS 云构建；安装并启动 iPhone 17 Pro Max simulator 后截图确认管理员 Key 首屏。 |
 | Production probe | 使用无效占位凭据验证：`x-api-key` 返回 `401 INVALID_ADMIN_KEY`，Bearer 形式返回 `401 INVALID_TOKEN`；只记录脱敏 request ID。真实 Admin Key 成功联调仍待用户提供可撤销凭据并明确批准。 |
+| Simulator timeout evidence | iPhone 17 Pro Max simulator 的同一路径通过 CFNetwork/HTTP2 在约 33.767 秒后返回 HTTP 200；APP 原 15 秒 AbortController 在响应前触发 `REQUEST_TIMEOUT`。验证请求现为单次 60 秒预算，并有慢响应回归测试。 |
 
 ## 必测 iOS 场景
 

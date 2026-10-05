@@ -58,6 +58,7 @@ export default function LoginScreen() {
     if (status === 423 || code === 'ADMIN_COMPLIANCE_ACK_REQUIRED') return '管理员合规确认尚未完成，请先在管理后台完成确认。';
     if (status === 403 || code === 'FORBIDDEN') return '此 Admin Key 没有管理员权限。';
     if (status === 429 || code === 'RATE_LIMITED') return '尝试次数过多，请稍后再试。';
+    if (candidate?.message === 'REQUEST_TIMEOUT') return '服务器响应较慢，请检查网络连接后重试。';
     if (typeof candidate?.message === 'string' && candidate.message.trim()) return candidate.message;
     return '验证失败，请检查网络后重试。';
   }
