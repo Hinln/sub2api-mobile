@@ -40,7 +40,7 @@
 | frontend `pnpm typecheck` | 通过 |
 | frontend `pnpm build` | 通过，生成 `MobileTurnstileView` 资源 |
 | frontend local HTTP smoke | 通过，`/mobile/turnstile#...` 返回 `200 text/html`，入口 bundle 含 `MobileTurnstile` |
-| 官方 `v0.2.13` 干净补丁 | 通过 | 在 tag `3040209f205472038c1ba745a1bedd2edd9053b1` 的 `codex/v0.2.13-turnstile` 工作树应用最小前端补丁，`git apply --check`、`vue-tsc --noEmit`、changed-file ESLint、路由守卫回归（35 tests）和 `vite build` 均通过；产物含 `MobileTurnstileView-BLrKhilV.js`，未部署或修改生产。完整前端测试基线为 335 files / 2585 passed / 3 unrelated failures（平台配额期望 5 个但当前 v0.2.13 源码返回 6 个）。 |
+| 官方 `v0.2.13` 干净补丁 | 通过 | 在 tag `3040209f205472038c1ba745a1bedd2edd9053b1` 的 `codex/v0.2.13-turnstile` 分支应用最小前端补丁，该分支已推送到 `Hinln/sub2api`；`git apply --check`、`vue-tsc --noEmit`、changed-file ESLint、路由守卫回归（35 tests）和 `vite build` 均通过。产物含 `MobileTurnstileView-BLrKhilV.js`，未部署或修改生产。完整前端测试基线为 335 files / 2585 passed / 3 unrelated failures（平台配额期望 5 个但当前 v0.2.13 源码返回 6 个）。 |
 | iOS 原生 Xcode Release Simulator 构建 | 通过，`VexluneMobileConsole.app` |
 | iOS 模拟器安装启动 | 通过，bundle `com.vexlune.mobile` |
 | 当前 URI 提交签名 IPA | 通过，提交 `ee85bf0`，SHA-256 `1eb5ccf90baf7972324cd1e8ce10283ab6181cd373e0e6558ecea2d8f292facd`，dSYM UUID `54E47192-6BBA-32DC-AFE3-F059DA104365` |
