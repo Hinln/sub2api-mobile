@@ -10,7 +10,7 @@ export type UserAnnouncement = { id: number; title: string; content: string; not
 export type UserSubscription = Record<string, unknown> & { id: number; status?: string; group_name?: string; expires_at?: string };
 export type CheckoutPlan = { id: number; group_id: number; name: string; description?: string; price: number; original_price?: number | null; currency?: string; validity_days?: number; validity_unit?: string; features?: string | string[]; product_name?: string };
 export type CheckoutInfo = { methods?: Record<string, { enabled?: boolean; min?: number; max?: number }>; global_min?: number; global_max?: number; plans: CheckoutPlan[]; balance_disabled?: boolean; help_text?: string; stripe_publishable_key?: string };
-export type PaymentOrder = { id?: number; order_id?: number; amount: number; pay_amount?: number; currency?: string; payment_type: string; out_trade_no: string; status: string; order_type?: string; plan_id?: number | null; created_at?: string; expires_at?: string; paid_at?: string | null; completed_at?: string | null };
+export type PaymentOrder = { id?: number; order_id?: number; amount: number; pay_amount?: number; currency?: string; payment_type: string; out_trade_no: string; status: string; order_type?: string; plan_id?: number | null; provider_instance_id?: string; refund_amount?: number; refund_reason?: string; refund_requested_at?: string; refund_request_reason?: string; created_at?: string; expires_at?: string; paid_at?: string | null; completed_at?: string | null };
 export type PaymentOAuthInfo = {
   authorize_url?: string;
   app_id?: string;
@@ -181,6 +181,7 @@ export function getActiveSubscriptionSummary() { return adminFetch<{ active_coun
 
 export function getCheckoutInfo() { return adminFetch<CheckoutInfo>('/api/v1/payment/checkout-info'); }
 export function listPaymentOrders(params: { page?: number; page_size?: number; status?: string } = {}) { return adminFetch<PaginatedData<PaymentOrder>>(`/api/v1/payment/orders/my${buildQuery({ page: params.page ?? 1, page_size: params.page_size ?? 20, status: params.status })}`); }
+export function getRefundEligibleProviders() { return adminFetch<{ provider_instance_ids: string[] }>('/api/v1/payment/orders/refund-eligible-providers'); }
 export function createPaymentOrder(body: { amount: number; payment_type: string; order_type?: string; plan_id?: number; is_mobile?: boolean }, idempotencyKey?: string) {
   return adminFetch<PaymentCreateResponse>('/api/v1/payment/orders', { method: 'POST', body: JSON.stringify({ ...body, is_mobile: true }) }, { idempotencyKey });
 }

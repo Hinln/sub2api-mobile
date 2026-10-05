@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { listAccounts, listUsageLogs, listUsers } from '@/src/services/admin';
 import { listAdminPaymentOrders, listAlertEvents, queryAdminPaymentRefund } from '@/src/services/admin-extended';
+import { getRefundEligibleProviders, requestPaymentRefund } from '@/src/services/user';
 import { adminConfigState } from '@/src/store/admin-config';
 
 vi.mock('expo-secure-store', () => ({
@@ -72,5 +73,17 @@ describe('admin service query contracts', () => {
     const [url, init] = fetchMock.mock.calls[0] ?? [];
     expect(String(url)).toContain('/api/v1/admin/payment/orders/42/refund/query');
     expect((init as RequestInit).method).toBe('POST');
+  });
+
+  it('uses the official user refund eligibility and request routes', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(response({ provider_instance_ids: ['provider-1'] })).mockResolvedValueOnce(response({ message: 'refund requested' }));
+    await expect(getRefundEligibleProviders()).resolves.toEqual({ provider_instance_ids: ['provider-1'] });
+    await requestPaymentRefund(42, '用户在移动端提交退款申请', 'refund-request-key');
+    const [eligibilityUrl, requestUrl] = fetchMock.mock.calls;
+    expect(String(eligibilityUrl?.[0])).toContain('/api/v1/payment/orders/refund-eligible-providers');
+    expect(String(requestUrl?.[0])).toContain('/api/v1/payment/orders/42/refund-request');
+    expect((requestUrl?.[1] as RequestInit).method).toBe('POST');
+    expect(JSON.parse(String((requestUrl?.[1] as RequestInit).body))).toEqual({ reason: '用户在移动端提交退款申请' });
+    expect(new Headers((requestUrl?.[1] as RequestInit).headers).get('Idempotency-Key')).toBe('refund-request-key');
   });
 });
