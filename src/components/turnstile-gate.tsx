@@ -7,6 +7,7 @@ import { theme } from '@/src/theme';
 import {
   buildTurnstilePageUrl,
   buildTurnstileWebViewKey,
+  classifyTurnstileNavigation,
   createTurnstileBridgeContext,
   parseTurnstilePageMessage,
   TURNSTILE_LOCAL_REFRESH_MS,
@@ -41,6 +42,7 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
   const [error, setError] = useState('');
   const [widgetReady, setWidgetReady] = useState(false);
   const [interactive, setInteractive] = useState(false);
+  const [pageRejected, setPageRejected] = useState(false);
   const [challengeRequested, setChallengeRequested] = useState(consentRequestKey > 0);
   const onStatusRef = useRef(onStatus);
   const onTokenRef = useRef(onToken);
@@ -65,6 +67,7 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
     setWidgetReady(false);
     widgetReadyRef.current = false;
     setInteractive(false);
+    setPageRejected(false);
     consumedRef.current = false;
     onTokenRef.current('');
     startedAtRef.current = Date.now();
@@ -126,6 +129,23 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
         onStatusRef.current?.('error');
       }
     }, 30_000);
+  }
+
+  function rejectWrongPage() {
+    if (pageRejected) return;
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+    if (tokenExpiryRef.current) clearTimeout(tokenExpiryRef.current);
+    tokenExpiryRef.current = null;
+    widgetReadyRef.current = false;
+    consumedRef.current = false;
+    setPageRejected(true);
+    setWidgetReady(false);
+    setInteractive(false);
+    onTokenRef.current('');
+    setError('安全验证专用页未部署或被登录页接管，请联系管理员发布 /mobile/turnstile 后重试。');
+    recordTurnstileDiagnostic({ phase: 'page-load', action, requestId: context.requestId, status: 'wrong-page', errorCode: 'dedicated_page_wrong_route', durationMs: Date.now() - startedAtRef.current });
+    onStatusRef.current?.('error');
   }
 
   function onMessage(event: WebViewMessageEvent) {
@@ -253,7 +273,10 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
     try {
       const url = new URL(request.url);
       if (url.protocol === 'about:' && (url.href === 'about:blank' || url.href === 'about:srcdoc')) return true;
-      if (url.origin === context.origin) return url.pathname === TURNSTILE_PAGE_PATH;
+      if (url.origin === context.origin) {
+        if (url.pathname !== TURNSTILE_PAGE_PATH) rejectWrongPage();
+        return url.pathname === TURNSTILE_PAGE_PATH;
+      }
       // Cloudflare is allowed for iframe/subresource navigation only. A
       // challenge origin must never replace the trusted top-level document.
       // react-native-webview 13.15.0 exposes isTopFrame on iOS, while
@@ -276,6 +299,11 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
     }
   }
 
+  function onNavigationStateChange(navigation: WebViewNavigation) {
+    const classification = classifyTurnstileNavigation(navigation.url, context.origin);
+    if (classification === 'auth-redirect' || classification === 'wrong-path') rejectWrongPage();
+  }
+
   if (Platform.OS === 'web' || !ALLOWED_ACTIONS.has(action)) return null;
   // Do not show any verification surface before the user submits. Once the
   // native form requests verification, render the real HTTPS page visibly.
@@ -294,7 +322,7 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
       </Text>
     </View>
     {challengeRequested ? <View style={{ marginTop: 10, minHeight: 220, borderRadius: 12, borderWidth: 1, borderColor: theme.border, backgroundColor: '#fff' }}>
-      <WebView
+      {pageRejected ? <View style={{ minHeight: 220, padding: 16, justifyContent: 'center' }}><Text style={{ color: theme.danger, fontSize: 12, lineHeight: 18 }}>{error}</Text></View> : <WebView
         // Include instanceKey so local token expiry creates a fresh document.
         key={buildTurnstileWebViewKey(action, resetKey, instanceKey)}
         ref={webViewRef}
@@ -314,6 +342,7 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
         }}
         onMessage={onMessage}
         onShouldStartLoadWithRequest={allowNavigation}
+        onNavigationStateChange={onNavigationStateChange}
         onError={(event) => {
           if (!isMainDocumentUrl(event.nativeEvent.url)) return;
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -341,7 +370,7 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onT
           onStatusRef.current?.('error');
         }}
         accessibilityLabel="turnstile-webview"
-      />
+      />}
     </View> : null}
   </View>;
 }

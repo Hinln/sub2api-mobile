@@ -22,6 +22,7 @@ The official material actually reviewed on 2026-10-04 says:
 - Error `110200` means the hostname is not authorized and `200500` means an iframe load failure. A 401 PAT probe or an occasional random `*.challenges.cloudflare.com` DNS failure can be non-fatal when the widget eventually returns a token.
 - Error-code handling follows the provider table: `110100`, `110110`, `110200`, `200100`, `400020`, `400021`, and `400070` are configuration/non-retry failures; `110600`, `110620`, `200500`, `300*`, and `600*` are retryable challenge failures. The app reports the received code and does not retry indefinitely.
 - Tokens are valid for 300 seconds and are single-use. Siteverify is a server POST to `https://challenges.cloudflare.com/turnstile/v0/siteverify`; replay returns `timeout-or-duplicate`.
+- If the WebView top-level document is redirected to `/login`, `/register`, `/forgot-password`, or another same-origin SPA path, the native gate must fail closed with a deployment/routing error. It must not display or submit the full auth page as a verification surface.
 - Testing keys (`1x...AA` always pass, `2x...AB` always fail, `3x...FF` force interaction) isolate the bridge/state machine only; a test-key pass does not prove production authentication.
 
 References used during review:

@@ -20,7 +20,7 @@
 | 检查 | 结果 | 说明 |
 |---|---|---|
 | TypeScript | 通过 | `pnpm exec tsc --noEmit` |
-| Vitest | 通过（59/59） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP、支付/用户服务契约（含官方订单 `keyword` 搜索、退款状态查询、退款资格与退款申请路由）、规范化 Hub origin、WebView 实例刷新 key、提交门控和 `/mobile/turnstile` 专用页 WebView token bridge。测试不替代实体设备验收。 |
+| Vitest | 通过（60/60） | `pnpm exec vitest run`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP、支付/用户服务契约（含官方订单 `keyword` 搜索、退款状态查询、退款资格与退款申请路由）、规范化 Hub origin、WebView 实例刷新 key、专用页被 `/login` 接管时的失败分类、提交门控和 `/mobile/turnstile` 专用页 WebView token bridge。测试不替代实体设备验收。 |
 | 生产路径占位扫描 | 通过 | `pnpm run verify:production-scan`；扫描 `app/` 与 `src/`，拒绝 mock/fixture/fake/sample、伪请求定时器、嵌入式 secret 和空 `onPress`。 |
 | ESLint | 通过 | `pnpm exec expo lint`；0 error、0 warning。 |
 | Web export | 通过 | `pnpm exec expo export --platform web`；只作静态路由/类型烟测，不是原生发布构建。 |

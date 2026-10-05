@@ -3,6 +3,7 @@ import {
   buildTurnstilePageUrl,
   buildTurnstileWebViewKey,
   canSubmitTurnstile,
+  classifyTurnstileNavigation,
   createTurnstileBridgeContext,
   isUsableTurnstileToken,
   parseTurnstilePageMessage,
@@ -72,6 +73,13 @@ describe('dedicated Turnstile bridge contract', () => {
   it('changes the WebView instance key when local refresh advances', () => {
     expect(buildTurnstileWebViewKey('login', 2, 0)).toBe('login-2-0');
     expect(buildTurnstileWebViewKey('login', 2, 1)).not.toBe(buildTurnstileWebViewKey('login', 2, 0));
+  });
+
+  it('identifies an auth-page takeover as a deployment failure', () => {
+    expect(classifyTurnstileNavigation('https://hub.vexlune.com/mobile/turnstile#version=1', context.origin)).toBe('dedicated');
+    expect(classifyTurnstileNavigation('https://hub.vexlune.com/login?redirect=%2Fmobile%2Fturnstile', context.origin)).toBe('auth-redirect');
+    expect(classifyTurnstileNavigation('https://hub.vexlune.com/dashboard', context.origin)).toBe('wrong-path');
+    expect(classifyTurnstileNavigation('https://challenges.cloudflare.com/turnstile', context.origin)).toBe('foreign-origin');
   });
 
 });

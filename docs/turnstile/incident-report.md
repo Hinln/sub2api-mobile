@@ -26,6 +26,8 @@ The route response is the ordinary homepage SPA shell (`/assets/index-xMHQ6xfX.j
 
 The same result is visible in a normal browser: navigating to `/mobile/turnstile` ends at `/login?redirect=/mobile/turnstile`, and the DOM is the login form with no `MobileTurnstile`, `ReactNativeWebView`, or Turnstile SDK marker. On the freshly built iPhone 17 Pro Max simulator, entering dummy credentials and tapping 登录 changes the native status to “正在加载安全验证…” while the form asks to complete Cloudflare verification; no dedicated challenge surface appears before the route timeout window. This is a route/bundle failure, not evidence that a real challenge was solved or rejected.
 
+The current native gate now classifies a same-origin auth-page takeover as `dedicated_page_wrong_route`, stops rendering the nested page, clears the pending token, and reports that `/mobile/turnstile` must be deployed. This makes the first missing lifecycle event explicit without bypassing the provider or weakening the origin/tuple checks.
+
 ## Historical app-owned fallback evidence (superseded)
 
 An earlier local build temporarily used an app-owned HTML document with an HTTPS

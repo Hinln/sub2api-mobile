@@ -48,6 +48,8 @@ export type ParsedTurnstileMessage =
 
 export type TurnstileStatus = 'loading' | 'disabled' | 'waiting' | 'ready' | 'token' | 'error';
 
+export type TurnstilePageNavigation = 'dedicated' | 'auth-redirect' | 'wrong-path' | 'foreign-origin' | 'invalid';
+
 export type TurnstileBridgeContext = {
   origin: string;
   requestId: string;
@@ -142,4 +144,20 @@ export function buildTurnstilePageUrl(context: TurnstileBridgeContext): string {
     action: context.action,
   });
   return `${context.origin}${TURNSTILE_PAGE_PATH}#${fragment.toString()}`;
+}
+
+/**
+ * Classify the top-level document observed by the native WebView. A same-origin
+ * auth page is a deployment/routing failure, never a valid Turnstile state.
+ */
+export function classifyTurnstileNavigation(rawUrl: string, origin: string): TurnstilePageNavigation {
+  try {
+    const url = new URL(rawUrl);
+    if (url.origin !== origin) return 'foreign-origin';
+    if (url.pathname === TURNSTILE_PAGE_PATH) return 'dedicated';
+    if (url.pathname === '/login' || url.pathname === '/register' || url.pathname === '/forgot-password') return 'auth-redirect';
+    return 'wrong-path';
+  } catch {
+    return 'invalid';
+  }
 }
