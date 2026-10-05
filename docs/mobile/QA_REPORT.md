@@ -1,6 +1,6 @@
 # Vexlune Hub QA 报告（管理员专用）
 
-检查日期：2026-10-05（Asia/Shanghai）。
+检查日期：2026-10-06（Asia/Shanghai）。
 
 ## 产品与环境边界
 
@@ -32,10 +32,10 @@
 |---|---|
 | Admin Key service tests | `tests/admin-auth.test.ts` 覆盖成功验证、只发 `x-api-key`、拒绝 key 不落盘；使用工作区 Node 运行通过。 |
 | Admin fetch tests | `tests/admin-fetch.test.ts` 覆盖 header 覆盖、401/403、Cloudflare HTML、request ID、重试边界；通过。 |
-| TypeScript/ESLint/Vitest | `pnpm typecheck`、`pnpm lint -- --no-fix`、`pnpm exec vitest run` 通过；12 个测试文件、65 项测试通过。 |
+| TypeScript/ESLint/Vitest | `pnpm typecheck`、`pnpm lint`、`pnpm test -- --run` 通过；12 个测试文件、67 项测试通过。 |
 | 生产占位扫描 | `sh scripts/verify-production-scan.sh` 通过。 |
 | Web build | `pnpm web:build` 通过；Playwright 视觉测试未启动，因为本机未安装 Chromium headless shell。 |
-| iOS build | 原生 Xcode/CocoaPods simulator Release build 通过，未使用 Expo/EAS 云构建；安装并启动 iPhone 17 Pro Max simulator 后截图确认管理员 Key 首屏。 |
+| iOS build | 原生 Xcode/CocoaPods simulator Release build 通过，未使用 Expo/EAS 云构建；安装并启动 iPhone 17 Pro Max simulator 后截图确认管理员 Key 首屏。最新产物为 `build/ios-admin-ui-final/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`。 |
 | Production probe | 使用无效占位凭据验证：`x-api-key` 返回 `401 INVALID_ADMIN_KEY`，Bearer 形式返回 `401 INVALID_TOKEN`；只记录脱敏 request ID。真实 Admin Key 成功联调仍待用户提供可撤销凭据并明确批准。 |
 | Simulator timeout evidence | iPhone 17 Pro Max simulator 的同一路径通过 CFNetwork/HTTP2 在约 33.767 秒后返回 HTTP 200；APP 原 15 秒 AbortController 在响应前触发 `REQUEST_TIMEOUT`。验证请求现为单次 60 秒预算，并有慢响应回归测试。 |
 
@@ -57,3 +57,15 @@
 - 把 `403`/`423` 当作登录成功，或为了通过测试绕过 AdminAuth、合规 guard、Cloudflare。
 - 修改生产服务器、数据库、Cloudflare 规则/secret 或清除设备数据后再声称本地修复。
 - 将 Android、TestFlight 或未执行的线上联调写成已通过。
+
+## 2026-10-06 管理员首页与监控回归
+
+- 首页移除顶部“需要关注”大提醒，改为 2 行 × 4 列的八项概览：请求量、今日
+  Token、充值实收、余额消费、上游账号、总用户、活跃用户、请求成功率。
+- 充值金额和充值趋势只读取官方 `/api/v1/admin/payment/dashboard`；服务端未返回
+  实际扣费时余额消费卡明确显示“服务端未提供实际扣费”，没有补造数字或汇率。
+- 首页趋势在请求量、Token、充值实收之间切换；监控页趋势在请求量、Token、实际
+  计费之间切换，异常聚合读取官方告警事件接口。
+- 模拟器已安装并启动本次 Release 包，截图：
+  `build/ios-admin-ui-final/screenshots/admin-key-login.png`。未输入真实 Admin Key，
+  因此只确认登录首屏和路由构建，不宣称真实线上工作台联调通过。
