@@ -7,11 +7,11 @@
 | `pnpm install --frozen-lockfile --offline --ignore-scripts` | 通过 |
 | TypeScript `pnpm exec tsc --noEmit` | 通过（使用工作区 bundled Node 运行时） |
 | ESLint `pnpm exec expo lint` | 通过，0 error、0 warning |
-| Vitest `pnpm test` | 11 文件、57 测试通过 |
+| Vitest `pnpm test` | 11 文件、58 测试通过 |
 | Expo Web `pnpm exec expo export --platform web` | 通过，Metro 处理 3014 个模块 |
 | iOS 原生工程 | 已提交 `ios/`；构建流程不运行 Expo prebuild |
 | iOS Simulator Release | 通过；产物包含 arm64/x86_64 |
-| iOS simulator production-key login | 通过；签名 Debug 包完成真实 Turnstile token、官方认证接口和普通用户工作台路由 |
+| iOS simulator production-key login | 历史 fallback 构建通过；当前 HTTPS URI 构建待测 |
 | iPhoneOS Release unsigned | 通过；arm64 `.app` 已打包并验证 IPA 完整性；未签名不能安装真机 |
 | `pnpm dlx expo-doctor@1.20.4` | 主机直接运行 15/18；临时 npm shim 重跑 18/18；CI 已统一 pnpm，见 `BUILD_BLOCKERS.md` |
 | 原生 iOS workflow `37051524996` | 步骤前失败 | GitHub billing issue 导致 steps=0、无 artifact；本机原生构建不受影响 |

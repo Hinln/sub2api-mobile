@@ -5,17 +5,14 @@ import { getPublicSettings } from '@/src/services/auth';
 import { sessionState } from '@/src/auth/session';
 import { theme } from '@/src/theme';
 import {
-  buildTurnstileInlinePageHtml,
-  buildTurnstileInlinePageScript,
+  buildTurnstilePageUrl,
   buildTurnstileWebViewKey,
   createTurnstileBridgeContext,
   parseTurnstilePageMessage,
   TURNSTILE_LOCAL_REFRESH_MS,
   TURNSTILE_PAGE_PATH,
   TURNSTILE_PAGE_VERSION,
-  shouldRenderTurnstileTransport,
   type TurnstileAction,
-  type TurnstilePresentation,
   type TurnstileStatus,
 } from '@/src/lib/turnstile';
 import { recordTurnstileDiagnostic } from '@/src/lib/turnstile-diagnostics';
@@ -28,27 +25,22 @@ type GateProps = {
   /** The native submit action reveals the dedicated challenge surface. */
   consentRequestKey?: number;
   /**
-   * Keep the challenge transport out of the auth form. The dedicated page is
-   * still mounted after submit and its real token is still required by the
-   * server; this only controls the native presentation. Interactive provider
-   * challenges cannot be completed while silent, so callers should retain the
-   * inline mode for flows where a human challenge must be shown.
+   * Keep the challenge transport out of the auth form until the user submits.
+   * Once requested, the first-party HTTPS page is rendered visibly so an
+   * interactive provider challenge remains completable.
    */
-  mode?: TurnstilePresentation;
   onToken: (token: string) => void;
   onStatus?: (status: TurnstileStatus) => void;
 };
 
 type ShouldStartLoadRequest = WebViewNavigation & { isTopFrame?: boolean };
 
-export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, mode = 'inline', onToken, onStatus }: GateProps) {
+export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, onToken, onStatus }: GateProps) {
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState<boolean | null>(null);
-  const [siteKey, setSiteKey] = useState('');
   const [error, setError] = useState('');
   const [widgetReady, setWidgetReady] = useState(false);
   const [interactive, setInteractive] = useState(false);
-  const [requiresInteraction, setRequiresInteraction] = useState(false);
   const [challengeRequested, setChallengeRequested] = useState(consentRequestKey > 0);
   const onStatusRef = useRef(onStatus);
   const onTokenRef = useRef(onToken);
@@ -69,12 +61,10 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, mod
     let active = true;
     setLoading(true);
     setEnabled(null);
-    setSiteKey('');
     setError('');
     setWidgetReady(false);
     widgetReadyRef.current = false;
     setInteractive(false);
-    setRequiresInteraction(false);
     consumedRef.current = false;
     onTokenRef.current('');
     startedAtRef.current = Date.now();
@@ -99,7 +89,6 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, mod
         return;
       }
       if (settings.turnstile_enabled === true && typeof settings.turnstile_site_key === 'string' && settings.turnstile_site_key.trim()) {
-        setSiteKey(settings.turnstile_site_key.trim());
         setEnabled(true);
         recordTurnstileDiagnostic({ phase: 'config-read', action, requestId: context.requestId, status: 'enabled', durationMs: Date.now() - startedAtRef.current });
         onStatusRef.current?.('waiting');
@@ -145,13 +134,11 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, mod
     // authenticate an arbitrary page by claiming an origin.
     try {
       const rawUrl = event.nativeEvent.url?.trim() ?? '';
-      // WKWebView reports an empty/about:blank frame URL for some
-      // loadHTMLString documents even when baseURL is an HTTPS origin. The
-      // navigation policy below prevents a foreign top-level document; the
-      // request tuple is still checked by parseTurnstilePageMessage.
+      // The navigation policy below prevents a foreign top-level document;
+      // the request tuple is still checked by parseTurnstilePageMessage.
       if (rawUrl && rawUrl !== 'about:blank' && rawUrl !== 'about:srcdoc') {
         const messageUrl = new URL(rawUrl);
-        if (messageUrl.origin !== context.origin || messageUrl.pathname !== '/mobile/turnstile') {
+        if (messageUrl.origin !== context.origin || messageUrl.pathname !== TURNSTILE_PAGE_PATH) {
           recordTurnstileDiagnostic({ phase: 'bridge', action, requestId: context.requestId, status: 'rejected-source-origin-or-path' });
           return;
         }
@@ -180,9 +167,8 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, mod
     }
     if (message.kind === 'before-interactive') {
       // Managed Turnstile is invisible for the normal risk-passed path. If
-      // Cloudflare explicitly asks for a human challenge, reveal the real
-      // widget so it remains solvable instead of silently hanging.
-      setRequiresInteraction(true);
+      // Cloudflare asks for a human challenge, keep the real widget visible
+      // so it remains solvable instead of silently hanging.
       setInteractive(true);
       recordTurnstileDiagnostic({ phase: 'interaction', action, requestId: context.requestId, status: 'before-interactive' });
       onStatusRef.current?.('waiting');
@@ -201,7 +187,6 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, mod
       timeoutRef.current = null;
       setWidgetReady(true);
       setInteractive(true);
-      setRequiresInteraction(false);
       setError('');
       if (tokenExpiryRef.current) clearTimeout(tokenExpiryRef.current);
       tokenExpiryRef.current = setTimeout(() => {
@@ -224,10 +209,8 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, mod
     if (message.kind === 'expired') {
       consumedRef.current = false;
       onTokenRef.current('');
-      // An expired token cannot be submitted. Hide a previously revealed
-      // managed challenge until the next explicit submit mounts a fresh
-      // instance; this also prevents an old instance from covering the form.
-      setRequiresInteraction(false);
+      // An expired token cannot be submitted. Keep the page in an expired
+      // state until the next explicit submit mounts a fresh instance.
       setInteractive(false);
       setError('安全验证已过期，请重新完成验证。');
       if (tokenExpiryRef.current) clearTimeout(tokenExpiryRef.current);
@@ -240,7 +223,6 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, mod
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
       widgetReadyRef.current = false;
-      setRequiresInteraction(false);
       setInteractive(false);
       setEnabled(false);
       recordTurnstileDiagnostic({ phase: 'config-read', action, requestId: context.requestId, status: 'disabled' });
@@ -255,7 +237,6 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, mod
     const providerHadWidget = widgetReadyRef.current;
     widgetReadyRef.current = providerHadWidget;
     setWidgetReady(providerHadWidget);
-    setRequiresInteraction(false);
     setInteractive(false);
     consumedRef.current = false;
     onTokenRef.current('');
@@ -272,7 +253,7 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, mod
     try {
       const url = new URL(request.url);
       if (url.protocol === 'about:' && (url.href === 'about:blank' || url.href === 'about:srcdoc')) return true;
-      if (url.origin === context.origin) return url.pathname === '/mobile/turnstile';
+      if (url.origin === context.origin) return url.pathname === TURNSTILE_PAGE_PATH;
       // Cloudflare is allowed for iframe/subresource navigation only. A
       // challenge origin must never replace the trusted top-level document.
       // react-native-webview 13.15.0 exposes isTopFrame on iOS, while
@@ -289,80 +270,17 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, mod
     if (!value) return true;
     try {
       const url = new URL(value);
-      return url.origin === context.origin && url.pathname === '/mobile/turnstile';
+      return url.origin === context.origin && url.pathname === TURNSTILE_PAGE_PATH;
     } catch {
       return true;
     }
   }
 
   if (Platform.OS === 'web' || !ALLOWED_ACTIONS.has(action)) return null;
-  const silent = mode === 'silent';
-  if (loading) return silent ? null : <View style={{ minHeight: 72, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={theme.primary} /></View>;
-  if (silent) {
-    // No status card is rendered in the auth flow. Keeping this transport
-    // mounted only after an explicit submit avoids a persistent verification
-    // box while preserving the same-origin WebView and bridge checks.
-    if (!shouldRenderTurnstileTransport(mode, enabled, challengeRequested)) return null;
-    // Keep a normal widget viewport so the provider can render its managed
-    // challenge. It stays in the native tree (to avoid clipped/offscreen
-    // WebView optimizations), but remains transparent and non-interactive
-    // until Cloudflare explicitly requests a human challenge. At that point
-    // requiresInteraction reveals this same widget so the user can complete
-    // it. The token still must come from the official callback and server
-    // Siteverify.
-    return <View pointerEvents={requiresInteraction ? 'auto' : 'none'} style={{ position: 'absolute', left: 0, top: 0, width: 320, height: 180, opacity: requiresInteraction ? 1 : 0, zIndex: requiresInteraction ? 20 : 0 }}>
-      <WebView
-        key={buildTurnstileWebViewKey(action, resetKey, instanceKey)}
-        ref={webViewRef}
-        style={{ width: 320, height: 180 }}
-        source={{ html: buildTurnstileInlinePageHtml(context, siteKey), baseUrl: `${context.origin}${TURNSTILE_PAGE_PATH}` }}
-        injectedJavaScript={buildTurnstileInlinePageScript(context, siteKey)}
-        originWhitelist={[context.origin, 'https://challenges.cloudflare.com', 'about:blank', 'about:srcdoc']}
-        javaScriptEnabled
-        domStorageEnabled
-        thirdPartyCookiesEnabled
-        sharedCookiesEnabled
-        onLoadStart={() => {
-          recordTurnstileDiagnostic({ phase: 'page-load', action, requestId: context.requestId, status: 'started' });
-        }}
-        onLoadEnd={() => {
-          recordTurnstileDiagnostic({ phase: 'page-load', action, requestId: context.requestId, status: 'loaded', pageVersion: TURNSTILE_PAGE_VERSION, durationMs: Date.now() - startedAtRef.current });
-          scheduleTimeout();
-        }}
-        onMessage={onMessage}
-        onShouldStartLoadWithRequest={allowNavigation}
-        onError={(event) => {
-          if (!isMainDocumentUrl(event.nativeEvent.url)) return;
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          timeoutRef.current = null;
-          widgetReadyRef.current = false;
-          consumedRef.current = false;
-          setWidgetReady(false);
-          setRequiresInteraction(false);
-          setInteractive(false);
-          onTokenRef.current('');
-          setError('安全验证页面加载失败，请检查网络后重试。');
-          recordTurnstileDiagnostic({ phase: 'page-load', action, requestId: context.requestId, status: 'failed', errorCode: 'webview_error' });
-          onStatusRef.current?.('error');
-        }}
-        onHttpError={(event) => {
-          if (!isMainDocumentUrl(event.nativeEvent.url)) return;
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          timeoutRef.current = null;
-          widgetReadyRef.current = false;
-          consumedRef.current = false;
-          setWidgetReady(false);
-          setRequiresInteraction(false);
-          setInteractive(false);
-          onTokenRef.current('');
-          setError(`安全验证页面返回异常（${event.nativeEvent.statusCode}）。`);
-          recordTurnstileDiagnostic({ phase: 'page-load', action, requestId: context.requestId, status: 'http-error', httpStatus: event.nativeEvent.statusCode });
-          onStatusRef.current?.('error');
-        }}
-        accessibilityLabel="turnstile-webview"
-      />
-    </View>;
-  }
+  // Do not show any verification surface before the user submits. Once the
+  // native form requests verification, render the real HTTPS page visibly.
+  if (!challengeRequested) return null;
+  if (loading) return <View style={{ minHeight: 72, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={theme.primary} /></View>;
   if (enabled === false) return <Text style={{ color: theme.subtext, fontSize: 12, lineHeight: 18, marginTop: 12 }}>当前未启用安全验证。</Text>;
   if (enabled !== true) return <Text style={{ color: theme.danger, fontSize: 12, lineHeight: 18, marginTop: 12 }}>{error || '安全验证暂不可用，请稍后重试。'}</Text>;
 
@@ -375,14 +293,13 @@ export function TurnstileGate({ action, resetKey = 0, consentRequestKey = 0, mod
           : challengeRequested ? '正在加载安全验证…' : '提交时加载安全验证')}
       </Text>
     </View>
-    {challengeRequested ? <View style={{ marginTop: 10, height: 110, overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: theme.border, backgroundColor: '#fff' }}>
+    {challengeRequested ? <View style={{ marginTop: 10, minHeight: 220, borderRadius: 12, borderWidth: 1, borderColor: theme.border, backgroundColor: '#fff' }}>
       <WebView
         // Include instanceKey so local token expiry creates a fresh document.
         key={buildTurnstileWebViewKey(action, resetKey, instanceKey)}
         ref={webViewRef}
-        style={{ height: 110 }}
-        source={{ html: buildTurnstileInlinePageHtml(context, siteKey), baseUrl: `${context.origin}${TURNSTILE_PAGE_PATH}` }}
-        injectedJavaScript={buildTurnstileInlinePageScript(context, siteKey)}
+        style={{ height: 220 }}
+        source={{ uri: buildTurnstilePageUrl(context) }}
         originWhitelist={[context.origin, 'https://challenges.cloudflare.com', 'about:blank', 'about:srcdoc']}
         javaScriptEnabled
         domStorageEnabled

@@ -1,14 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildTurnstileInlinePageHtml,
-  buildTurnstileInlinePageScript,
   buildTurnstilePageUrl,
   buildTurnstileWebViewKey,
   canSubmitTurnstile,
   createTurnstileBridgeContext,
   isUsableTurnstileToken,
   parseTurnstilePageMessage,
-  shouldRenderTurnstileTransport,
 } from '@/src/lib/turnstile';
 
 describe('dedicated Turnstile bridge contract', () => {
@@ -63,17 +60,13 @@ describe('dedicated Turnstile bridge contract', () => {
     expect(first.nonce).not.toBe(second.nonce);
   });
 
-  it('builds an app-owned page without embedding credentials or a Turnstile secret', () => {
-    const html = buildTurnstileInlinePageHtml(context, '0x4AAAAAAD-SBybJjIg5VuPI');
-    expect(html).toContain('https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit');
-    expect(html).toContain("appearance: 'interaction-only'");
-    expect(html).toContain('/api/v1/settings/public');
-    expect(html).toContain('0x4AAAAAAD-SBybJjIg5VuPI');
-    expect(html).toContain(context.requestId);
-    expect(html).toContain(context.nonce);
-    expect(html).not.toContain('turnstile_secret');
-    expect(html).not.toContain('password');
-    expect(buildTurnstileInlinePageScript(context, '0x4AAAAAAD-SBybJjIg5VuPI')).toContain('native_bridge_missing');
+  it('keeps the HTTPS page URL limited to the bridge tuple', () => {
+    const url = new URL(buildTurnstilePageUrl(context));
+    expect(url.search).toBe('');
+    expect(url.hash).toContain('version=1');
+    expect(url.hash).toContain('action=login');
+    expect(url.toString()).not.toContain('password');
+    expect(url.toString()).not.toContain('turnstile_secret');
   });
 
   it('changes the WebView instance key when local refresh advances', () => {
@@ -81,10 +74,4 @@ describe('dedicated Turnstile bridge contract', () => {
     expect(buildTurnstileWebViewKey('login', 2, 1)).not.toBe(buildTurnstileWebViewKey('login', 2, 0));
   });
 
-  it('mounts the real challenge transport only after an explicit submit request', () => {
-    expect(shouldRenderTurnstileTransport('silent', true, false)).toBe(false);
-    expect(shouldRenderTurnstileTransport('silent', null, true)).toBe(false);
-    expect(shouldRenderTurnstileTransport('silent', true, true)).toBe(true);
-    expect(shouldRenderTurnstileTransport('inline', true, true)).toBe(true);
-  });
 });

@@ -32,7 +32,7 @@ xcrun simctl install <simulator-udid> build/ios-signed/Build/Products/Debug-ipho
 
 An unsigned/adhoc simulator package can reach the auth API but fail when `expo-secure-store` writes the accepted session (`errSecMissingEntitlement`). Treat that as a build/signing failure, not an authentication failure.
 
-The auth gate uses an app-owned HTML fallback while the production route is stale. The fallback must receive the public site key from the native settings request and keep `https://hub.vexlune.com/mobile/turnstile` as its `baseUrl`; do not put a secret, credential, or hard-coded production token in the HTML. If the provider emits an interactive callback, a visible user interaction is required. An invisible WebView cannot complete that challenge by itself.
+The auth gate loads the real `https://hub.vexlune.com/mobile/turnstile` HTTPS URL with a per-instance fragment tuple. The production web route must be deployed before native acceptance; the app does not use `file://`, `data:` or app-owned HTML as a fallback. The WebView remains visible after the user submits so an interactive provider challenge can be completed. Do not put a secret, credential, or hard-coded production token in the native bundle.
 
 ## Required release operation (approval required)
 

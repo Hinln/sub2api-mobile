@@ -17,12 +17,12 @@
 | 0 | 移动仓库有可回退分支、依赖/构建基线及已记录失败 | `Hinln/sub2api-mobile` 当前交付分支与本地构建记录；API 基线为官方 v0.2.13；构建限制记录在 `docs/mobile/QA_REPORT.md`/`docs/BUILD_BLOCKERS.md` | 源码已完成 |
 | 1 | 路由、DTO、权限、错误和缺口进入真实矩阵 | `API_COVERAGE_MATRIX.md`、`API_GAP_REPORT.md`、`CURRENT_ARCHITECTURE.md`，并注明私有仓库与 public reference 的边界 | 源码已完成 |
 | 2 | 一个正式 V Logo、共享设计系统、会话/API/query 基础设施 | `src/components/vexlune-logo.tsx`、`src/theme.ts`、`src/lib/admin-fetch.ts`、SecureStore/query 清理测试 | 源码已完成 |
-| 3 | 邮箱密码登录/注册、`/auth/me` 角色路由、refresh/logout、TOTP/provider captcha | `src/services/auth.ts`、原生底部协议提示、同源 `/mobile/turnstile` 专用页与严格 WebView 消息桥；移动端 Vitest 59/59，前端专用页本地 typecheck/build/test 通过 | 官方合同对齐已完成；部署与真实环境待验 |
+| 3 | 邮箱密码登录/注册、`/auth/me` 角色路由、refresh/logout、TOTP/provider captcha | `src/services/auth.ts`、原生底部协议提示、同源 `/mobile/turnstile` 专用页与严格 WebView 消息桥；移动端 Vitest 58/58，前端专用页本地 typecheck/build/test 通过 | 官方合同对齐已完成；部署与真实环境待验 |
 | 4 | 普通用户工作台每个可见控件连接真实接口且写操作可重试 | `src/services/user.ts` 与 `app/user*.tsx`；API key、usage、公告、订阅和订单服务接线；传输层幂等/重试边界有测试 | 源码完成；支付 sandbox 待验 |
 | 5 | 管理员工作台、渐进披露和高风险操作的权限/审计/幂等 | `src/services/admin*.ts`、管理员路由、后端 AdminAuth/audit/step-up；管理员服务测试 | 源码完成；管理员 staging 待验 |
 | 6 | 官方后端合同与不支持项进入缺口报告 | `API_GAP_REPORT.md`、`API_COVERAGE_MATRIX.md`；没有后端迁移或 private bridge 部署 | 合同审计完成；不支持项保持阻塞 |
-| 7 | 逐行真实联调、无占位扫描、安全和错误路径证据 | `QA_REPORT.md`、`SECURITY_MODEL.md`、`scripts/verify-production-scan.sh`、Vitest 59/59；非生产账号待验 | 本地完成；非生产阻塞 |
-| 8 | 可安装 iOS 构建、发布和回滚资料 | 当前 Turnstile 提交已完成签名 archive/IPA 且 codesign 通过；发布/回滚/ASC 清单已建立；Android 暂缓 | iOS 本地完成；发布外部门槛待验 |
+| 7 | 逐行真实联调、无占位扫描、安全和错误路径证据 | `QA_REPORT.md`、`SECURITY_MODEL.md`、`scripts/verify-production-scan.sh`、Vitest 58/58；非生产账号待验 | 本地完成；非生产阻塞 |
+| 8 | 可安装 iOS 构建、发布和回滚资料 | 当前 URI 代码已通过原生 archive/export，签名 IPA 为本地可重建产物；发布/回滚/ASC 清单已建立；Android 暂缓 | iOS 本地构建完成；TestFlight、实体设备和线上专用页仍待验 |
 
 ## 已执行的本地检查
 
@@ -30,7 +30,7 @@
 
 ```text
 pnpm exec tsc --noEmit
-pnpm exec vitest run                 # 59/59
+pnpm exec vitest run                 # 58/58
 pnpm exec expo lint                  # 0 error / 0 warning
 pnpm exec expo export --platform web
 sh scripts/verify-production-scan.sh

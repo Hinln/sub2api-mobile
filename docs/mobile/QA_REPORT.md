@@ -20,7 +20,7 @@
 | 检查 | 结果 | 说明 |
 |---|---|---|
 | TypeScript | 通过 | `pnpm exec tsc --noEmit` |
-| Vitest | 通过（59/59） | `pnpm test -- --runInBand`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP、支付/用户服务契约（含官方订单 `keyword` 搜索和退款状态查询）、规范化 Hub origin、WebView 实例刷新 key、提交门控和 `/mobile/turnstile` 专用页 WebView token bridge。测试不替代实体设备验收。 |
+| Vitest | 通过（58/58） | `pnpm test -- --runInBand`，覆盖 Bearer、刷新、Cloudflare HTML、SecureStore、认证角色、TOTP、支付/用户服务契约（含官方订单 `keyword` 搜索和退款状态查询）、规范化 Hub origin、WebView 实例刷新 key、提交门控和 `/mobile/turnstile` 专用页 WebView token bridge。测试不替代实体设备验收。 |
 | 生产路径占位扫描 | 通过 | `pnpm run verify:production-scan`；扫描 `app/` 与 `src/`，拒绝 mock/fixture/fake/sample、伪请求定时器、嵌入式 secret 和空 `onPress`。 |
 | ESLint | 通过 | `pnpm exec expo lint`；0 error、0 warning。 |
 | Web export | 通过 | `pnpm exec expo export --platform web`；只作静态路由/类型烟测，不是原生发布构建。 |
@@ -28,13 +28,13 @@
 | Go 后端测试 | 未运行 | 当前开发机没有 Go 工具链；本轮未修改或部署后端，不能把私有 checkout 的测试结果当作官方 v0.2.13 证据。 |
 | iOS Simulator Release | 通过 | 使用仓库内已提交的 `ios/VexluneMobileConsole.xcworkspace` 和 Xcode 26.6 `xcodebuild` 生成 arm64/x86_64 `.app`；没有 Expo/EAS 云构建。 |
 | iPhoneOS Release unsigned | 通过 | 使用原生 Xcode 工具链生成 arm64 archive/app；未签名包不能安装真机。 |
-| iOS signed archive/IPA | 通过（当前提交） | 当前提交 `c4d66709384b0419230f7431aeeb920cff9887e8` 已重新完成 archive/export；IPA SHA-256 为 `08075b23f7173b2f621b142ce734fbfd5fa8888cf99d0f8ae0748af8875e91bf`，Bundle 版本 `1.0.1 (2)`，解包 App 通过 `codesign --verify --deep --strict`。本次未上传 App Store Connect；TestFlight 处理、实体 iPhone 和线上 API 验收仍未完成。 |
+| iOS signed archive/IPA | 通过（当前 URI 代码，本机） | 使用当前实际 HTTPS `/mobile/turnstile` URI 代码完成 archive/export；IPA SHA-256 为 `174d3943b49faf55bc3c1fbbf8c4c3579e4f284764ef3ec6bfdb172e8d8b68b6`，Bundle 版本 `1.0.1 (2)`，解包 App 通过 `codesign --verify --deep --strict`。未上传 App Store Connect；TestFlight、实体 iPhone 和线上 API 验收仍未完成。 |
 | Production API / private bridge probe | 只读探测未通过专用页检查（2026-10-05 重跑） | `scripts/verify-mobile-origin.sh` 确认公开设置为 JSON 且 Turnstile 已启用，也确认未暴露 Secret；脚本唯一失败为 `the deployed entry bundle does not contain the dedicated MobileTurnstile route`。线上 `/mobile/turnstile` 仍返回旧 SPA 壳，不能视为已部署。没有调用生产 `/mobile/captcha/*`，没有部署私有 backend bridge。 |
 | Production HTTP headers | 通过（只读） | 2026-10-04 读取 `/login`、`/mobile/turnstile` 和 `/api/v1/settings/public`：分别为 HTML 200、HTML 200、JSON 200；三者 `cache-control: no-cache`、`cf-cache-status: DYNAMIC`，现有 CSP 已允许 `https://challenges.cloudflare.com` 的 script/frame。路由内容仍是旧入口 bundle，不能替代部署验收。 |
-| iOS simulator production-key login | 通过 | 已安装签名 Debug 原生包；真实生产 site key 返回 `widget-ready` 与 `token received`，认证请求 accepted，随后显示普通用户“个人工作台”。无密码、Cookie、token 或会话值进入日志；实体 iPhone/TestFlight 仍待验收。 |
+| iOS simulator production-key login | 历史 fallback 构建通过；当前 URI 构建待测 | 旧签名 Debug 包曾完成真实生产 site key → Turnstile token → 官方登录 → 普通用户工作台链路；该证据来自已移除的 app-owned HTML fallback。当前代码已改为实际 HTTPS URI，需在专用页部署后重新运行；无密码、Cookie、token 或会话值进入日志。 |
 | Official v0.2.13 clean patch | 通过（临时干净检出） | `docs/official-v0.2.13-turnstile.patch` 在官方 tag `3040209f205472038c1ba745a1bedd2edd9053b1` 上 `git apply --check` 通过；应用后 `vue-tsc -b` 与 `vite build` 通过，并生成 `MobileTurnstileView` chunk。官方锁文件在当前 pnpm overrides 校验下无法 frozen install，构建使用已验证的同版本依赖树，未修改生产。 |
 | Local frontend Turnstile route | 通过（本地） | 在同工作区 `sub2api/frontend` 执行 `pnpm run typecheck`、`pnpm run test:run`（333 个文件、2498 项测试）、`pnpm run lint:check`、`pnpm run build`；构建产物包含 `MobileTurnstileView-*.js` 与对应 CSS。该产物尚未部署到任何服务器。 |
-| Turnstile token refresh lifecycle | 源码与本地合同测试通过；设备联调待完成 | 本地 240 秒刷新现在会重建专用 WebView 文档并生成新 tuple；原生消息来源同时校验同源 `/mobile/turnstile` 路径，避免 hash-only 导航或同源其他页面导致陈旧/伪造消息。自动化覆盖 tuple/config 和实例 key 合同，真实 240 秒 WebView 重建仍需 iOS 设备运行验证。 |
+| Turnstile token refresh lifecycle | 源码与本地合同测试通过；设备联调待完成 | 当前 URI 版本的 240 秒刷新会重建专用 WebView 文档并生成新 tuple；原生消息来源同时校验同源 `/mobile/turnstile` 路径，避免 hash-only 导航或同源其他页面导致陈旧/伪造消息。自动化覆盖 tuple/config 和实例 key 合同，真实 240 秒 WebView 重建仍需 iOS 设备运行验证。 |
 | Android | 暂缓 | 当前范围不开发、不构建、不签名 Android；恢复范围后另行补齐证据。 |
 
 ## 必测非生产链路
