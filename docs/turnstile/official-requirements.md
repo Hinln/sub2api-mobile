@@ -1,6 +1,6 @@
 # Turnstile requirements and project mapping
 
-Last reviewed: 2026-10-04. The production Sub2API deployment remains the official `0.2.13` release; this document describes the mobile client contract and does not authorize a backend fork or production change.
+Last reviewed: 2026-10-05. The production Sub2API deployment remains the official `0.2.13` release; this document describes the mobile client contract and does not authorize a backend fork or production change.
 
 ## Official requirements used by this implementation
 
@@ -18,7 +18,7 @@ The official material actually reviewed on 2026-10-04 says:
 - Mobile integrations use a WebView with JavaScript, DOM storage, standard Web APIs, access to `challenges.cloudflare.com`, and stable user-agent/device behavior. The RN example does not require every available WebView prop.
 - In `react-native-webview@13.15.0`, `onMessage` injects `window.ReactNativeWebView.postMessage` only when the handler is present; `WebViewMessageEvent.nativeEvent.data` and `url` are available. `isTopFrame` is iOS-only in `onShouldStartLoadWithRequest`, so Android subframe requests may omit it; the gate allows an unknown value only for the explicit Cloudflare subresource origin and always rejects a known top-frame replacement.
 - Explicit rendering uses `api.js?render=explicit`; only the success callback's token means success. `before-interactive` and `after-interactive` are interaction lifecycle events, not proof of a valid token.
-- Flexible widgets require a container with at least 300 CSS px; normal is 300x65 and compact is 150x140. The native surface therefore reserves a 110 point visible area and does not infer success from appearance.
+- Flexible widgets require a container with at least 300 CSS px; normal is 300x65 and compact is 150x140. The native surface therefore reserves a 220 point visible area after submit and does not infer success from appearance or hide the interaction region.
 - Error `110200` means the hostname is not authorized and `200500` means an iframe load failure. A 401 PAT probe or an occasional random `*.challenges.cloudflare.com` DNS failure can be non-fatal when the widget eventually returns a token.
 - Error-code handling follows the provider table: `110100`, `110110`, `110200`, `200100`, `400020`, `400021`, and `400070` are configuration/non-retry failures; `110600`, `110620`, `200500`, `300*`, and `600*` are retryable challenge failures. The app reports the received code and does not retry indefinitely.
 - Tokens are valid for 300 seconds and are single-use. Siteverify is a server POST to `https://challenges.cloudflare.com/turnstile/v0/siteverify`; replay returns `timeout-or-duplicate`.
