@@ -105,9 +105,10 @@ export default function MonitorScreen() {
   const trendDelta = typeof trendLatest === 'number' && typeof trendFirst === 'number' && trendFirst > 0 ? `${((trendLatest - trendFirst) / trendFirst * 100 >= 0 ? '+' : '')}${((trendLatest - trendFirst) / trendFirst * 100).toFixed(1)}%` : '--';
   const accountTrend = accountItems.map((item) => item.current_concurrency ?? 0);
   const alertItems = alerts.data ?? [];
-  const unresolvedAlerts = alertItems.filter((item) => item.status !== 'resolved' && item.status !== 'manual_resolved');
-  const rateLimitAlerts = alertItems.filter((item) => /rate|limit|限流/i.test(`${item.title ?? ''} ${item.description ?? ''} ${item.severity ?? ''}`));
-  const recoveredAlerts = alertItems.filter((item) => item.status === 'resolved' || item.status === 'manual_resolved');
+  const alertsAvailable = Array.isArray(alerts.data);
+  const unresolvedAlerts = alertsAvailable ? alertItems.filter((item) => item.status !== 'resolved' && item.status !== 'manual_resolved') : [];
+  const rateLimitAlerts = alertsAvailable ? alertItems.filter((item) => /rate|limit|限流/i.test(`${item.title ?? ''} ${item.description ?? ''} ${item.severity ?? ''}`)) : [];
+  const recoveredAlerts = alertsAvailable ? alertItems.filter((item) => item.status === 'resolved' || item.status === 'manual_resolved') : [];
 
   return <Page title="运营概览" subtitle={`${settings.data?.site_name || 'Vexlune Hub'} · ${version.data?.version || '版本未知'}`} refreshing={refreshing} onRefresh={refresh} right={<Pressable accessibilityLabel="refresh-dashboard" onPress={refresh} style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: theme.cardRaised, alignItems: 'center', justifyContent: 'center' }}><RefreshCw color={theme.primary} size={19} /></Pressable>}>
     <StateCard loading={loading} error={error} onRetry={refresh} />
@@ -149,13 +150,13 @@ export default function MonitorScreen() {
       <Pressable onPress={() => router.push('/admin-security')}>
         <Card style={{ paddingVertical: 13 }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: unresolvedAlerts.length ? theme.danger : theme.success, fontSize: 20, fontWeight: '900' }}>{count(unresolvedAlerts.length)}</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 4 }}>待处理异常</Text></View>
+            <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: !alertsAvailable ? theme.subtext : unresolvedAlerts.length ? theme.danger : theme.success, fontSize: 20, fontWeight: '900' }}>{alertsAvailable ? count(unresolvedAlerts.length) : '--'}</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 4 }}>待处理异常</Text></View>
             <View style={{ width: 1, backgroundColor: theme.border }} />
-            <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: rateLimitAlerts.length ? theme.warning : theme.subtext, fontSize: 20, fontWeight: '900' }}>{count(rateLimitAlerts.length)}</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 4 }}>限流相关</Text></View>
+            <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: !alertsAvailable ? theme.subtext : rateLimitAlerts.length ? theme.warning : theme.subtext, fontSize: 20, fontWeight: '900' }}>{alertsAvailable ? count(rateLimitAlerts.length) : '--'}</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 4 }}>限流相关</Text></View>
             <View style={{ width: 1, backgroundColor: theme.border }} />
-            <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: theme.success, fontSize: 20, fontWeight: '900' }}>{count(recoveredAlerts.length)}</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 4 }}>已恢复</Text></View>
+            <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: !alertsAvailable ? theme.subtext : theme.success, fontSize: 20, fontWeight: '900' }}>{alertsAvailable ? count(recoveredAlerts.length) : '--'}</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 4 }}>已恢复</Text></View>
           </View>
-          <Text style={{ color: theme.faint, fontSize: 10, textAlign: 'center', marginTop: 10 }}>数据来自服务端告警事件</Text>
+          <Text style={{ color: alerts.error ? theme.warning : theme.faint, fontSize: 10, textAlign: 'center', marginTop: 10 }}>{alerts.error ? '告警接口暂不可用，未显示推断数据' : '数据来自服务端告警事件'}</Text>
         </Card>
       </Pressable>
 
