@@ -1,6 +1,6 @@
 # Admin Key 合同与排障说明
 
-更新日期：2026-10-05（Asia/Shanghai）。
+更新日期：2026-10-06（Asia/Shanghai）。
 
 本说明适用于 Vexlune Hub 管理员专用 iOS APP。后端合同是官方 Sub2API
 `v0.2.13`（tag `3040209f205472038c1ba745a1bedd2edd9053b1`）。生产服务器

@@ -1,6 +1,6 @@
 # API Coverage Matrix — administrator-only product
 
-Updated: 2026-10-05 (Asia/Shanghai)
+Updated: 2026-10-06 (Asia/Shanghai)
 
 The mobile release targets the official Sub2API `v0.2.13` contract at tag
 `3040209f205472038c1ba745a1bedd2edd9053b1`. The production server remains

@@ -4,7 +4,7 @@
 
 ## 当前外部状态证据
 
-检查日期：2026-10-05（Asia/Shanghai）。
+检查日期：2026-10-06（Asia/Shanghai）。
 
 - [x] App Store Connect 已存在 `Vexlune Hub` App 记录（App ID `6818636344`），iOS 版本已更新为 `1.0.1` 并处于“准备提交”。
 - [x] Apple Developer App ID `Vexlune Mobile Console` / `com.vexlune.mobile` 已存在。
@@ -33,7 +33,7 @@
 
 ## TestFlight 验收
 
-- [ ] 内部测试组已加入，测试账号分别覆盖普通用户和管理员角色。
+- [ ] 内部测试组已加入，测试账号使用可撤销的管理员 Admin Key；本版本不提供普通用户工作台。
 - [ ] 真机使用可撤销的 Admin Key 完成管理员工作台登录、401 失效、退出和 SecureStore 清理。
 - [ ] 管理员侧用户、账号、分组、日志、公告、订单资金与设置权限和审计事件符合官方后端结果。
 - [ ] Cloudflare challenge（如生产策略启用）只按官方服务端校验结果放行；APP 不保存或发送 Cloudflare secret。

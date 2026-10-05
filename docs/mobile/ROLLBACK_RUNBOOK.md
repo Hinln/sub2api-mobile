@@ -10,10 +10,10 @@
 
 1. 记录当前 iOS 构建、官方 Sub2API v0.2.13 合同版本、非生产环境和错误样本。
 2. 先暂停有问题的 APP 渠道或 CI 发布流水线，保留可审计的服务端日志。
-3. 若仅 APP 有问题，恢复上一个已签名的 iOS archive/TestFlight build；旧 APP 必须仍能使用 Bearer JWT、刷新和官方 v0.2.13 响应契约。
+3. 若仅 APP 有问题，恢复上一个已签名的 iOS archive/TestFlight build；旧 APP 必须仍能使用官方 Admin Key、`x-api-key` 和官方 v0.2.13 响应契约。
 4. 支付或余额异常时暂停自动重试，按官方服务端返回的订单号和审计事件逐笔核对后再恢复写操作。
 5. 不通过部署私有 captcha bridge、修改生产 API 或放宽 Cloudflare 规则来修复客户端回归。
-6. 回滚后用批准的非生产环境验证登录、角色路由、API key、usage、订单查询和管理员审计，再恢复分发。
+6. 回滚后用批准的非生产环境验证 Admin Key 登录、管理员路由、usage、订单查询和审计，再恢复分发。
 
 ## 数据安全
 

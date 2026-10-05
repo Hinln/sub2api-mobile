@@ -1,6 +1,6 @@
 # Current Architecture — administrator-only console
 
-Updated: 2026-10-05 (Asia/Shanghai).
+Updated: 2026-10-06 (Asia/Shanghai).
 
 Release contract: official Sub2API `v0.2.13`
 (`3040209f205472038c1ba745a1bedd2edd9053b1`). The private backend checkout is

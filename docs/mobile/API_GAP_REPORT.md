@@ -1,6 +1,6 @@
 # API Gap Report
 
-Updated: 2026-10-05 (Asia/Shanghai).
+Updated: 2026-10-06 (Asia/Shanghai).
 
 ## Authority and release boundary
 
@@ -59,8 +59,10 @@ secret.
 
 ## Confirmed mobile constraints
 
-- Bearer access/refresh tokens are kept in SecureStore; the legacy admin API
-  key is never requested, stored or sent.
+- The product login uses the official Admin Key in SecureStore and sends it only
+  as `x-api-key`; the app does not create, refresh, or persist a JWT session.
+  Legacy JWT compatibility code may remain for source compatibility but is not a
+  product login path.
 - The transport must parse the official response envelope and classify
   Cloudflare HTML/challenge responses before attempting JSON decoding. This is
   a client error boundary, not a request to modify production Cloudflare

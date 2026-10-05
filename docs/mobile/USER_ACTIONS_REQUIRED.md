@@ -6,7 +6,7 @@
 
 ## 当前必须由产品方完成
 
-1. **非生产验收环境**：提供可撤销的普通用户和管理员账号及已批准的非生产 origin，按官方 provider widget/SDK 完成登录、验证码、支付结果和管理员权限验收。不要部署私有 `/mobile/captcha/*` bridge。
+1. **非生产验收环境**：提供可撤销的管理员 Admin Key 及已批准的非生产 origin，按官方管理接口完成只读 dashboard、401/403/423、审计、支付结果和权限验收。本版本不需要普通用户账号，也不要部署私有 `/mobile/captcha/*` bridge。
 2. **App Store Connect 上传**：ASC iOS 版本已对齐为 `1.0.1`；仍需配置 ASC API key（`.p8`、issuer、key ID）。配置后可运行 `scripts/upload-ios-appstore.sh` 上传已验证 IPA，也可由产品方用 Transporter/Xcode 上传。
 3. **真机验收**：连接并信任一台已加入 provisioning profile 的实体 iPhone，完成登录、provider captcha、支付、注销和权限路径验收。
 4. **App Store Connect 资料**：补齐截图、隐私政策 URL、支持 URL、描述/关键词、年龄分级、税务与价格、审核账号、出口合规，并选择发布方式。
