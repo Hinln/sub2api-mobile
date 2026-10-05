@@ -33,7 +33,7 @@
 | Production HTTP headers | 通过（只读） | 2026-10-04 读取 `/login`、`/mobile/turnstile` 和 `/api/v1/settings/public`：分别为 HTML 200、HTML 200、JSON 200；三者 `cache-control: no-cache`、`cf-cache-status: DYNAMIC`，现有 CSP 已允许 `https://challenges.cloudflare.com` 的 script/frame。路由内容仍是旧入口 bundle，不能替代部署验收。 |
 | iOS simulator production-key login | 历史 fallback 构建通过；当前 URI 构建待测 | 旧签名 Debug 包曾完成真实生产 site key → Turnstile token → 官方登录 → 普通用户工作台链路；该证据来自已移除的 app-owned HTML fallback。当前代码已改为实际 HTTPS URI，需在专用页部署后重新运行；无密码、Cookie、token 或会话值进入日志。 |
 | Official v0.2.13 clean patch | 通过（临时干净检出） | `docs/official-v0.2.13-turnstile.patch` 在官方 tag `3040209f205472038c1ba745a1bedd2edd9053b1` 上 `git apply --check` 通过；应用后 `vue-tsc -b` 与 `vite build` 通过，并生成 `MobileTurnstileView` chunk。官方锁文件在当前 pnpm overrides 校验下无法 frozen install，构建使用已验证的同版本依赖树，未修改生产。 |
-| Local frontend Turnstile route | 通过（本地） | 在同工作区 `sub2api/frontend` 执行 `pnpm run typecheck`、`pnpm run test:run`（333 个文件、2498 项测试）、`pnpm run lint:check`、`pnpm run build`；构建产物包含 `MobileTurnstileView-*.js` 与对应 CSS。该产物尚未部署到任何服务器。 |
+| Local frontend Turnstile route | 通过（本地） | 在同工作区 `sub2api/frontend` 执行 `pnpm run typecheck`、`pnpm run test:run`（333 个文件、2498 项测试）、`pnpm run lint:check`、`pnpm run build`；`pnpm preview` 的真实 HTTP smoke 访问 `/mobile/turnstile#...` 返回 `200 text/html`，入口 bundle 包含 `MobileTurnstile`。该产物尚未部署到任何服务器。 |
 | Turnstile token refresh lifecycle | 源码与本地合同测试通过；设备联调待完成 | 当前 URI 版本的 240 秒刷新会重建专用 WebView 文档并生成新 tuple；原生消息来源同时校验同源 `/mobile/turnstile` 路径，避免 hash-only 导航或同源其他页面导致陈旧/伪造消息。自动化覆盖 tuple/config 和实例 key 合同，真实 240 秒 WebView 重建仍需 iOS 设备运行验证。 |
 | Android | 暂缓 | 当前范围不开发、不构建、不签名 Android；恢复范围后另行补齐证据。 |
 
