@@ -6,9 +6,10 @@ import { Pressable, Text, View } from 'react-native';
 
 import { Badge, Card, Page, StateCard } from '@/src/components/ui';
 import { getAdminSettings, getDashboardStats, getDashboardTrend, getSystemVersion, listAccounts, listRequestErrors } from '@/src/services/admin';
+import { listAlertEvents } from '@/src/services/admin-extended';
 import { theme } from '@/src/theme';
 
-type TrendMetric = 'requests' | 'actual_cost';
+type TrendMetric = 'requests' | 'total_tokens' | 'actual_cost';
 
 type SparklineProps = {
   values: number[];
@@ -81,9 +82,10 @@ export default function MonitorScreen() {
   const accounts = useQuery({ queryKey: ['dashboard-accounts'], queryFn: () => listAccounts('', { page_size: 50 }), staleTime: 30_000 });
   const trend = useQuery({ queryKey: ['dashboard-trend-7d'], queryFn: () => getDashboardTrend(range), staleTime: 30_000 });
   const failures = useQuery({ queryKey: ['dashboard-failures'], queryFn: () => listRequestErrors({ page_size: 5, resolved: false }), staleTime: 30_000 });
+  const alerts = useQuery({ queryKey: ['dashboard-alert-events'], queryFn: () => listAlertEvents({ limit: 50 }), staleTime: 30_000 });
   const [trendMetric, setTrendMetric] = useState<TrendMetric>('requests');
 
-  const queries = [stats, settings, version, accounts, trend, failures];
+  const queries = [stats, settings, version, accounts, trend, failures, alerts];
   const loading = stats.isLoading || accounts.isLoading;
   const error = stats.error || accounts.error;
   const refreshing = queries.some((query) => query.isRefetching);
@@ -94,7 +96,7 @@ export default function MonitorScreen() {
   const abnormal = stats.data?.error_accounts ?? accountItems.filter((item) => item.status === 'error' || Boolean(item.error_message)).length;
   const trendItems = trend.data?.trend ?? [];
   const trendValues = trendItems.map((point) => {
-    const value = trendMetric === 'requests' ? point.requests : point.actual_cost;
+    const value = trendMetric === 'requests' ? point.requests : trendMetric === 'total_tokens' ? point.total_tokens : point.actual_cost;
     return typeof value === 'number' && Number.isFinite(value) ? value : 0;
   });
   const trendMax = Math.max(...trendValues, 1);
@@ -102,6 +104,10 @@ export default function MonitorScreen() {
   const trendFirst = trendValues.find((value) => value > 0);
   const trendDelta = typeof trendLatest === 'number' && typeof trendFirst === 'number' && trendFirst > 0 ? `${((trendLatest - trendFirst) / trendFirst * 100 >= 0 ? '+' : '')}${((trendLatest - trendFirst) / trendFirst * 100).toFixed(1)}%` : '--';
   const accountTrend = accountItems.map((item) => item.current_concurrency ?? 0);
+  const alertItems = alerts.data ?? [];
+  const unresolvedAlerts = alertItems.filter((item) => item.status !== 'resolved' && item.status !== 'manual_resolved');
+  const rateLimitAlerts = alertItems.filter((item) => /rate|limit|限流/i.test(`${item.title ?? ''} ${item.description ?? ''} ${item.severity ?? ''}`));
+  const recoveredAlerts = alertItems.filter((item) => item.status === 'resolved' || item.status === 'manual_resolved');
 
   return <Page title="运营概览" subtitle={`${settings.data?.site_name || 'Vexlune Hub'} · ${version.data?.version || '版本未知'}`} refreshing={refreshing} onRefresh={refresh} right={<Pressable accessibilityLabel="refresh-dashboard" onPress={refresh} style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: theme.cardRaised, alignItems: 'center', justifyContent: 'center' }}><RefreshCw color={theme.primary} size={19} /></Pressable>}>
     <StateCard loading={loading} error={error} onRetry={refresh} />
@@ -118,16 +124,16 @@ export default function MonitorScreen() {
         <KpiCard icon={Layers3} label="Token / 分钟" value={count(stats.data?.tpm)} tone="warning" />
       </View>
 
-      <SectionHeader title="近 7 天趋势" action={trendDelta === '--' ? undefined : `${trendDelta} · ${trendMetric === 'requests' ? '请求量' : '实际计费'}`} />
+      <SectionHeader title="近 7 天趋势" action={trendDelta === '--' ? undefined : `${trendDelta} · ${trendMetric === 'requests' ? '请求量' : trendMetric === 'total_tokens' ? 'Token' : '实际计费'}`} />
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ flexDirection: 'row', gap: 7 }}>
-            {([['requests', '请求量'], ['actual_cost', '实际计费']] as const).map(([value, label]) => <Pressable key={value} onPress={() => setTrendMetric(value)} style={{ borderRadius: 999, backgroundColor: trendMetric === value ? theme.primary : theme.cardRaised, paddingHorizontal: 12, paddingVertical: 7 }}><Text style={{ color: trendMetric === value ? '#FFFFFF' : theme.subtext, fontSize: 11, fontWeight: '800' }}>{label}</Text></Pressable>)}
+            {([['requests', '请求量'], ['total_tokens', 'Token'], ['actual_cost', '实际计费']] as const).map(([value, label]) => <Pressable key={value} onPress={() => setTrendMetric(value)} style={{ borderRadius: 999, backgroundColor: trendMetric === value ? theme.primary : theme.cardRaised, paddingHorizontal: 11, paddingVertical: 7 }}><Text style={{ color: trendMetric === value ? '#FFFFFF' : theme.subtext, fontSize: 11, fontWeight: '800' }}>{label}</Text></Pressable>)}
           </View>
           <Text style={{ color: theme.subtext, fontSize: 11 }}>{range.start_date.slice(5)}–{range.end_date.slice(5)}</Text>
         </View>
         {trendValues.length ? <View style={{ height: 128, flexDirection: 'row', alignItems: 'flex-end', gap: 5, marginTop: 18 }}>{trendValues.map((value, index) => <View key={`${trend.data?.trend[index]?.date ?? index}`} accessibilityLabel={`trend-${index}`} style={{ flex: 1, minHeight: 4, height: `${Math.max(5, (value / trendMax) * 100)}%`, borderRadius: 4, backgroundColor: index === trendValues.length - 1 ? theme.primary : theme.primarySoft }} />)}</View> : <Text style={{ color: theme.subtext, textAlign: 'center', paddingVertical: 28 }}>当前时间范围没有趋势数据</Text>}
-        {trendLatest !== undefined ? <Text style={{ color: theme.text, fontSize: 12, fontWeight: '800', marginTop: 11 }}>{trendMetric === 'requests' ? `${count(trendLatest)} 次请求` : money(trendLatest)}</Text> : null}
+        {trendLatest !== undefined ? <Text style={{ color: theme.text, fontSize: 12, fontWeight: '800', marginTop: 11 }}>{trendMetric === 'requests' ? `${count(trendLatest)} 次请求` : trendMetric === 'total_tokens' ? `${count(trendLatest)} Token` : money(trendLatest)}</Text> : null}
       </Card>
 
       <SectionHeader title="服务状态" action="查看全部" onAction={() => router.push('/accounts')} />
@@ -138,6 +144,20 @@ export default function MonitorScreen() {
         })}</View>
         <Pressable onPress={() => router.push('/accounts')} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingTop: 11, borderTopWidth: 1, borderTopColor: theme.border }}><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '800' }}>管理上游账号</Text><ChevronRight color={theme.primary} size={15} /></Pressable>
       </Card>
+
+      <SectionHeader title="异常聚合" action={unresolvedAlerts.length ? '处理告警' : undefined} onAction={() => router.push('/admin-security')} />
+      <Pressable onPress={() => router.push('/admin-security')}>
+        <Card style={{ paddingVertical: 13 }}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: unresolvedAlerts.length ? theme.danger : theme.success, fontSize: 20, fontWeight: '900' }}>{count(unresolvedAlerts.length)}</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 4 }}>待处理异常</Text></View>
+            <View style={{ width: 1, backgroundColor: theme.border }} />
+            <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: rateLimitAlerts.length ? theme.warning : theme.subtext, fontSize: 20, fontWeight: '900' }}>{count(rateLimitAlerts.length)}</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 4 }}>限流相关</Text></View>
+            <View style={{ width: 1, backgroundColor: theme.border }} />
+            <View style={{ flex: 1, alignItems: 'center' }}><Text style={{ color: theme.success, fontSize: 20, fontWeight: '900' }}>{count(recoveredAlerts.length)}</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 4 }}>已恢复</Text></View>
+          </View>
+          <Text style={{ color: theme.faint, fontSize: 10, textAlign: 'center', marginTop: 10 }}>数据来自服务端告警事件</Text>
+        </Card>
+      </Pressable>
 
       <SectionHeader title="快捷操作" />
       <View style={{ flexDirection: 'row', gap: 8 }}>

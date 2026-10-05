@@ -1,4 +1,4 @@
-import { ChartNoAxesCombined, ChevronRight, FileText, Home, Settings2, UserRound, Users, type LucideIcon } from 'lucide-react-native';
+import { ChartNoAxesCombined, ChevronRight, Home, Settings2, UserRound, Users, type LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { router, usePathname } from 'expo-router';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
@@ -17,13 +17,12 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
   right?: ReactNode;
 }) {
   const pathname = usePathname();
-  const standalone = !['/', '/monitor', '/users', '/admin-orders', '/settings'].includes(pathname);
-  const activePath = pathname === '/' ? '/' : pathname.startsWith('/monitor') ? '/monitor' : pathname.startsWith('/users') ? '/users' : pathname.startsWith('/admin-orders') ? '/admin-orders' : pathname.startsWith('/settings') ? '/settings' : '/';
+  const standalone = !['/', '/monitor', '/users', '/settings'].includes(pathname);
+  const activePath = pathname === '/' ? '/' : pathname.startsWith('/monitor') ? '/monitor' : pathname.startsWith('/users') ? '/users' : pathname.startsWith('/settings') ? '/settings' : '/';
   const navItems = [
     { path: '/', label: '首页', Icon: Home },
     { path: '/monitor', label: '监控', Icon: ChartNoAxesCombined },
     { path: '/users', label: '用户', Icon: Users },
-    { path: '/admin-orders', label: '订单', Icon: FileText },
     { path: '/settings', label: '设置', Icon: Settings2 },
   ] as const;
   return (
