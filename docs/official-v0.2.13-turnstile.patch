@@ -1,9 +1,9 @@
 diff --git a/deploy/MOBILE_TURNSTILE.md b/deploy/MOBILE_TURNSTILE.md
 new file mode 100644
-index 0000000..64d7616
+index 000000000..5f2b01835
 --- /dev/null
 +++ b/deploy/MOBILE_TURNSTILE.md
-@@ -0,0 +1,69 @@
+@@ -0,0 +1,72 @@
 +# Native mobile Turnstile page
 +
 +The Vexlune Hub iOS client loads the same-origin HTTPS route
@@ -56,11 +56,14 @@ index 0000000..64d7616
 +```
 +
 +The first response will contain the built app shell; route correctness is
-+confirmed by loading it in a browser/WebView and observing the page's
-+`ready` handshake. A shell response by itself is not token or login evidence.
-+Complete one real challenge in staging or with an approved test account, then
-+verify that the existing login/register endpoint accepts the token and that a
-+replay is rejected. Do not put a production Secret Key or test token in logs.
++confirmed by loading it in a visible native WebView with the bridge injected
++and observing the `ready` handshake. A normal browser can verify the route and
++public settings only; it intentionally reports an unsupported environment
++because `window.ReactNativeWebView` is absent. A shell response by itself is
++not token or login evidence. Complete one real challenge in staging or with an
++approved test account, then verify that the existing login/register endpoint
++accepts the token and that a replay is rejected. Do not put a production
++Secret Key or test token in logs.
 +
 +## Rollback
 +
@@ -74,7 +77,7 @@ index 0000000..64d7616
 +Production deployment, service restart, CDN cache purge, and Cloudflare widget
 +hostname/key changes require explicit operator confirmation before execution.
 diff --git a/frontend/src/router/index.ts b/frontend/src/router/index.ts
-index 1881ff3..b9dd00a 100644
+index 1881ff393..b9dd00a20 100644
 --- a/frontend/src/router/index.ts
 +++ b/frontend/src/router/index.ts
 @@ -148,6 +148,15 @@ const routes: RouteRecordRaw[] = [
@@ -104,10 +107,10 @@ index 1881ff3..b9dd00a 100644
    '/auth/linuxdo/callback',
 diff --git a/frontend/src/views/public/MobileTurnstileView.vue b/frontend/src/views/public/MobileTurnstileView.vue
 new file mode 100644
-index 0000000..9c984da
+index 000000000..fa6481db9
 --- /dev/null
 +++ b/frontend/src/views/public/MobileTurnstileView.vue
-@@ -0,0 +1,193 @@
+@@ -0,0 +1,196 @@
 +<template>
 +  <main class="mobile-turnstile-page" aria-live="polite">
 +    <section class="turnstile-card" aria-label="安全验证">
@@ -265,9 +268,12 @@ index 0000000..9c984da
 +        state.value = 'ready'
 +        post('expired')
 +      },
-+      'error-callback': () => {
++      'error-callback': (providerErrorCode: unknown) => {
 +        sentSuccess = false
-+        setError('官方安全验证组件未加载，请检查网络后重试。', 'turnstile_error')
++        const errorCode = typeof providerErrorCode === 'string' && providerErrorCode.trim()
++          ? providerErrorCode.trim()
++          : 'turnstile_error'
++        setError('官方安全验证挑战未完成，请重试。', errorCode)
 +      },
 +    } as unknown as Parameters<NonNullable<typeof window.turnstile>['render']>[1]
 +    widgetId = window.turnstile.render(containerRef.value, renderOptions)
