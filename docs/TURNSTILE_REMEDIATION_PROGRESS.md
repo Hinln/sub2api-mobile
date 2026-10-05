@@ -43,7 +43,7 @@
 | 官方 `v0.2.13` 干净补丁 | 通过 | 在 tag `3040209f205472038c1ba745a1bedd2edd9053b1` 临时检出应用最小补丁，`git apply --check`、`vue-tsc -b` 和 `vite build` 均通过；没有部署或修改生产。 |
 | iOS 原生 Xcode Release Simulator 构建 | 通过，`VexluneMobileConsole.app` |
 | iOS 模拟器安装启动 | 通过，bundle `com.vexlune.mobile` |
-| 当前 URI 提交签名 IPA | 通过，提交 `1627587`，SHA-256 `6eee690365567481fd77e2091d4c38a02213696a19b9cd5e957f6651ecb7d7d9`，dSYM UUID `CBC5924B-9EB3-332A-9337-033714D7BBEB` |
+| 当前 URI 提交签名 IPA | 通过，提交 `ee85bf0`，SHA-256 `1eb5ccf90baf7972324cd1e8ce10283ab6181cd373e0e6558ecea2d8f292facd`，dSYM UUID `54E47192-6BBA-32DC-AFE3-F059DA104365` |
 | 生产 `/mobile/turnstile` 线上联调 | 未通过：线上返回旧 SPA 壳，入口 bundle 不含 `MobileTurnstile` 路由 |
 | 生产 HTTP 头只读审计 | 通过 | `/login`、`/mobile/turnstile` 为 HTML 200，settings 为 JSON 200；均为 `no-cache`/`DYNAMIC`，现有 CSP 已允许 `https://challenges.cloudflare.com` script/frame。 |
 | 真实挑战与真实账号登录 | 未完成：需要部署后由授权账号完成一次交互 |
