@@ -4,7 +4,7 @@
 
 ## 当前外部状态证据
 
-检查日期：2026-10-04（Asia/Shanghai）。
+检查日期：2026-10-05（Asia/Shanghai）。
 
 - [x] App Store Connect 已存在 `Vexlune Hub` App 记录（App ID `6818636344`），iOS 版本已更新为 `1.0.1` 并处于“准备提交”。
 - [x] Apple Developer App ID `Vexlune Mobile Console` / `com.vexlune.mobile` 已存在。
@@ -26,7 +26,7 @@
 
 - [x] Xcode 中选择 Team `6KW552MWV6`，Bundle ID 与 App ID 匹配，受控 provisioning profile 与签名身份已验证。
 - [x] ASC 版本与工程 `CFBundleShortVersionString=1.0.1` 已对齐；build number 为 `2`，上传前仍需保持两者一致。
-- [x] 当前 Turnstile 提交 `77c03f3b752ec00e5dd3b56716b5021716c96fa5` 的原生 `archive` 和 `-exportArchive` 已完成，解包后的 App 通过 `codesign --verify --deep --strict`，IPA SHA-256 为 `e51c476499cb186c869ff6b14d3efcff64a3497da9be12b17d0923295228b501`，archive dSYM UUID 为 `CBC5924B-9EB3-332A-9337-033714D7BBEB`；不使用 Expo/EAS 云构建或托管签名。
+- [x] 当前 URI 代码提交 `3290b2e` 的原生 `archive` 和 `-exportArchive` 已完成，解包后的 App 通过 `codesign --verify --deep --strict`，IPA SHA-256 为 `174d3943b49faf55bc3c1fbbf8c4c3579e4f284764ef3ec6bfdb172e8d8b68b6`，archive dSYM UUID 为 `CBC5924B-9EB3-332A-9337-033714D7BBEB`；不使用 Expo/EAS 云构建或托管签名。
 - [x] iOS 26.5 Simulator 已安装并启动当前 Release `.app`（iPhone 17 Pro Max，UDID `1453B2BD-6F79-4861-9090-03284CF7E859`）；这只证明本机模拟器启动路径，不能替代实体 iPhone/TestFlight 验收。
 - [x] 当前 Turnstile 工作树已重新导出包内 App 并通过 `codesign --verify --deep --strict`；已记录 IPA SHA-256 和构建 commit。archive UUID 与 App Store Connect build ID 待上传后补录。
 - [ ] 上传完成后记录 App Store Connect build ID、处理状态和导出日志摘要。
