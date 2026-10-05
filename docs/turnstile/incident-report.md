@@ -24,7 +24,7 @@ Turnstile SDK marker: false
 
 The route response is the ordinary homepage SPA shell (`/assets/index-xMHQ6xfX.js`), not the `MobileTurnstile` route. Consequently the WebView cannot emit `ready`, `before-interactive`, `after-interactive`, `success`, `expired`, or a bridge error for the expected tuple. No business auth request or server Siteverify request can be inferred from this run.
 
-The same result is visible in a normal browser: navigating to `/mobile/turnstile` ends at `/login?redirect=/mobile/turnstile`, and the DOM is the login form with no `MobileTurnstile`, `ReactNativeWebView`, or Turnstile SDK marker. On the freshly built iPhone 17 Pro Max simulator, entering dummy credentials and tapping 登录 changes the native status to “正在加载安全验证…” while the form asks to complete Cloudflare verification; no dedicated challenge surface appears before the route timeout window. This is a route/bundle failure, not evidence that a real challenge was solved or rejected.
+The same result is visible in a normal browser: navigating to `/mobile/turnstile` ends at `/login?redirect=/mobile/turnstile`, and the DOM is the login form with no `MobileTurnstile`, `ReactNativeWebView`, or Turnstile SDK marker. The current URI build (`ee85bf0`, bundle `1.0.1 (2)`) is installed on the iPhone 17 Pro Max simulator. Entering disposable dummy credentials and tapping 登录 briefly shows “正在加载安全验证…”, then the native gate records the same-origin auth-page takeover and displays “安全验证专用页未部署或被登录页接管，请联系管理员发布 /mobile/turnstile 后重试。” No dedicated challenge surface appears. This is a route/bundle failure, not evidence that a real challenge was solved or rejected.
 
 The current native gate now classifies a same-origin auth-page takeover as `dedicated_page_wrong_route`, stops rendering the nested page, clears the pending token, and reports that `/mobile/turnstile` must be deployed. This makes the first missing lifecycle event explicit without bypassing the provider or weakening the origin/tuple checks.
 
@@ -82,6 +82,6 @@ An earlier unsigned/adhoc simulator package produced `setValueWithKeyAsync … A
 ## Still pending
 
 - The production `/mobile/turnstile` route is still the ordinary SPA shell. The current native app now loads that HTTPS route directly, so publishing the dedicated web route is required before the URI build can complete a real challenge.
-- The current URI build has not yet been rebuilt or run against production after this source change; its simulator and device evidence remains pending.
+- The current URI build has been rebuilt, signed, installed, and run on the simulator; it correctly fails closed on the undeployed route. A real token and business login remain unverified until the production web route is published.
 - No production credentials, Cloudflare secret, cache purge, server restart, or Cloudflare rule change was performed.
 - A physical iPhone/TestFlight run and an official test-key run remain release QA items.
