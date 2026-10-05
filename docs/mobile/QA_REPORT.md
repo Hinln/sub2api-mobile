@@ -37,6 +37,7 @@
 | Web build | `pnpm web:build` 通过；Playwright 视觉测试未启动，因为本机未安装 Chromium headless shell。 |
 | iOS build | 原生 Xcode/CocoaPods simulator Release build 通过，未使用 Expo/EAS 云构建；安装并启动 iPhone 17 Pro Max simulator 后截图确认管理员 Key 首屏。最新产物为 `build/ios-admin-ui-final/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`。 |
 | Production probe | 使用无效占位凭据验证：`x-api-key` 返回 `401 INVALID_ADMIN_KEY`，Bearer 形式返回 `401 INVALID_TOKEN`；只记录脱敏 request ID。真实 Admin Key 成功联调仍待用户提供可撤销凭据并明确批准。 |
+| First-party mobile origin probe | `./scripts/verify-mobile-origin.sh` 于 2026-10-06 执行失败：入口 JS bundle 不包含 `MobileTurnstile`。这证明专用页尚未部署，不能声称 Turnstile 线上联调通过；未修改生产。 |
 | Simulator timeout evidence | iPhone 17 Pro Max simulator 的同一路径通过 CFNetwork/HTTP2 在约 33.767 秒后返回 HTTP 200；APP 原 15 秒 AbortController 在响应前触发 `REQUEST_TIMEOUT`。验证请求现为单次 60 秒预算，并有慢响应回归测试。 |
 
 ## 必测 iOS 场景
