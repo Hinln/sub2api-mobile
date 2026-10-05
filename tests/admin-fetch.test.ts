@@ -104,6 +104,16 @@ describe('adminFetch', () => {
     adminConfigState.accessToken = '';
     await expect(adminFetch('/api/v1/admin/settings')).rejects.toThrow('ACCESS_TOKEN_REQUIRED');
   });
+
+  it('falls back to the equivalent trailing-dot origin after a proxy TLS failure', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockRejectedValueOnce(new TypeError('Network request failed'))
+      .mockResolvedValueOnce(response({ code: 0, data: { ok: true } }));
+
+    await expect(adminFetch<{ ok: boolean }>('/api/v1/admin/settings', {}, { retry: 0 })).resolves.toEqual({ ok: true });
+    expect(String(fetchMock.mock.calls[0][0])).toBe('https://hub.vexlune.com/api/v1/admin/settings');
+    expect(String(fetchMock.mock.calls[1][0])).toBe('https://hub.vexlune.com./api/v1/admin/settings');
+  });
 });
 
 describe('client helpers', () => {

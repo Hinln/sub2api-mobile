@@ -47,6 +47,11 @@ export class ApiError extends Error {
 
 let unauthorizedHandler: (() => void) | undefined;
 let refreshInFlight: Promise<void> | undefined;
+// Some local HTTPS proxies advertise HTTP/3 through Cloudflare's alt-svc
+// response, but cannot tunnel the resulting QUIC connection. Keep the
+// fallback in-process so later requests use the same HTTPS origin variant
+// without changing the configured Hub URL or bypassing the proxy.
+let transportBaseUrlOverride: string | undefined;
 
 export function setUnauthorizedHandler(handler?: () => void) {
   unauthorizedHandler = handler;
@@ -57,6 +62,20 @@ export function buildRequestUrl(baseUrl: string, path: string) {
   if (!base) throw new Error('BASE_URL_REQUIRED');
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${base}${normalizedPath}`;
+}
+
+function proxyCompatibleBaseUrl(baseUrl: string) {
+  try {
+    const url = new URL(baseUrl);
+    if (url.protocol !== 'https:' || url.hostname !== 'hub.vexlune.com') return undefined;
+    // A trailing-dot origin is equivalent DNS/HTTPS routing for Cloudflare,
+    // but has a separate alt-svc cache key in CFNetwork, avoiding a broken
+    // HTTP/3 route learned through a local proxy.
+    url.hostname = `${url.hostname}.`;
+    return url.origin;
+  } catch {
+    return undefined;
+  }
 }
 
 export function redactSecret(value: string, visible = 4) {
@@ -185,6 +204,7 @@ async function request<T>(path: string, init: RequestInit = {}, options: Interna
   const maxRetries = IDEMPOTENT_METHODS.has(method) ? (options.retry ?? 2) : 0;
   let attempt = 0;
   let didRefresh = false;
+  let attemptedTransportFallback = false;
 
   if (options.authenticated && !options.skipRefresh && !sessionState.adminApiKey && sessionState.expiresAt > 0 &&
       Date.now() >= sessionState.expiresAt && sessionState.refreshToken) {
@@ -222,8 +242,9 @@ async function request<T>(path: string, init: RequestInit = {}, options: Interna
       }
     }
     if (options.idempotencyKey) headers.set('Idempotency-Key', options.idempotencyKey);
+    const requestBaseUrl = transportBaseUrlOverride || baseUrl;
     try {
-      const response = await fetch(buildRequestUrl(baseUrl, path), { ...init, method, headers, signal: controller.signal });
+      const response = await fetch(buildRequestUrl(requestBaseUrl, path), { ...init, method, headers, signal: controller.signal });
       const requestId = response.headers.get('x-request-id') || response.headers.get('request-id') || undefined;
       const retryAfter = parseRetryAfter(response.headers.get('retry-after'));
       const raw = await response.text();
@@ -283,6 +304,14 @@ async function request<T>(path: string, init: RequestInit = {}, options: Interna
       throw apiError;
     } catch (error) {
       if (controller.signal.aborted && !options.signal?.aborted) throw new Error('REQUEST_TIMEOUT');
+      if (error instanceof TypeError && !attemptedTransportFallback && requestBaseUrl === baseUrl) {
+        const fallbackBaseUrl = proxyCompatibleBaseUrl(baseUrl);
+        if (fallbackBaseUrl) {
+          attemptedTransportFallback = true;
+          transportBaseUrlOverride = fallbackBaseUrl;
+          continue;
+        }
+      }
       if (attempt < maxRetries && error instanceof TypeError) {
         attempt += 1;
         await sleep(350 * 2 ** attempt, options.signal);
