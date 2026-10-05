@@ -24,8 +24,8 @@
 ## 验证证据
 
 - 原生构建：Xcode/CocoaPods Release Simulator，未使用 Expo/EAS 云构建。
-- 产物：`build/ios-ui-audit/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`。
-- 模拟器已安装并启动；概览、上游账号、用户管理、请求日志、更多、分组与模型、订单与资金均可打开。
+- 产物：`build/ios-ui-audit-final/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`。
+- 最新包已安装并启动；登录首屏已实际核验，其他管理页的路由和真实接口代码已检查。
 - `pnpm typecheck` 通过；Vitest 12 个文件、66 项测试通过；目标文件 ESLint 通过；`git diff --check` 通过。
 
 ## 2026-10-05 管理员后台第二轮参考图
