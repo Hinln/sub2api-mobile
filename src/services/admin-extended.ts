@@ -23,7 +23,19 @@ export type AdminPaymentOrder = Record<string, unknown> & {
   pay_amount?: number;
   payment_type?: string;
   user_email?: string;
+  user_name?: string;
   created_at?: string;
+};
+
+export type AdminPaymentDashboard = {
+  today_amount?: Record<string, number>;
+  total_amount?: Record<string, number>;
+  avg_amount?: Record<string, number>;
+  today_count?: number;
+  total_count?: number;
+  pending_orders?: number;
+  daily_series?: { date: string; amount?: Record<string, number>; count?: number }[];
+  payment_methods?: { type: string; amount?: Record<string, number>; count?: number }[];
 };
 
 export type AuditLogEntry = Record<string, unknown> & {
@@ -82,7 +94,7 @@ export function listAdminPaymentOrders(params: { page?: number; page_size?: numb
 }
 
 export function getAdminPaymentDashboard() {
-  return adminFetch<Record<string, unknown>>('/api/v1/admin/payment/dashboard');
+  return adminFetch<AdminPaymentDashboard>('/api/v1/admin/payment/dashboard');
 }
 
 export function cancelAdminPaymentOrder(id: number, idempotencyKey?: string) {
