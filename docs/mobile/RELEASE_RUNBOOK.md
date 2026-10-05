@@ -21,6 +21,14 @@ Android 构建列为发布步骤。
 4. 检查 Bundle ID、版本/build、隐私与支持链接、截图、年龄分级、审核账号和出口
    合规资料；没有这些资料不能提交 TestFlight/App Review。
 
+官方 `v0.2.13` 前端专用页补丁已推送到
+`Hinln/sub2api:codex/v0.2.13-turnstile`（提交 `2f7800160`）。对应本地 bundle
+归档为
+`/Users/chuzu/Documents/sub2api-app/build/sub2api-v0.2.13-mobile-turnstile-dist-2f7800160.tar.gz`，
+SHA-256 为
+`c55428d4278da8464958e57232356d57c32b88ebbea5708576e745298aa55b46`。该归档只包含
+官方前端 `dist`，不包含后端改造、Cloudflare secret 或数据库文件。
+
 ## 自动化检查
 
 ```bash
