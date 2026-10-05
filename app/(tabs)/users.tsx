@@ -10,13 +10,12 @@ import { getDashboardStats, listUsers } from '@/src/services/admin';
 import { theme } from '@/src/theme';
 import type { AdminUser } from '@/src/types/admin';
 
-type UserStatus = '' | 'active' | 'disabled' | 'pending';
+type UserStatus = '' | 'active' | 'disabled';
 
 const STATUS_FILTERS: { value: UserStatus; label: string }[] = [
   { value: '', label: '全部' },
   { value: 'active', label: '正常' },
   { value: 'disabled', label: '已禁用' },
-  { value: 'pending', label: '待审核' },
 ];
 
 function money(value?: number) {
@@ -36,7 +35,6 @@ function lastSeen(value?: string | null) {
 
 function userTone(user: AdminUser) {
   if (user.status === 'disabled' || user.status === 'inactive') return { label: '已禁用', tone: 'danger' as const };
-  if (user.status === 'pending' || user.status === 'review') return { label: '待审核', tone: 'warning' as const };
   return { label: '正常', tone: 'success' as const };
 }
 
@@ -56,7 +54,7 @@ export default function UsersScreen() {
     queryKey: ['users', keyword, status, page],
     queryFn: () => listUsers(keyword, { page, page_size: 30, status: status || undefined, sort: 'created_at', order: 'desc' }),
   });
-  const stats = useQuery({ queryKey: ['dashboard-stats-users'], queryFn: getDashboardStats, staleTime: 30_000 });
+  const stats = useQuery({ queryKey: ['dashboard-stats'], queryFn: getDashboardStats, staleTime: 30_000 });
   const items = users.data?.items ?? [];
   const total = users.data?.total;
 
