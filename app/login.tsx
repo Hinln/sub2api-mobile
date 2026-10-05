@@ -150,7 +150,7 @@ export default function LoginScreen() {
                 <TextInput accessibilityLabel="admin-api-key" value={adminKey} onChangeText={(value) => { setAdminKey(value); setError(''); }} autoCapitalize="none" autoCorrect={false} secureTextEntry={!showKey} textContentType="password" placeholder="admin-••••••••" placeholderTextColor={authColors.faint} onSubmitEditing={() => void submit()} style={{ flex: 1, color: authColors.ink, paddingHorizontal: 12, paddingVertical: 15, fontSize: 15, letterSpacing: 0.4 }} />
                 <Pressable accessibilityLabel="toggle-admin-key" onPress={() => setShowKey((value) => !value)} style={{ padding: 13 }}>{showKey ? <EyeOff color={authColors.subtext} size={19} /> : <Eye color={authColors.subtext} size={19} />}</Pressable>
               </View>
-              <Text style={{ color: authColors.subtext, fontSize: 11, lineHeight: 17, marginTop: 6 }}>密钥只保存在本机 SecureStore，并通过 HTTPS 发送到官方管理接口。</Text>
+              <Text style={{ color: authColors.subtext, fontSize: 11, lineHeight: 17, marginTop: 6 }}>生产构建优先保存到系统 SecureStore，并通过 HTTPS 发送到官方管理接口；开发模拟器若缺少 Keychain 权限，本次运行会暂存于内存。</Text>
             </View>
 
             {error ? <Text accessibilityLiveRegion="polite" style={{ color: authColors.danger, fontSize: 13, lineHeight: 19, marginTop: 14 }}>{error}</Text> : null}
@@ -159,7 +159,7 @@ export default function LoginScreen() {
           </View>
 
           <View style={{ alignItems: 'center', marginTop: 24 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}><ShieldCheck color="#7C91B8" size={14} /><Text style={{ color: '#8798BA', fontSize: 11 }}>凭据仅保存于系统 SecureStore</Text></View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}><ShieldCheck color="#7C91B8" size={14} /><Text style={{ color: '#8798BA', fontSize: 11 }}>生产构建凭据保存于系统 SecureStore</Text></View>
             <Text style={{ color: '#8295BA', fontSize: 10, letterSpacing: 4, marginTop: 23 }}>VEXLUNE HUB</Text>
             <Text style={{ color: '#9AA8C4', fontSize: 9, letterSpacing: 2, marginTop: 6 }}>ADMINISTRATOR CONSOLE</Text>
           </View>

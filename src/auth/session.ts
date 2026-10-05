@@ -32,6 +32,8 @@ export type SessionState = {
   saving: boolean;
   /** Official Sub2API administrator credential sent as `x-api-key`. */
   adminApiKey: string;
+  /** Whether the current key survived a SecureStore write or is memory-only. */
+  adminApiKeyStorage: 'secure' | 'memory';
   accessToken: string;
   refreshToken: string;
   expiresAt: number;
@@ -53,6 +55,7 @@ export const sessionState = createProxy<SessionState>({
   advancedUrlEnabled: false,
   saving: false,
   adminApiKey: '',
+  adminApiKeyStorage: IS_WEB ? 'memory' : 'secure',
   accessToken: '',
   refreshToken: '',
   expiresAt: 0,
@@ -71,6 +74,11 @@ async function readSecure(key: string) {
 async function writeSecure(key: string, value: string) {
   if (IS_WEB) return;
   await SecureStore.setItemAsync(key, value, { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY });
+}
+
+function isDevelopmentKeychainUnavailable(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return /required entitlement|missing entitlement|no keychain is available|errSecMissingEntitlement/i.test(message);
 }
 
 async function deleteSecure(key: string) {
@@ -101,6 +109,7 @@ export async function hydrateSession() {
   const adminApiKey = await readSecure(ADMIN_API_KEY_KEY);
   sessionState.accessToken = accessToken ?? '';
   sessionState.adminApiKey = adminApiKey?.trim() ?? '';
+  sessionState.adminApiKeyStorage = sessionState.adminApiKey ? 'secure' : (IS_WEB ? 'memory' : 'secure');
   sessionState.refreshToken = refreshToken ?? '';
   sessionState.expiresAt = Number(expiresAt ?? 0) || 0;
   sessionState.user = user ? safeParseUser(user) : null;
@@ -172,6 +181,7 @@ export async function saveSession(input: { accessToken: string; refreshToken?: s
   sessionState.advancedUrlEnabled = baseUrl !== VEXLUNE_HUB_URL;
   sessionState.accessToken = accessToken;
   sessionState.adminApiKey = '';
+  sessionState.adminApiKeyStorage = IS_WEB ? 'memory' : 'secure';
   sessionState.refreshToken = input.refreshToken ?? '';
   sessionState.expiresAt = expiresAt;
   sessionState.user = input.user;
@@ -188,17 +198,29 @@ export async function saveAdminApiKey(input: { adminApiKey: string; baseUrl?: st
   const adminApiKey = input.adminApiKey.trim();
   if (!adminApiKey) throw new Error('ADMIN_API_KEY_REQUIRED');
   const baseUrl = normalizeHubUrl(input.baseUrl ?? sessionState.baseUrl);
-  await Promise.all([
-    writeSecure(ADMIN_API_KEY_KEY, adminApiKey),
-    deleteSecure(ACCESS_TOKEN_KEY),
-    deleteSecure(REFRESH_TOKEN_KEY),
-    deleteSecure(EXPIRES_AT_KEY),
-    deleteSecure(USER_KEY),
-    baseUrl === VEXLUNE_HUB_URL ? deleteSecure(BASE_URL_KEY) : writeSecure(BASE_URL_KEY, baseUrl),
-  ]);
+  let adminApiKeyStorage: SessionState['adminApiKeyStorage'] = IS_WEB ? 'memory' : 'secure';
+  if (!IS_WEB) {
+    try {
+      await Promise.all([
+        writeSecure(ADMIN_API_KEY_KEY, adminApiKey),
+        deleteSecure(ACCESS_TOKEN_KEY),
+        deleteSecure(REFRESH_TOKEN_KEY),
+        deleteSecure(EXPIRES_AT_KEY),
+        deleteSecure(USER_KEY),
+        baseUrl === VEXLUNE_HUB_URL ? deleteSecure(BASE_URL_KEY) : writeSecure(BASE_URL_KEY, baseUrl),
+      ]);
+    } catch (error) {
+      if (!__DEV__ || !isDevelopmentKeychainUnavailable(error)) throw error;
+      // An unsigned/ad-hoc simulator build can return errSecMissingEntitlement
+      // even though the API key was validated. Keep this one session usable in
+      // memory; a signed device build will persist it in the system Keychain.
+      adminApiKeyStorage = 'memory';
+    }
+  }
   sessionState.baseUrl = baseUrl;
   sessionState.advancedUrlEnabled = baseUrl !== VEXLUNE_HUB_URL;
   sessionState.adminApiKey = adminApiKey;
+  sessionState.adminApiKeyStorage = adminApiKeyStorage;
   sessionState.accessToken = '';
   sessionState.refreshToken = '';
   sessionState.expiresAt = 0;
@@ -212,6 +234,7 @@ export function setAdminApiKey(value: string) {
   const adminApiKey = value.trim();
   if (!adminApiKey) throw new Error('ADMIN_API_KEY_REQUIRED');
   sessionState.adminApiKey = adminApiKey;
+  sessionState.adminApiKeyStorage = 'memory';
   sessionState.accessToken = '';
   sessionState.refreshToken = '';
   sessionState.expiresAt = 0;
@@ -222,6 +245,7 @@ export function setAdminApiKey(value: string) {
 export async function clearAdminApiKey() {
   await deleteSecure(ADMIN_API_KEY_KEY);
   sessionState.adminApiKey = '';
+  sessionState.adminApiKeyStorage = IS_WEB ? 'memory' : 'secure';
 }
 
 export async function updateAccessToken(input: { accessToken: string; refreshToken?: string; expiresIn?: number }) {

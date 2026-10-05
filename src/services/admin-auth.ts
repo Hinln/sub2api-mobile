@@ -28,8 +28,10 @@ export type AdminComplianceStatus = {
 
 /**
  * Validate an Admin API Key against the official Sub2API middleware and then
- * persist it in SecureStore. The key is sent only as `x-api-key`; it is never
- * put in a URL, request body, log, or ordinary app storage.
+ * persist it in SecureStore when the native Keychain is available. An
+ * unsigned/ad-hoc simulator can only keep the already validated key in memory
+ * for that run. The key is sent only as `x-api-key`; it is never put in a URL,
+ * request body, log, or ordinary app storage.
  */
 export async function validateAdminApiKey(value: string): Promise<AdminApiKeyStatus> {
   const adminApiKey = value.trim();
