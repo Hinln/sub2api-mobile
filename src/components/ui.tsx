@@ -18,7 +18,7 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
 }) {
   const pathname = usePathname();
   const standalone = !['/', '/monitor', '/users', '/settings'].includes(pathname);
-  const activePath = pathname === '/' ? '/' : pathname.startsWith('/monitor') ? '/monitor' : pathname.startsWith('/users') ? '/users' : pathname.startsWith('/settings') ? '/settings' : '/';
+  const activePath = pathname === '/' ? '/' : pathname.startsWith('/monitor') ? '/monitor' : pathname.startsWith('/users') ? '/users' : pathname.startsWith('/settings') ? '/settings' : '';
   const navItems = [
     { path: '/', label: '首页', Icon: Home },
     { path: '/monitor', label: '监控', Icon: ChartNoAxesCombined },
