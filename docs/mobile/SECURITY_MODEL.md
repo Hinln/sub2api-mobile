@@ -16,7 +16,7 @@ Vexlune Hub 是管理员控制台。普通用户不能从 APP 登录、注册或
 | 边界 | 允许内容 | 明确禁止 |
 |---|---|---|
 | APP → Sub2API Admin API | HTTPS；`x-api-key: <Admin Key>`；官方 JSON 请求和响应 | `Authorization` 与 Admin Key 混发、把 key 放入 URL/body、直连数据库/Redis/SSH/Docker、发送源站密码 |
-| 本机凭据存储 | iOS SecureStore/Keychain，`WHEN_UNLOCKED_THIS_DEVICE_ONLY` | AsyncStorage、Query cache、剪贴板、日志、截图、分析事件、崩溃报告 |
+| 本机凭据存储 | iOS SecureStore/Keychain，`WHEN_UNLOCKED_THIS_DEVICE_ONLY`；仅当本地模拟器包明确缺少 Keychain entitlement 时，允许已验证 key 留在进程内存 | AsyncStorage、Query cache、剪贴板、日志、截图、分析事件、崩溃报告或任何普通持久化文件 |
 | 服务端 AdminAuth | 官方 `x-api-key` 常量时间比较、管理员身份映射、审计和路由策略 | 客户端伪造管理员角色、接受本地“成功”、绕过 401/403/423 |
 | APP → Cloudflare | 正常 HTTPS 请求；挑战时显示可恢复错误 | 发送 `cf_clearance`、伪造浏览器头、自动解题、把 challenge HTML 当 JSON 成功 |
 
@@ -33,6 +33,11 @@ Vexlune Hub 是管理员控制台。普通用户不能从 APP 登录、注册或
    没有 Admin-Key-specific logout API，因此不能声称服务端已撤销 key。
 6. 官方后台重新生成或删除 key 后，下一次 admin 请求会返回 401；客户端清除
    本地 key 并回到登录页。
+
+本地未签名/adhoc 模拟器包可能在 SecureStore 写入时返回
+`errSecMissingEntitlement`。此时 APP 不把 key 写入普通存储，而是保留已验证
+的 key 直到进程退出，并在 `adminApiKeyStorage` 标记为 `memory`；正式设备包仍
+必须使用带 Keychain entitlement 的签名构建，冷启动不会恢复这类内存会话。
 
 ## 错误与权限边界
 

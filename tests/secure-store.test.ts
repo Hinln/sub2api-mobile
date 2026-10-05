@@ -33,4 +33,14 @@ describe('SecureStore adapter', () => {
     secure.del.mockRejectedValueOnce(new Error('missing'));
     await expect(secureStoreAdapter.deleteItem('missing')).resolves.toBeUndefined();
   });
+
+  it('keeps a validated admin key in memory when a simulator lacks Keychain entitlement', async () => {
+    secure.set.mockRejectedValueOnce(new Error("Calling the 'setValueWithKeyAsync' function has failed: A required entitlement isn't present."));
+
+    await saveAdminConfig({ adminApiKey: 'admin-key-secret' });
+
+    expect(adminConfigState.adminApiKey).toBe('admin-key-secret');
+    expect(adminConfigState.adminApiKeyStorage).toBe('memory');
+    expect(hasAuthenticatedAdminSession(adminConfigState)).toBe(true);
+  });
 });

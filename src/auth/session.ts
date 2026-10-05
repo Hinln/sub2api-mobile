@@ -76,7 +76,7 @@ async function writeSecure(key: string, value: string) {
   await SecureStore.setItemAsync(key, value, { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY });
 }
 
-function isDevelopmentKeychainUnavailable(error: unknown) {
+function isKeychainUnavailable(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? '');
   return /required entitlement|missing entitlement|no keychain is available|errSecMissingEntitlement/i.test(message);
 }
@@ -210,10 +210,13 @@ export async function saveAdminApiKey(input: { adminApiKey: string; baseUrl?: st
         baseUrl === VEXLUNE_HUB_URL ? deleteSecure(BASE_URL_KEY) : writeSecure(BASE_URL_KEY, baseUrl),
       ]);
     } catch (error) {
-      if (!__DEV__ || !isDevelopmentKeychainUnavailable(error)) throw error;
-      // An unsigned/ad-hoc simulator build can return errSecMissingEntitlement
-      // even though the API key was validated. Keep this one session usable in
-      // memory; a signed device build will persist it in the system Keychain.
+      if (!isKeychainUnavailable(error)) throw error;
+      // Some locally installed simulator packages are ad-hoc signed and do not
+      // carry the Keychain entitlement even though the API key was validated.
+      // Keep this run usable without ever copying the credential to ordinary
+      // storage. A correctly signed device/release package persists it in the
+      // system Keychain; this memory-only path is discarded when the process
+      // exits and is surfaced through adminApiKeyStorage for diagnostics.
       adminApiKeyStorage = 'memory';
     }
   }

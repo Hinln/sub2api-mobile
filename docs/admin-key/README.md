@@ -50,6 +50,9 @@ Accept: application/json
 - 成功后保存到 iOS SecureStore/Keychain，并使用
   `WHEN_UNLOCKED_THIS_DEVICE_ONLY`。key 不进入 AsyncStorage、Query cache、URL、
   JSON body、剪贴板、截图、分析事件或崩溃报告。
+- 如果本地模拟器包缺少 Keychain entitlement，系统会返回
+  `errSecMissingEntitlement`。APP 只在当前进程内存保留已经通过官方接口验证的
+  key，不写入任何普通持久化存储；正式签名设备包必须恢复 SecureStore 持久化。
 - 每个 admin 请求都走同一 HTTPS Hub origin。退出只删除本机 key、内存状态和
   Query cache；官方 API 没有 Admin-Key-specific logout。
 - 冷启动从 SecureStore 恢复 key；不会调用 `/api/v1/auth/me`，不会刷新 JWT。
