@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { listAccounts, listUsageLogs, listUsers } from '@/src/services/admin';
-import { listAdminPaymentOrders, listAlertEvents, queryAdminPaymentRefund } from '@/src/services/admin-extended';
+import { getOpsDashboardOverview, listAdminPaymentOrders, listAlertEvents, queryAdminPaymentRefund } from '@/src/services/admin-extended';
 import { getRefundEligibleProviders, requestPaymentRefund } from '@/src/services/user';
 import { adminConfigState } from '@/src/store/admin-config';
 
@@ -32,6 +32,26 @@ describe('admin service query contracts', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response(page));
     await listUsers('', { page: 2, page_size: 10, sort: 'created_at', order: 'asc' });
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/v1/admin/users?page=2&page_size=10&sort_by=created_at&sort_order=asc');
+  });
+
+  it('supports the official active-admin identity query', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response(page));
+    await listUsers('', { page: 1, page_size: 1, status: 'active', role: 'admin', sort: 'id', order: 'asc' });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/v1/admin/users?page=1&page_size=1&status=active&role=admin&sort_by=id&sort_order=asc');
+  });
+
+  it('uses the official operations overview query contract', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
+      health_score: 97,
+      qps: { current: 0.1, peak: 0.3, avg: 0.1 },
+      tps: { current: 12, peak: 18, avg: 12 },
+      sla: 100,
+      error_rate: 0,
+      duration: { p99_ms: 420 },
+    }));
+
+    await expect(getOpsDashboardOverview()).resolves.toMatchObject({ health_score: 97 });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/v1/admin/ops/dashboard/overview?time_range=1h&mode=auto');
   });
 
   it('uses backend sort_by/sort_order names for accounts', async () => {

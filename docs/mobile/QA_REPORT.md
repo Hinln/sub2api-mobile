@@ -32,11 +32,11 @@
 |---|---|
 | Admin Key service tests | `tests/admin-auth.test.ts` 覆盖成功验证、只发 `x-api-key`、拒绝 key 不落盘；使用工作区 Node 运行通过。 |
 | Admin fetch tests | `tests/admin-fetch.test.ts` 覆盖 header 覆盖、401/403、Cloudflare HTML、request ID、重试边界；通过。 |
-| TypeScript/ESLint/Vitest | `pnpm typecheck`、`pnpm lint`、`pnpm test -- --run` 通过；13 个测试文件、70 项测试通过。 |
+| TypeScript/ESLint/Vitest | `pnpm typecheck`、`pnpm lint`、`pnpm test -- --run` 通过；13 个测试文件、72 项测试通过。 |
 | 生产占位扫描 | `sh scripts/verify-production-scan.sh` 通过。 |
 | Web build | `pnpm web:build` 通过；Playwright 视觉测试未启动，因为本机未安装 Chromium headless shell。 |
-| iOS build | 原生 Xcode/CocoaPods simulator Release build 通过，未使用 Expo/EAS 云构建；安装并启动 iPhone 17 Pro Max simulator 后截图确认管理员 Key 首屏。当前轮产物为 `build/ios-admin-ui-round6/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`。 |
-| Production probe | 使用无效占位凭据验证：`x-api-key` 返回 `401 INVALID_ADMIN_KEY`，Bearer 形式返回 `401 INVALID_TOKEN`；只记录脱敏 request ID。当前轮在本地授权范围内使用真实 Admin Key 做一次请求和一次有界重试，均在模拟器侧显示 `Network request failed`，未声称线上登录通过。 |
+| iOS build | 原生 Xcode/CocoaPods simulator Release build 通过，未使用 Expo/EAS 云构建；最终产物为 `build/ios-admin-ops-round9/Build/Products/Release-iphonesimulator/VexluneMobileConsole.app`，已安装并启动。 |
+| Production probe | 使用无效占位凭据验证：`x-api-key` 返回 `401 INVALID_ADMIN_KEY`，Bearer 形式返回 `401 INVALID_TOKEN`；只记录脱敏 request ID。使用用户授权的真实 Admin Key 完成只读登录、首页、Ops、用户、上游账号、分组、订单、设置及后台恢复 smoke test；没有提交破坏性写操作。 |
 | 2026-10-06 official contract probe | `GET /api/v1/settings/public` 返回 JSON `200`、`code: 0`、`turnstile_enabled: true`，未发现 secret；无 header 请求 `GET /api/v1/admin/settings/admin-api-key` 返回 JSON `401 UNAUTHORIZED`。未发送 Admin Key。 |
 | First-party mobile origin probe | `./scripts/verify-mobile-origin.sh` 于 2026-10-06 执行失败：入口 JS bundle 不包含 `MobileTurnstile`。这证明专用页尚未部署，不能声称 Turnstile 线上联调通过；未修改生产。 |
 | Simulator timeout evidence | iPhone 17 Pro Max simulator 的同一路径通过 CFNetwork/HTTP2 在约 33.767 秒后返回 HTTP 200；APP 原 15 秒 AbortController 在响应前触发 `REQUEST_TIMEOUT`。验证请求现为单次 60 秒预算，并有慢响应回归测试。 |
@@ -46,10 +46,11 @@
 ### Admin Key identity evidence
 
 The official v0.2.13 Admin Key validation response is limited to key status and
-does not return the current administrator's username or email. The app keeps
-the header label `管理员` for this session type; JWT compatibility sessions
-may display their server-returned username, falling back to email. No profile
-request is sent with an Admin Key and no identity is inferred from the key.
+does not return the current administrator's username or email. After validation,
+the app makes the documented active-admin list query (same ID-ascending
+selection as the official middleware) to display a server-returned username or
+email. If that read-only query fails, it keeps `管理员`; no identity is
+inferred from the key and `/auth/me` is never called with it.
 
 1. 输入一个可撤销的真实 Admin Key，验证一次只读 dashboard 请求成功；日志只留
    status/reason/request ID，绝不留 key。
@@ -75,20 +76,21 @@ request is sent with an Admin Key and no identity is inferred from the key.
 - 充值实收只读取官方 `/api/v1/admin/payment/dashboard`；余额消费只读取
   `today_actual_cost`，缺失显示 `--`，不补造数字或汇率。
 - 首页移除趋势图和额外处理列表；监控页继续承载请求、Token、计费趋势与异常入口。
-- 本轮 Release 包已安装并启动，冷启动截图为
-  `build/ios-admin-ui-round6/screenshots/launch-after-load.png`。该截图证明未登录入口和
-  原生启动资源已生效；真实 Admin Key 登录在本地模拟器遇到两次 `Network request failed`，
-  因此没有伪造首页或身份截图。
+- 首页“服务状态”改为官方 Sub2API Ops 概览卡，调用
+  `/api/v1/admin/ops/dashboard/overview?time_range=1h&mode=auto`，展示健康分、QPS/TPS、SLA、错误率、请求/TTFT P99、系统快照和后台任务；监控未启用、同步失败或字段缺失时分别显示对应状态或 `--`，不把版本接口响应伪装成在线。
+- 本轮 Release 包已安装并启动；真实管理员运行截图为
+  `build/ios-admin-ops-round9/screenshots/home-final.png` 与
+  `build/ios-admin-ops-round9/screenshots/monitor-final.png`。页面显示真实
+  `Emotion` 身份和官方 Sub2API Ops 指标，缺失字段显示 `--`。
 
 ## 2026-10-06 第四阶段全页面 QA
 
-详细的页面、控件、真实接口和阻塞证据见
-[`QA_INTERACTION_MATRIX.md`](./QA_INTERACTION_MATRIX.md)。本轮完成了当前代码的全路由
-和动作静态审计，并在 iPhone 17 Pro Max Simulator 确认 Release 包可以启动到 Admin Key
-首屏。登录成功后的在线工作台、真实用户名/邮箱和服务端数据仍被同一网络条件阻塞；没有
-用历史截图或本地假数据替代这些证据。所有会改变生产数据的取消、退款、删除、禁用、创建、
-发布和告警处理动作只检查到二次确认或表单边界，未提交请求。
+详细的页面、控件、真实接口和限制证据见
+[`QA_INTERACTION_MATRIX.md`](./QA_INTERACTION_MATRIX.md)。本轮完成了 iPhone 17 Pro Max
+Simulator 的真实 Admin Key smoke test；所有破坏性动作（取消、退款、删除、禁用、创建、
+发布和告警处理）只检查到二次确认或表单边界，未提交请求。模拟器杀进程后的 Keychain
+持久化仍需正式签名 TestFlight 真机验证。
 
 ## 第四阶段评审结论
 
-Chrome 中的外部评审已确认本轮开发可以完成并冻结代码：原生启动资源、首页结构、真实字段约束、Admin Key 身份降级规则、全路由静态交互审计和自动化检查均通过。线上 smoke test 仍需在模拟器能够访问生产接口后补做，范围仅包括真实 Admin Key 登录、有效会话冷启动、后台恢复、首页真实数据、身份标签和快捷入口运行态；这些项目当前标记为网络阻塞，不作为本轮代码失败或已通过的依据。
+Chrome 中的外部评审已确认：完成本轮真实 smoke test 后可进入 TestFlight 真机验证。当前代码已完成官方 Ops 状态展示、真实管理员身份降级查询、四项主导航和详情页自定义返回；TestFlight 上的正式签名 Keychain 持久化仍是发布前待验证项。

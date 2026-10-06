@@ -77,6 +77,78 @@ export type AlertEventStatusUpdate = {
   updated?: boolean;
 };
 
+/** Official Sub2API v0.2.13 operations dashboard overview. */
+export type OpsPercentiles = {
+  p50_ms?: number | null;
+  p90_ms?: number | null;
+  p95_ms?: number | null;
+  p99_ms?: number | null;
+  avg_ms?: number | null;
+  max_ms?: number | null;
+};
+
+export type OpsSystemMetricsSnapshot = {
+  id?: number;
+  created_at?: string;
+  window_minutes?: number;
+  cpu_usage_percent?: number | null;
+  memory_used_mb?: number | null;
+  memory_total_mb?: number | null;
+  memory_usage_percent?: number | null;
+  db_ok?: boolean | null;
+  redis_ok?: boolean | null;
+  db_max_open_conns?: number | null;
+  redis_pool_size?: number | null;
+  redis_conn_total?: number | null;
+  redis_conn_idle?: number | null;
+  db_conn_active?: number | null;
+  db_conn_idle?: number | null;
+  db_conn_waiting?: number | null;
+  goroutine_count?: number | null;
+  concurrency_queue_depth?: number | null;
+  account_switch_count?: number | null;
+};
+
+export type OpsJobHeartbeat = {
+  job_name: string;
+  last_run_at?: string | null;
+  last_success_at?: string | null;
+  last_error_at?: string | null;
+  last_error?: string | null;
+  last_duration_ms?: number | null;
+  last_result?: string | null;
+  updated_at?: string;
+};
+
+export type OpsRateSummary = { current?: number; peak?: number; avg?: number };
+
+export type OpsDashboardOverview = {
+  start_time?: string;
+  end_time?: string;
+  platform?: string;
+  group_id?: number | null;
+  health_score?: number;
+  system_metrics?: OpsSystemMetricsSnapshot | null;
+  job_heartbeats?: OpsJobHeartbeat[] | null;
+  success_count?: number;
+  error_count_total?: number;
+  business_limited_count?: number;
+  error_count_sla?: number;
+  request_count_total?: number;
+  request_count_sla?: number;
+  token_consumed?: number;
+  sla?: number;
+  error_rate?: number;
+  upstream_error_rate?: number;
+  upstream_error_count_excl_429_529?: number;
+  upstream_429_count?: number;
+  upstream_529_count?: number;
+  qps?: OpsRateSummary;
+  tps?: OpsRateSummary;
+  duration?: OpsPercentiles;
+  ttft?: OpsPercentiles;
+};
+
 export function listAdminAnnouncements(params: { page?: number; page_size?: number; search?: string; status?: string } = {}) {
   return adminFetch<PaginatedData<AdminAnnouncement>>(`/api/v1/admin/announcements${buildQuery({ page: params.page ?? 1, page_size: params.page_size ?? 20, search: params.search, status: params.status })}`);
 }
@@ -147,4 +219,9 @@ export function acceptCompliance(body: Record<string, unknown> = {}) {
 
 export function getAccountAvailability() {
   return adminFetch<Record<string, unknown>>('/api/v1/admin/ops/account-availability');
+}
+
+/** Returns the official ops overview; the endpoint may be disabled by server configuration. */
+export function getOpsDashboardOverview(params: { time_range?: '5m' | '30m' | '1h' | '6h' | '24h'; platform?: string; group_id?: number; mode?: 'auto' | 'raw' | 'preagg' } = {}) {
+  return adminFetch<OpsDashboardOverview>(`/api/v1/admin/ops/dashboard/overview${buildQuery({ time_range: params.time_range ?? '1h', platform: params.platform, group_id: params.group_id, mode: params.mode ?? 'auto' })}`);
 }

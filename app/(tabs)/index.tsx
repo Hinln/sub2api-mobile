@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Activity, Bell, ChevronRight, CircleCheck, CircleDollarSign, KeyRound, Layers3, RefreshCw, Server, UsersRound } from 'lucide-react-native';
+import { Activity, Bell, CircleCheck, CircleDollarSign, KeyRound, Layers3, RefreshCw, Server, UsersRound } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { Badge, Card, Page, RefreshError, SectionTitle, StateCard } from '@/src/components/ui';
 import { formatOptionalNumber, formatOptionalTokenValue } from '@/src/lib/formatters';
-import { getAdminSettings, getDashboardStats, getSystemVersion, listAccounts } from '@/src/services/admin';
-import { getAdminPaymentDashboard } from '@/src/services/admin-extended';
+import { ApiError } from '@/src/lib/admin-fetch';
+import { getAdminSettings, getDashboardStats, getSystemVersion } from '@/src/services/admin';
+import { getAdminPaymentDashboard, getOpsDashboardOverview, type OpsDashboardOverview, type OpsJobHeartbeat, type OpsSystemMetricsSnapshot } from '@/src/services/admin-extended';
 import { theme } from '@/src/theme';
 
 function isFiniteNumber(value: unknown): value is number {
@@ -67,13 +68,81 @@ function nonNegativeNumber(value?: number) {
   return isFiniteNumber(value) && value >= 0 ? value : undefined;
 }
 
-function accountHasError(item: { status?: string; error_message?: string | null }) {
-  return item.status === 'error' || Boolean(item.error_message);
-}
-
 function formatUpdatedAt(timestamp?: number) {
   if (!timestamp) return '尚未同步';
   return new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit' }).format(new Date(timestamp));
+}
+
+function opsPercent(value?: number | null, digits = 1) {
+  return isFiniteNumber(value) ? `${value.toFixed(digits)}%` : '--';
+}
+
+function opsRatioPercent(value?: number | null, digits = 2) {
+  if (!isFiniteNumber(value)) return '--';
+  // The official v0.2.13 service returns ratios (0..1). Accept an already
+  // percent-shaped value as a compatibility guard for older Hub responses.
+  return `${(value <= 1 ? value * 100 : value).toFixed(digits)}%`;
+}
+
+function opsNumber(value?: number | null) {
+  return isFiniteNumber(value) ? new Intl.NumberFormat('zh-CN').format(value) : '--';
+}
+
+function opsStatus(data?: OpsDashboardOverview, error?: unknown) {
+  if (!data) {
+    if (error instanceof ApiError && error.code === 'OPS_DISABLED') return { label: '未启用', tone: 'warning' as const };
+    if (error) return { label: '同步失败', tone: 'warning' as const };
+    return { label: '同步中', tone: 'default' as const };
+  }
+  if (!isFiniteNumber(data.health_score)) return { label: '已连接', tone: 'success' as const };
+  if (data.health_score >= 90) return { label: 'ONLINE', tone: 'success' as const };
+  if (data.health_score >= 70) return { label: 'DEGRADED', tone: 'warning' as const };
+  return { label: '风险', tone: 'warning' as const };
+}
+
+function opsMetricTone(value?: number | null, goodAt = 90) {
+  if (!isFiniteNumber(value)) return 'default' as const;
+  return value >= goodAt ? 'success' as const : 'warning' as const;
+}
+
+function opsRatioTone(value?: number | null, goodAt = 0.99, lowerIsBetter = false) {
+  if (!isFiniteNumber(value)) return 'default' as const;
+  return (lowerIsBetter ? value <= goodAt : value >= goodAt) ? 'success' as const : 'warning' as const;
+}
+
+function resourceStatus(value?: boolean | null) {
+  if (value === true) return { value: '正常', tone: 'success' as const };
+  if (value === false) return { value: '异常', tone: 'warning' as const };
+  return { value: '--', tone: 'default' as const };
+}
+
+function heartbeatSummary(heartbeats?: OpsJobHeartbeat[] | null) {
+  if (!heartbeats) return { value: '--', detail: '服务端未提供任务心跳', tone: 'default' as const };
+  const healthy = heartbeats.filter((job) => !job.last_error_at).length;
+  return { value: `${healthy}/${heartbeats.length}`, detail: heartbeats.length ? '最近心跳无错误' : '当前没有任务心跳', tone: healthy === heartbeats.length ? 'success' as const : 'warning' as const };
+}
+
+function memoryDetail(metrics?: OpsSystemMetricsSnapshot | null) {
+  if (!metrics) return '系统指标未返回';
+  if (isFiniteNumber(metrics.memory_used_mb) && isFiniteNumber(metrics.memory_total_mb)) return `${opsNumber(metrics.memory_used_mb)} / ${opsNumber(metrics.memory_total_mb)} MB`;
+  return '内存容量未返回';
+}
+
+function OpsStatusItem({ icon: Icon, label, value, detail, tone = 'default' }: {
+  icon: typeof Activity;
+  label: string;
+  value: string;
+  detail: string;
+  tone?: 'default' | 'success' | 'warning';
+}) {
+  const color = tone === 'success' ? theme.success : tone === 'warning' ? theme.warning : theme.text;
+  const iconColor = tone === 'success' ? theme.success : tone === 'warning' ? theme.warning : theme.primary;
+  const iconBackground = tone === 'success' ? theme.successSoft : tone === 'warning' ? theme.warningSoft : theme.primarySoft;
+  return <View style={{ flex: 1, minWidth: 0, backgroundColor: theme.cardRaised, borderRadius: 15, borderWidth: 1, borderColor: theme.border, padding: 11 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: iconBackground, alignItems: 'center', justifyContent: 'center' }}><Icon color={iconColor} size={14} /></View><Text numberOfLines={1} style={{ flex: 1, color: theme.subtext, fontSize: 10 }}>{label}</Text></View>
+    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72} style={{ color, fontSize: 17, fontWeight: '900', marginTop: 9 }}>{value}</Text>
+    <Text numberOfLines={2} style={{ color: theme.faint, fontSize: 9, lineHeight: 13, marginTop: 4 }}>{detail}</Text>
+  </View>;
 }
 
 function DashboardMetric({ icon: Icon, label, value, detail, tone = 'default' }: { icon: typeof Activity; label: string; value: string; detail?: string; tone?: 'default' | 'success' | 'warning' }) {
@@ -103,33 +172,40 @@ export default function HomeScreen() {
   const payment = useQuery({ queryKey: ['admin-payment-dashboard'], queryFn: getAdminPaymentDashboard, staleTime: 30_000 });
   const settings = useQuery({ queryKey: ['admin-settings'], queryFn: getAdminSettings, staleTime: 120_000 });
   const version = useQuery({ queryKey: ['system-version'], queryFn: getSystemVersion, staleTime: 300_000 });
-  const accounts = useQuery({ queryKey: ['dashboard-accounts'], queryFn: () => listAccounts('', { page_size: 20 }), staleTime: 30_000 });
-  const refresh = () => { void stats.refetch(); void payment.refetch(); void settings.refetch(); void version.refetch(); void accounts.refetch(); };
+  const ops = useQuery({ queryKey: ['ops-dashboard-overview'], queryFn: () => getOpsDashboardOverview({ time_range: '1h' }), staleTime: 30_000 });
+  const refresh = () => { void stats.refetch(); void payment.refetch(); void settings.refetch(); void version.refetch(); void ops.refetch(); };
   const data = stats.data;
   const paymentData = payment.data;
-  const accountItems = accounts.data?.items ?? [];
-  const loading = stats.isLoading || accounts.isLoading;
-  const error = stats.error || accounts.error;
-  const hasPrimaryData = Boolean(stats.data || accounts.data);
-  const refreshError = error || payment.error || settings.error || version.error;
-  const listedAbnormal = accountItems.filter(accountHasError).length;
-  // The dashboard aggregate can lag behind the account list. Keep a concrete
-  // row-level error visible instead of masking it with a stale aggregate zero.
-  // When the list is the only evidence, the supporting label below names its
-  // current-page scope rather than implying a whole-instance total.
+  const loading = stats.isLoading;
+  const hasPrimaryData = Boolean(stats.data);
+  const refreshError = stats.error || payment.error || settings.error || version.error || ops.error;
   const reportedAbnormal = nonNegativeNumber(data?.error_accounts);
-  const abnormal = reportedAbnormal === undefined ? (listedAbnormal > 0 ? listedAbnormal : undefined) : Math.max(reportedAbnormal, listedAbnormal);
-  const abnormalScope = listedAbnormal > 0 && (reportedAbnormal === undefined || listedAbnormal > reportedAbnormal) ? '当前页异常' : '异常';
+  const abnormal = reportedAbnormal;
   const accountTone = abnormal === undefined ? 'default' : abnormal > 0 ? 'warning' : 'success';
   const accountDetail = abnormal === undefined
     ? `可用 ${number(nonNegativeNumber(data?.normal_accounts))}`
     : abnormal > 0
-      ? `可用 ${number(nonNegativeNumber(data?.normal_accounts))} · ${abnormalScope} ${number(abnormal)}`
+      ? `可用 ${number(nonNegativeNumber(data?.normal_accounts))} · 异常 ${number(abnormal)}`
       : `可用 ${number(nonNegativeNumber(data?.normal_accounts))} · 状态已同步`;
   const requestStatus = requestSummary(data);
   const paymentAmount = amounts(paymentData?.today_amount);
   const paymentTone = payment.error || paymentAmount === '--' ? 'default' : 'success';
-  return <Page title="管理员控制台" subtitle={`${settings.data?.site_name || 'Vexlune Hub'} · 管理员专用`} refreshing={[stats, payment, settings, version, accounts].some((query) => query.isRefetching)} onRefresh={refresh}>
+  const opsData = ops.data;
+  const opsMetrics = opsData?.system_metrics;
+  const opsState = opsStatus(opsData, ops.error);
+  const healthTone = opsMetricTone(opsData?.health_score);
+  const slaTone = isFiniteNumber(opsData?.sla) && (opsData.request_count_sla ?? 0) > 0 ? opsRatioTone(opsData.sla <= 1 ? opsData.sla : opsData.sla / 100) : 'default';
+  const dbState = resourceStatus(opsMetrics?.db_ok);
+  const redisState = resourceStatus(opsMetrics?.redis_ok);
+  const jobsState = heartbeatSummary(opsData?.job_heartbeats);
+  const opsSubtitle = opsData
+    ? `近 1 小时 · 官方监控接口已返回${version.data?.version ? ` · ${version.data.version}` : ''}`
+    : ops.error instanceof ApiError && ops.error.code === 'OPS_DISABLED'
+      ? '服务器未启用官方运维监控'
+      : ops.error
+        ? '官方运维监控暂不可用'
+        : '等待官方运维监控响应';
+  return <Page title="管理员控制台" subtitle={`${settings.data?.site_name || 'Vexlune Hub'} · 管理员专用`} refreshing={[stats, payment, settings, version, ops].some((query) => query.isRefetching)} onRefresh={refresh}>
     <StateCard loading={loading} error={!hasPrimaryData ? refreshError : undefined} onRetry={refresh} />
     {!loading && (hasPrimaryData || !refreshError) ? <>
       <RefreshError error={hasPrimaryData ? refreshError : undefined} onRetry={refresh} />
@@ -138,7 +214,7 @@ export default function HomeScreen() {
           <Text style={{ color: theme.text, fontSize: 17, fontWeight: '900' }}>今日概览</Text>
           <Text style={{ color: theme.subtext, fontSize: 11, marginTop: 4 }}>{`数据更新于 ${formatUpdatedAt(stats.dataUpdatedAt)} · 服务版本 ${version.data?.version || '读取中'}`}</Text>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="refresh-dashboard" onPress={refresh} disabled={stats.isRefetching || accounts.isRefetching} style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 13, backgroundColor: theme.cardRaised, borderWidth: 1, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', opacity: pressed || stats.isRefetching || accounts.isRefetching ? 0.65 : 1 })}>
+        <Pressable accessibilityRole="button" accessibilityLabel="refresh-dashboard" onPress={refresh} disabled={stats.isRefetching} style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 13, backgroundColor: theme.cardRaised, borderWidth: 1, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', opacity: pressed || stats.isRefetching ? 0.65 : 1 })}>
           <RefreshCw color={theme.primary} size={17} />
         </Pressable>
       </View>
@@ -156,8 +232,39 @@ export default function HomeScreen() {
       <SectionTitle title="快捷操作" />
       <View style={{ flexDirection: 'row', gap: 8 }}><QuickAction icon={UsersRound} title="用户" subtitle="状态与权限" onPress={() => router.push('/users')} /><QuickAction icon={KeyRound} title="账号" subtitle="节点与凭据" onPress={() => router.push('/accounts')} /><QuickAction icon={Layers3} title="分组" subtitle="模型与倍率" onPress={() => router.push('/groups')} /><QuickAction icon={Bell} title="公告" subtitle="系统通知" tone="warning" onPress={() => router.push('/admin-announcements')} /></View>
 
-      <SectionTitle title="服务状态" action={<Pressable accessibilityRole="button" accessibilityLabel="查看全部上游账号" hitSlop={8} onPress={() => router.push('/accounts')} style={({ pressed }) => ({ opacity: pressed ? 0.62 : 1 })}><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '900' }}>查看全部</Text></Pressable>} />
-      <View style={{ gap: 9 }}>{accountItems.slice(0, 3).map((item) => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`查看账号 ${item.name}`} onPress={() => router.push(`/accounts/${item.id}`)} style={({ pressed }) => ({ opacity: pressed ? 0.72 : 1 })}><Card style={{ paddingVertical: 12 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}><View style={{ width: 38, height: 38, borderRadius: 13, backgroundColor: accountHasError(item) ? theme.dangerSoft : theme.successSoft, alignItems: 'center', justifyContent: 'center' }}><Server color={accountHasError(item) ? theme.danger : theme.success} size={18} /></View><View style={{ flex: 1 }}><Text numberOfLines={1} style={{ color: theme.text, fontWeight: '900' }}>{item.name}</Text><Text style={{ color: theme.subtext, fontSize: 11, marginTop: 4 }}>{`${item.platform} · ${number(item.current_concurrency)}/${number(item.concurrency)} 并发`}</Text></View><Badge label={accountHasError(item) ? '异常' : item.schedulable === false ? '已停用' : '运行中'} tone={accountHasError(item) ? 'danger' : item.schedulable === false ? 'muted' : 'success'} /><ChevronRight color={theme.faint} size={17} /></View></Card></Pressable>)}{!accountItems.length ? <Card><Text style={{ color: theme.subtext, textAlign: 'center' }}>暂无上游账号数据</Text></Card> : null}</View>
+      <SectionTitle title="服务状态" action={<Pressable accessibilityRole="button" accessibilityLabel="查看运维监控" hitSlop={8} onPress={() => router.push('/monitor')} style={({ pressed }) => ({ opacity: pressed ? 0.62 : 1 })}><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '900' }}>查看监控</Text></Pressable>} />
+      <Card style={{ padding: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
+          <View style={{ width: 38, height: 38, borderRadius: 13, backgroundColor: opsState.tone === 'success' ? theme.successSoft : theme.warningSoft, alignItems: 'center', justifyContent: 'center' }}><Server color={opsState.tone === 'success' ? theme.success : theme.warning} size={18} /></View>
+          <View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '900' }}>Sub2API 运维状态</Text><Text numberOfLines={1} style={{ color: theme.subtext, fontSize: 11, marginTop: 4 }}>{opsSubtitle}</Text></View>
+          <Badge label={opsState.label} tone={opsState.tone === 'default' ? 'muted' : opsState.tone} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 13 }}>
+          <OpsStatusItem icon={CircleCheck} label="健康评分" value={opsNumber(opsData?.health_score)} detail="官方运维评分 / 100" tone={healthTone} />
+          <OpsStatusItem icon={Activity} label="QPS / TPS" value={isFiniteNumber(opsData?.qps?.current) ? opsData.qps.current.toFixed(1) : '--'} detail={isFiniteNumber(opsData?.tps?.current) ? `TPS ${opsData.tps.current.toFixed(1)} · 峰值 ${opsData.tps.peak?.toFixed(1) ?? '--'}` : '吞吐指标未返回'} tone={opsData ? 'success' : 'default'} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+          <OpsStatusItem icon={CircleCheck} label="SLA" value={opsData && (opsData.request_count_sla ?? 0) > 0 ? opsRatioPercent(opsData.sla, 3) : '--'} detail={opsData ? `窗口请求 ${opsNumber(opsData.request_count_sla)}` : '官方 SLA 未返回'} tone={slaTone} />
+          <OpsStatusItem icon={Activity} label="错误率" value={opsRatioPercent(opsData?.error_rate, 3)} detail={opsData ? `上游 ${opsRatioPercent(opsData.upstream_error_rate, 3)}` : '错误指标未返回'} tone={opsData ? opsRatioTone(opsData.error_rate, 0.01, true) : 'default'} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+          <OpsStatusItem icon={Activity} label="请求延迟 P99" value={opsNumber(opsData?.duration?.p99_ms)} detail={isFiniteNumber(opsData?.duration?.p99_ms) ? '毫秒 · 近 1 小时' : '延迟指标未返回'} tone={opsData ? 'success' : 'default'} />
+          <OpsStatusItem icon={Activity} label="首字延迟 P99" value={opsNumber(opsData?.ttft?.p99_ms)} detail={isFiniteNumber(opsData?.ttft?.p99_ms) ? '毫秒 · 近 1 小时' : 'TTFT 指标未返回'} tone={opsData ? 'success' : 'default'} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+          <OpsStatusItem icon={Activity} label="CPU" value={opsPercent(opsMetrics?.cpu_usage_percent)} detail="主机快照 · 官方监控" tone={opsMetrics ? 'success' : 'default'} />
+          <OpsStatusItem icon={Activity} label="内存" value={opsPercent(opsMetrics?.memory_usage_percent)} detail={memoryDetail(opsMetrics)} tone={opsMetrics ? 'success' : 'default'} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+          <OpsStatusItem icon={Server} label="数据库" value={dbState.value} detail={isFiniteNumber(opsMetrics?.db_conn_active) ? `活动连接 ${opsNumber(opsMetrics.db_conn_active)}` : '连接指标未返回'} tone={dbState.tone} />
+          <OpsStatusItem icon={Server} label="Redis" value={redisState.value} detail={isFiniteNumber(opsMetrics?.redis_conn_total) ? `连接 ${opsNumber(opsMetrics.redis_conn_total)}` : '连接指标未返回'} tone={redisState.tone} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+          <OpsStatusItem icon={Activity} label="协程 / 队列" value={opsNumber(opsMetrics?.goroutine_count)} detail={isFiniteNumber(opsMetrics?.concurrency_queue_depth) ? `排队 ${opsNumber(opsMetrics.concurrency_queue_depth)}` : '队列指标未返回'} tone={opsMetrics ? 'success' : 'default'} />
+          <OpsStatusItem icon={RefreshCw} label="后台任务" value={jobsState.value} detail={jobsState.detail} tone={jobsState.tone} />
+        </View>
+        <Text style={{ color: theme.faint, fontSize: 10, lineHeight: 15, marginTop: 11 }}>状态依据官方 Sub2API 运维接口返回；未启用监控或未返回的指标显示为 --，不推断数据库、Redis 或主机状态。</Text>
+      </Card>
     </> : null}
   </Page>;
 }

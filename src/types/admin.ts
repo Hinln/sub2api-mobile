@@ -19,6 +19,7 @@ export type PaginationParams = {
   page_size?: number;
   search?: string;
   status?: string;
+  role?: string;
   sort?: string;
   order?: 'asc' | 'desc';
 };

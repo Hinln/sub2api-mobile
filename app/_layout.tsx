@@ -12,12 +12,34 @@ import { queryClient } from '@/src/lib/query-client';
 import { adminConfigState, hydrateAdminConfig, logoutAdminAccount } from '@/src/store/admin-config';
 import { hydrateThemePreference, resolvedThemeMode, theme, themePreferences } from '@/src/theme';
 import { VexluneLogo } from '@/src/components/vexlune-logo';
+import { ChevronLeft } from 'lucide-react-native';
 
 // CommonJS entry avoids import.meta in Expo Metro's classic web bundle.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { useSnapshot } = require('valtio/react');
 
 export const unstable_settings = { initialRouteName: '(tabs)' };
+
+function detailHeaderOptions(title: string) {
+  return {
+    headerShown: true,
+    title,
+    headerTintColor: theme.text,
+    headerStyle: { backgroundColor: theme.page },
+    headerShadowVisible: false,
+    headerBackVisible: false,
+    headerLeft: () => (
+      <Pressable
+        accessibilityLabel="返回"
+        hitSlop={10}
+        onPress={() => router.back()}
+        style={{ marginLeft: 2, padding: 6 }}
+      >
+        <ChevronLeft color={theme.text} size={23} strokeWidth={2.2} />
+      </Pressable>
+    ),
+  };
+}
 
 function LoadingScreen() {
   return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.page }}><ActivityIndicator color={theme.primary} /></View>;
@@ -91,11 +113,11 @@ export default function RootLayout() {
             {/* Auth tabs share one visual surface. Disable stack gestures and
                 push animations so switching does not expose a second page. */}
             <Stack.Screen name="login" options={{ animation: 'none', gestureEnabled: false }} />
-            <Stack.Screen name="users/[id]" options={{ headerShown: true, title: '\u7528\u6237\u8be6\u60c5', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
-            <Stack.Screen name="users/create-user" options={{ headerShown: true, title: '\u521b\u5efa\u7528\u6237', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
-            <Stack.Screen name="accounts/[id]" options={{ headerShown: true, title: '\u8d26\u53f7\u8be6\u60c5', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false }} />
+            <Stack.Screen name="users/[id]" options={detailHeaderOptions('\u7528\u6237\u8be6\u60c5')} />
+            <Stack.Screen name="users/create-user" options={detailHeaderOptions('\u521b\u5efa\u7528\u6237')} />
+            <Stack.Screen name="accounts/[id]" options={detailHeaderOptions('\u8d26\u53f7\u8be6\u60c5')} />
             <Stack.Screen name="exceptions" options={{ headerShown: false }} />
-            <Stack.Screen name="about" options={{ headerShown: true, title: '\u5173\u4e8e', headerTintColor: theme.text, headerStyle: { backgroundColor: theme.page }, headerShadowVisible: false, headerBackButtonDisplayMode: 'minimal' }} />
+            <Stack.Screen name="about" options={detailHeaderOptions('\u5173\u4e8e')} />
           </Stack>
         )}
       </QueryClientProvider>

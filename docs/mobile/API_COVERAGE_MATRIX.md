@@ -32,12 +32,14 @@ Status meanings:
 ### Admin identity limitation
 
 The official Admin Key status response contains only `exists` and `masked_key`.
-The v0.2.13 contract does not expose a current-admin profile endpoint for
-`x-api-key` sessions; `/api/v1/auth/me` requires a JWT and must not be called
-with an Admin Key. The shared page header therefore shows a verified JWT
-username/email when one is present for compatibility, and otherwise the honest
-role label `管理员`. It never derives an identity from the key or invents an
-email address.
+The v0.2.13 contract does not expose `/api/v1/auth/me` for `x-api-key`
+sessions; that route requires a JWT and must not be called with an Admin Key.
+When a key session is active, the shared page header makes the official
+read-only query
+`GET /api/v1/admin/users?page=1&page_size=1&status=active&role=admin&sort_by=id&sort_order=asc`.
+This matches the server middleware's first active-admin selection. A returned
+username is preferred, then email; if the query is unavailable the honest role
+label `管理员` is retained. The app never derives identity from the key.
 
 ## Admin workspace routes
 
@@ -47,7 +49,7 @@ as a user API key or model-provider credential.
 
 | Area | Official method/path family | Server controls | Mobile surface/status |
 |---|---|---|---|
-| Dashboard and operations | `/api/v1/admin/dashboard/*`, `/api/v1/admin/ops/*` | Admin authentication, panel limits, audit logs; heavy/realtime routes may have additional limits. | Monitor tab; **OFFICIAL_SOURCE_VERIFIED / PENDING_DEVICE** |
+| Dashboard and operations | `/api/v1/admin/dashboard/*`, `/api/v1/admin/ops/*` | Admin authentication, panel limits, audit logs; heavy/realtime routes may have additional limits. | Home service status and Monitor tab; the home card calls `GET /api/v1/admin/ops/dashboard/overview?time_range=1h&mode=auto` and renders only returned health/QPS/TPS/SLA/error/latency/resource fields; **MOBILE_IMPLEMENTED / PENDING_DEVICE** |
 | Users and balances | `/api/v1/admin/users*` and nested keys/usage/balance/groups/quota/attributes | Admin permission, input validation, audit; selected writes have official idempotency. | Users and user-detail screens; **OFFICIAL_SOURCE_VERIFIED / PENDING_DEVICE** |
 | Upstream accounts/proxies | `/api/v1/admin/accounts*`, `/api/v1/admin/proxies*` | Admin auth, audit; sensitive export/import and selected writes may require step-up. | Accounts and account-detail screens; **OFFICIAL_SOURCE_VERIFIED / PENDING_DEVICE** |
 | Groups/channels | `/api/v1/admin/groups*`, `/api/v1/admin/channels*` | Admin auth and audited writes; only documented idempotency may be used. | Groups/accounts controls; **OFFICIAL_SOURCE_VERIFIED / PENDING_DEVICE** |

@@ -1,4 +1,5 @@
 import { ChartNoAxesCombined, Home, Settings2, UserRound, Users, type LucideIcon } from 'lucide-react-native';
+import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { router, usePathname } from 'expo-router';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
@@ -8,6 +9,7 @@ import { VexluneLogo } from '@/src/components/vexlune-logo';
 import { sessionState } from '@/src/auth/session';
 import { formatAdminIdentity } from '@/src/lib/admin-identity';
 import { humanizeApiError } from '@/src/lib/admin-fetch';
+import { listUsers } from '@/src/services/admin';
 import { theme } from '@/src/theme';
 
 export function Page({ title, subtitle, children, refreshing = false, onRefresh, right }: {
@@ -23,7 +25,19 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
   // masked key, not an administrator profile. If a JWT-backed session ever
   // supplies a verified username/email, prefer it; otherwise keep the honest
   // role label instead of inventing an identity.
-  const adminIdentity = formatAdminIdentity(sessionState.user);
+  const hasAdminKey = Boolean(sessionState.adminApiKey?.trim());
+  const identityQuery = useQuery({
+    queryKey: ['admin-identity', hasAdminKey],
+    queryFn: () => listUsers('', { page: 1, page_size: 1, status: 'active', role: 'admin', sort: 'id', order: 'asc' }),
+    enabled: hasAdminKey && !sessionState.user,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  // Admin-Key middleware resolves the first active administrator by ID. The
+  // matching read-only list query is the only official way for this client to
+  // display that server-authoritative identity; failures keep the honest role
+  // label instead of guessing from the key.
+  const adminIdentity = formatAdminIdentity(sessionState.user ?? identityQuery.data?.items?.[0]);
   // Routes declared inside the tabs navigator already receive the native
   // The four primary routes use the native tab bar. Secondary management
   // routes keep the same four-item bar via this Page shell after their native
@@ -58,7 +72,7 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginLeft: 10 }}>
             <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: theme.primarySoft, alignItems: 'center', justifyContent: 'center' }}><UserRound color={theme.primary} size={21} /></View>
-            <View><Text numberOfLines={1} style={{ maxWidth: 132, color: theme.text, fontSize: 11, fontWeight: '900' }}>{adminIdentity}</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 2 }}>管理端已连接</Text></View>
+            <View><Text numberOfLines={1} style={{ maxWidth: 132, color: theme.text, fontSize: 11, fontWeight: '900' }}>{adminIdentity}</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 2 }}>{hasAdminKey ? 'Admin Key · 已连接' : '管理端已连接'}</Text></View>
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>

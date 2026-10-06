@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Activity, AlertTriangle, Bell, ChevronRight, CircleCheck, CircleDollarSign, KeyRound, Layers3, Megaphone, RefreshCw, Server, ShieldAlert, UsersRound } from 'lucide-react-native';
+import { Activity, Bell, ChevronRight, CircleCheck, CircleDollarSign, Layers3, Megaphone, RefreshCw, Server, ShieldAlert, UsersRound } from 'lucide-react-native';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { Badge, Card, Page, RefreshError, StateCard } from '@/src/components/ui';
+import { ApiError } from '@/src/lib/admin-fetch';
 import { getAdminSettings, getDashboardStats, getDashboardTrend, getSystemVersion, listAccounts, listRequestErrors } from '@/src/services/admin';
-import { listAlertEvents } from '@/src/services/admin-extended';
+import { getOpsDashboardOverview, listAlertEvents, type OpsDashboardOverview } from '@/src/services/admin-extended';
 import { theme } from '@/src/theme';
 
 type TrendMetric = 'requests' | 'total_tokens' | 'actual_cost';
@@ -38,6 +39,42 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+function opsNumber(value?: number | null) {
+  return isFiniteNumber(value) ? new Intl.NumberFormat('zh-CN').format(value) : '--';
+}
+
+function opsRatioPercent(value?: number | null, digits = 2) {
+  if (!isFiniteNumber(value)) return '--';
+  return `${(value <= 1 ? value * 100 : value).toFixed(digits)}%`;
+}
+
+function opsStatus(data?: OpsDashboardOverview, error?: unknown) {
+  if (!data) {
+    if (error instanceof ApiError && error.code === 'OPS_DISABLED') return { label: '未启用', tone: 'warning' as const };
+    if (error) return { label: '同步失败', tone: 'warning' as const };
+    return { label: '同步中', tone: 'default' as const };
+  }
+  const score = data.health_score;
+  if (!isFiniteNumber(score)) return { label: '已连接', tone: 'success' as const };
+  if (score >= 90) return { label: 'ONLINE', tone: 'success' as const };
+  return { label: score >= 70 ? 'DEGRADED' : '风险', tone: 'warning' as const };
+}
+
+function OpsMiniCard({ label, value, detail, tone = 'default' }: { label: string; value: string; detail: string; tone?: 'default' | 'success' | 'warning' }) {
+  const color = tone === 'success' ? theme.success : tone === 'warning' ? theme.warning : theme.text;
+  return <View style={{ flex: 1, minWidth: 0, borderRadius: 15, backgroundColor: theme.cardRaised, borderWidth: 1, borderColor: theme.border, padding: 11 }}>
+    <Text numberOfLines={1} style={{ color: theme.subtext, fontSize: 10 }}>{label}</Text>
+    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72} style={{ color, fontSize: 17, fontWeight: '900', marginTop: 7 }}>{value}</Text>
+    <Text numberOfLines={2} style={{ color: theme.faint, fontSize: 9, lineHeight: 13, marginTop: 4 }}>{detail}</Text>
+  </View>;
+}
+
+function resourceTone(value?: boolean | null) {
+  if (value === true) return 'success' as const;
+  if (value === false) return 'warning' as const;
+  return 'default' as const;
+}
+
 function TrendChart({ points, unit, today }: { points: { date: string; value?: number }[]; unit: string; today: string }) {
   const visible = points.slice(-7);
   const values = visible.map((point) => point.value).filter(isFiniteNumber);
@@ -67,14 +104,6 @@ function TrendChart({ points, unit, today }: { points: { date: string; value?: n
     <Text style={{ color: theme.text, fontSize: 12, fontWeight: '800', marginTop: 10 }}>{latest && isFiniteNumber(latest.value) ? `${formatTrendDate(latest.date, today)} · ${count(latest.value)} ${unit}` : '最近一天数据未获取'}</Text>
     <Text style={{ color: theme.subtext, fontSize: 10, marginTop: 4 }}>每柱为当日合计 · 单位：{unit} · 灰色表示未获取</Text>
   </View>;
-}
-
-function uptimeLabel(value?: number) {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return '';
-  const days = Math.floor(value / 86_400);
-  if (days > 0) return `已连续运行 ${days} 天`;
-  const hours = Math.floor(value / 3_600);
-  return hours > 0 ? `已连续运行 ${hours} 小时` : '刚刚启动';
 }
 
 function Sparkline({ values, color = theme.primary }: SparklineProps) {
@@ -118,13 +147,14 @@ export default function MonitorScreen() {
   const trend = useQuery({ queryKey: ['dashboard-trend-7d'], queryFn: () => getDashboardTrend(range), staleTime: 30_000 });
   const failures = useQuery({ queryKey: ['dashboard-failures'], queryFn: () => listRequestErrors({ page_size: 5, resolved: false }), staleTime: 30_000 });
   const alerts = useQuery({ queryKey: ['dashboard-alert-events'], queryFn: () => listAlertEvents({ limit: 50 }), staleTime: 30_000 });
+  const ops = useQuery({ queryKey: ['ops-dashboard-overview'], queryFn: () => getOpsDashboardOverview({ time_range: '1h' }), staleTime: 30_000 });
   const [trendMetric, setTrendMetric] = useState<TrendMetric>('requests');
 
-  const queries = [stats, settings, version, accounts, trend, failures, alerts];
+  const queries = [stats, settings, version, accounts, trend, failures, alerts, ops];
   const loading = stats.isLoading || accounts.isLoading;
   const error = stats.error || accounts.error;
   const hasPrimaryData = Boolean(stats.data || accounts.data);
-  const refreshError = error || settings.error || version.error || trend.error || failures.error || alerts.error;
+  const refreshError = error || settings.error || version.error || trend.error || failures.error || alerts.error || ops.error;
   const refreshing = queries.some((query) => query.isRefetching);
   const refresh = () => { queries.forEach((query) => void query.refetch()); };
   const accountItems = accounts.data?.items ?? [];
@@ -135,9 +165,6 @@ export default function MonitorScreen() {
   // value so an account carrying a concrete error_message cannot be hidden by
   // a stale aggregate value of zero. The card remains explicit about the
   // scope when only the current page supplied the evidence.
-  const listedAbnormal = accountItems.filter((item) => item.status === 'error' || Boolean(item.error_message)).length;
-  const reportedAbnormal = isFiniteNumber(stats.data?.error_accounts) && stats.data!.error_accounts >= 0 ? stats.data!.error_accounts : undefined;
-  const abnormal = reportedAbnormal === undefined ? (listedAbnormal > 0 ? listedAbnormal : undefined) : Math.max(reportedAbnormal, listedAbnormal);
   const trendItems = trend.data?.trend ?? [];
   const trendPoints = trendItems.map((point) => ({ date: point.date, value: trendMetric === 'requests' ? point.requests : trendMetric === 'total_tokens' ? point.total_tokens : point.actual_cost }));
   const accountTrend = accountItems.map((item) => item.current_concurrency).filter(isFiniteNumber);
@@ -151,11 +178,6 @@ export default function MonitorScreen() {
     <StateCard loading={loading} error={!hasPrimaryData ? refreshError : undefined} onRetry={refresh} />
     {!loading && (hasPrimaryData || !refreshError) ? <>
       <RefreshError error={hasPrimaryData ? refreshError : undefined} onRetry={refresh} />
-      <Card style={{ paddingVertical: 15 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}><View style={{ width: 34, height: 34, borderRadius: 12, backgroundColor: theme.successSoft, alignItems: 'center', justifyContent: 'center' }}><CircleCheck color={theme.success} size={19} /></View><View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '900' }}>Hub 服务状态</Text><Text style={{ color: theme.subtext, fontSize: 12, marginTop: 4 }}>{uptimeLabel(version.data?.uptime) || `最近刷新于 ${new Date().toLocaleTimeString('zh-CN')}`}</Text></View><Badge label="ONLINE" tone="success" /><ChevronRight color={theme.faint} size={17} /></View>
-        {abnormal !== undefined && abnormal > 0 ? <Pressable onPress={() => router.push('/exceptions')} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.border }}><AlertTriangle color={theme.danger} size={15} /><Text style={{ flex: 1, color: theme.danger, fontSize: 12, fontWeight: '700' }}>{`${abnormal} 个上游账号需要处理`}</Text><Text style={{ color: theme.danger, fontSize: 12, fontWeight: '800' }}>查看异常</Text><ChevronRight color={theme.danger} size={15} /></Pressable> : null}
-      </Card>
-
       <SectionHeader title="今日核心指标" />
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <KpiCard icon={Server} label="在线节点" value={`${count(availableAccounts)} / ${count(totalAccounts)}`} tone="success" values={accountTrend} />
@@ -174,13 +196,25 @@ export default function MonitorScreen() {
         <TrendChart points={trendPoints} unit={trendMetric === 'requests' ? '次' : trendMetric === 'total_tokens' ? 'Token' : '金额'} today={range.end_date} />
       </Card>
 
-      <SectionHeader title="服务状态" action="查看全部" onAction={() => router.push('/accounts')} />
+      <SectionHeader title="服务状态" action="查看异常" onAction={() => router.push('/exceptions')} />
       <Card>
-        <View style={{ gap: 10 }}>{accountItems.slice(0, 4).map((account) => {
-          const unhealthy = account.status === 'error' || account.schedulable === false || Boolean(account.error_message);
-          return <Pressable key={account.id} onPress={() => router.push(`/accounts/${account.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 3 }}><View style={{ width: 32, height: 32, borderRadius: 11, backgroundColor: unhealthy ? theme.warningSoft : theme.primarySoft, alignItems: 'center', justifyContent: 'center' }}><KeyRound color={unhealthy ? theme.warning : theme.primary} size={16} /></View><View style={{ flex: 1 }}><Text numberOfLines={1} style={{ color: theme.text, fontSize: 13, fontWeight: '900' }}>{account.name}</Text><Text numberOfLines={1} style={{ color: theme.subtext, fontSize: 11, marginTop: 3 }}>{`${account.platform} · 并发 ${isFiniteNumber(account.current_concurrency) ? account.current_concurrency : '--'}/${isFiniteNumber(account.concurrency) ? account.concurrency : '--'}`}</Text></View><Badge label={unhealthy ? '需处理' : '运行中'} tone={unhealthy ? 'warning' : 'success'} /><ChevronRight color={theme.faint} size={16} /></Pressable>;
-        })}</View>
-        <Pressable onPress={() => router.push('/accounts')} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingTop: 11, borderTopWidth: 1, borderTopColor: theme.border }}><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '800' }}>管理上游账号</Text><ChevronRight color={theme.primary} size={15} /></Pressable>
+        {(() => {
+          const state = opsStatus(ops.data, ops.error);
+          const metrics = ops.data?.system_metrics;
+          const slaAvailable = (ops.data?.request_count_sla ?? 0) > 0;
+          return <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: state.tone === 'success' ? theme.successSoft : theme.warningSoft, alignItems: 'center', justifyContent: 'center' }}><CircleCheck color={state.tone === 'success' ? theme.success : theme.warning} size={19} /></View>
+              <View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '900' }}>Sub2API 运维状态</Text><Text numberOfLines={1} style={{ color: theme.subtext, fontSize: 11, marginTop: 4 }}>{ops.data ? '官方 Ops 概览 · 近 1 小时' : state.label === '未启用' ? '服务端未启用 Ops 监控' : state.label === '同步失败' ? '官方 Ops 接口同步失败' : '等待官方 Ops 接口响应'}</Text></View><Badge label={state.label} tone={state.tone === 'default' ? 'muted' : state.tone} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 13 }}><OpsMiniCard label="健康评分" value={opsNumber(ops.data?.health_score)} detail="官方评分 / 100" tone={ops.data?.health_score !== undefined ? (ops.data.health_score >= 90 ? 'success' : 'warning') : 'default'} /><OpsMiniCard label="QPS / TPS" value={isFiniteNumber(ops.data?.qps?.current) ? ops.data!.qps!.current!.toFixed(1) : '--'} detail={isFiniteNumber(ops.data?.tps?.current) ? `TPS ${ops.data!.tps!.current!.toFixed(1)} · 峰值 ${ops.data!.tps!.peak?.toFixed(1) ?? '--'}` : '吞吐未返回'} tone={ops.data ? 'success' : 'default'} /></View>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}><OpsMiniCard label="SLA" value={slaAvailable ? opsRatioPercent(ops.data?.sla, 3) : '--'} detail={`窗口请求 ${opsNumber(ops.data?.request_count_sla)}`} tone={slaAvailable && (ops.data?.sla ?? 0) >= 0.99 ? 'success' : ops.data ? 'warning' : 'default'} /><OpsMiniCard label="错误率" value={opsRatioPercent(ops.data?.error_rate, 3)} detail={ops.data ? `上游 ${opsRatioPercent(ops.data.upstream_error_rate, 3)}` : '错误指标未返回'} tone={ops.data ? ((ops.data.error_rate ?? 0) <= 0.01 ? 'success' : 'warning') : 'default'} /></View>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}><OpsMiniCard label="请求延迟 P99" value={opsNumber(ops.data?.duration?.p99_ms)} detail="毫秒 · 近 1 小时" tone={ops.data ? 'success' : 'default'} /><OpsMiniCard label="首字延迟 P99" value={opsNumber(ops.data?.ttft?.p99_ms)} detail="毫秒 · 近 1 小时" tone={ops.data ? 'success' : 'default'} /></View>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}><OpsMiniCard label="CPU" value={isFiniteNumber(metrics?.cpu_usage_percent) ? `${metrics.cpu_usage_percent.toFixed(1)}%` : '--'} detail="系统快照" tone={metrics ? 'success' : 'default'} /><OpsMiniCard label="内存" value={isFiniteNumber(metrics?.memory_usage_percent) ? `${metrics.memory_usage_percent.toFixed(1)}%` : '--'} detail={isFiniteNumber(metrics?.memory_used_mb) && isFiniteNumber(metrics?.memory_total_mb) ? `${opsNumber(metrics.memory_used_mb)} / ${opsNumber(metrics.memory_total_mb)} MB` : '容量未返回'} tone={metrics ? 'success' : 'default'} /></View>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}><OpsMiniCard label="数据库" value={metrics?.db_ok === true ? '正常' : metrics?.db_ok === false ? '异常' : '--'} detail={isFiniteNumber(metrics?.db_conn_active) ? `活动连接 ${opsNumber(metrics.db_conn_active)}` : '连接指标未返回'} tone={resourceTone(metrics?.db_ok)} /><OpsMiniCard label="Redis" value={metrics?.redis_ok === true ? '正常' : metrics?.redis_ok === false ? '异常' : '--'} detail={isFiniteNumber(metrics?.redis_conn_total) ? `连接 ${opsNumber(metrics.redis_conn_total)}` : '连接指标未返回'} tone={resourceTone(metrics?.redis_ok)} /></View>
+            <Text style={{ color: theme.faint, fontSize: 10, lineHeight: 15, marginTop: 11 }}>仅展示官方 Ops 接口实际返回的运行指标；未启用监控或字段缺失时不推断状态。</Text>
+          </>;
+        })()}
       </Card>
 
       <SectionHeader title="异常聚合" action={unresolvedAlerts.length ? '处理告警' : undefined} onAction={() => router.push('/admin-security')} />

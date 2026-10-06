@@ -114,7 +114,7 @@ export function getUsageStats(params: {
 
 export function listUsers(search = '', pagination: PaginationParams = {}) {
   return adminFetch<PaginatedData<AdminUser>>(
-    `/api/v1/admin/users${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 20, search: search.trim(), status: pagination.status, sort_by: pagination.sort, sort_order: pagination.order })}`
+    `/api/v1/admin/users${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 20, search: search.trim(), status: pagination.status, role: pagination.role, sort_by: pagination.sort, sort_order: pagination.order })}`
   );
 }
 
