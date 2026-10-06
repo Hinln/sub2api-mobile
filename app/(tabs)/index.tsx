@@ -43,7 +43,7 @@ function paymentMetricDetail(data?: { today_amount?: Record<string, number>; tod
 
 type RequestStats = { today_requests?: number; today_success_requests?: number; today_failed_requests?: number };
 
-function requestSummary(stats?: RequestStats) {
+function requestSummary(stats?: RequestStats, ops?: Pick<OpsDashboardOverview, 'success_count' | 'request_count_sla'>) {
   const requests = isFiniteNumber(stats?.today_requests) ? Math.max(0, stats.today_requests) : undefined;
   // Prefer the server's explicit failure count and derive the rate from that
   // same count so the two labels can never disagree.
@@ -59,6 +59,15 @@ function requestSummary(stats?: RequestStats) {
   if (reportedSuccesses !== undefined) {
     const successful = Math.min(requests, reportedSuccesses);
     return { rate: requests > 0 ? `${((successful / requests) * 100).toFixed(1)}%` : '--', failed: requests - successful };
+  }
+
+  // Official v0.2.13 dashboard stats do not include daily success/failure
+  // counters. The already-loaded ops overview does include a real SLA window;
+  // use it as a clearly scoped fallback instead of showing a fabricated daily rate.
+  if (isFiniteNumber(ops?.request_count_sla) && ops.request_count_sla > 0 && isFiniteNumber(ops.success_count)) {
+    const total = Math.max(0, ops.request_count_sla);
+    const successful = Math.min(total, Math.max(0, ops.success_count));
+    return { rate: `${((successful / total) * 100).toFixed(1)}%`, failed: total - successful, source: 'ops' as const };
   }
 
   return { rate: '--', failed: undefined as number | undefined };
@@ -187,7 +196,7 @@ export default function HomeScreen() {
     : abnormal > 0
       ? `可用 ${number(nonNegativeNumber(data?.normal_accounts))} · 异常 ${number(abnormal)}`
       : `可用 ${number(nonNegativeNumber(data?.normal_accounts))} · 状态已同步`;
-  const requestStatus = requestSummary(data);
+  const requestStatus = requestSummary(data, ops.data);
   const paymentAmount = amounts(paymentData?.today_amount);
   const paymentTone = payment.error || paymentAmount === '--' ? 'default' : 'success';
   const opsData = ops.data;
@@ -226,7 +235,7 @@ export default function HomeScreen() {
         <DashboardMetric icon={Server} label="上游账号" value={number(data?.total_accounts)} detail={accountDetail} tone={accountTone} />
         <DashboardMetric icon={UsersRound} label="总用户" value={number(data?.total_users)} detail={`今日新增 ${number(data?.today_new_users)}`} />
         <DashboardMetric icon={UsersRound} label="活跃用户" value={number(data?.active_users)} tone="success" />
-        <DashboardMetric icon={CircleCheck} label="请求成功率" value={requestStatus.rate} detail={requestStatus.failed === undefined ? '明细未获取' : `失败 ${number(requestStatus.failed)}`} tone={requestStatus.rate === '--' ? 'default' : 'success'} />
+        <DashboardMetric icon={CircleCheck} label="请求成功率" value={requestStatus.rate} detail={requestStatus.failed === undefined ? '官方统计未提供成功/失败计数' : requestStatus.source === 'ops' ? `近 1 小时 SLA · 失败 ${number(requestStatus.failed)}` : `失败 ${number(requestStatus.failed)}`} tone={requestStatus.rate === '--' ? 'default' : 'success'} />
       </View>
 
       <SectionTitle title="快捷操作" />
