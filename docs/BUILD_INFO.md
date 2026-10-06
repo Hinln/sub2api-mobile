@@ -20,4 +20,4 @@
 - GitHub Actions unsigned iOS run 37051524996：在步骤前因 billing issue 失败（steps=0），未产生云端 artifact
 - Android：按当前范围暂缓；未生成 APK/AAB
 
-当前签名 IPA 已通过本机验证，并由 Apple Transporter 于 2026-10-06 13:10（Asia/Shanghai）成功交付到 App Store Connect（Delivery UUID `cb9286fa-4cbd-4a93-9b7c-e75a3509bbcd`，日志为 `UPLOAD SUCCEEDED with no errors`）。App Store Connect/TestFlight 后台处理、内部测试组分发和真实 iPhone 验收仍待完成，不能将 Transporter 上传成功写成设备验收通过。
+当前签名 IPA 已通过本机验证，并由 Apple Transporter 于 2026-10-06 13:10（Asia/Shanghai）成功交付到 App Store Connect（Delivery UUID `cb9286fa-4cbd-4a93-9b7c-e75a3509bbcd`，日志为 `UPLOAD SUCCEEDED with no errors`）。Transporter 当前显示 `APP 可供内部测试`；真实 iPhone 验收仍待完成，不能将内部测试可用写成实体设备验收通过。

@@ -93,4 +93,4 @@ Simulator 的真实 Admin Key smoke test；所有破坏性动作（取消、退�
 
 ## 第四阶段评审结论
 
-Chrome 中的外部评审已确认：完成本轮真实 smoke test 后可进入 TestFlight 真机验证。当前代码已完成官方 Ops 状态展示、真实管理员身份降级查询、四项主导航和详情页自定义返回；提交 `839a335` 的 1.0.1 (3) 已由 Apple Transporter 成功交付（Delivery UUID `cb9286fa-4cbd-4a93-9b7c-e75a3509bbcd`），TestFlight 后台处理、内部测试组分发和正式签名 Keychain 持久化仍待验证。
+Chrome 中的外部评审已确认：完成本轮真实 smoke test 后可进入 TestFlight 真机验证。当前代码已完成官方 Ops 状态展示、真实管理员身份降级查询、四项主导航和详情页自定义返回；提交 `839a335` 的 1.0.1 (3) 已由 Apple Transporter 成功交付（Delivery UUID `cb9286fa-4cbd-4a93-9b7c-e75a3509bbcd`），Transporter 当前显示 `APP 可供内部测试`，正式签名 Keychain 持久化和真机回归仍待验证。

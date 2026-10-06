@@ -29,7 +29,7 @@
 - [x] 当前提交 `839a335` 的原生 `archive` 和 `-exportArchive` 已完成，解包后的 App 通过 `codesign --verify --deep --strict`，IPA SHA-256 为 `2903ec426518610c96ee3d2e4c60da16f81a1068fb7b3bf8531e3c1ec9855130`，archive dSYM UUID 为 `CBC5924B-9EB3-332A-9337-033714D7BBEB`；不使用 Expo/EAS 云构建或托管签名。
 - [x] iOS 26.5 Simulator 已安装并启动当前 Release `.app`（iPhone 17 Pro Max，UDID `1453B2BD-6F79-4861-9090-03284CF7E859`）；这只证明本机模拟器启动路径，不能替代实体 iPhone/TestFlight 验收。
 - [x] 当前构建已通过 Apple Transporter 交付；Delivery UUID 为 `cb9286fa-4cbd-4a93-9b7c-e75a3509bbcd`，日志为 `UPLOAD SUCCEEDED with no errors`，交付时间为 2026-10-06 13:10（Asia/Shanghai）。
-- [ ] App Store Connect/TestFlight 后台仍需确认构建处理完成并加入内部测试组；Transporter 交付成功不等于实体设备验收完成。
+- [x] Transporter 已显示 `APP 可供内部测试`；构建 1.0.1 (3) 已完成处理并进入 TestFlight 内部测试可用状态。实体设备验收仍待执行。
 
 ## TestFlight 验收
 
