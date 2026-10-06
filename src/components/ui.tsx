@@ -5,6 +5,8 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { VexluneLogo } from '@/src/components/vexlune-logo';
+import { sessionState } from '@/src/auth/session';
+import { formatAdminIdentity } from '@/src/lib/admin-identity';
 import { humanizeApiError } from '@/src/lib/admin-fetch';
 import { theme } from '@/src/theme';
 
@@ -17,6 +19,11 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
   right?: ReactNode;
 }) {
   const pathname = usePathname();
+  // Official Admin Key validation intentionally returns only key status and a
+  // masked key, not an administrator profile. If a JWT-backed session ever
+  // supplies a verified username/email, prefer it; otherwise keep the honest
+  // role label instead of inventing an identity.
+  const adminIdentity = formatAdminIdentity(sessionState.user);
   // Routes declared inside the tabs navigator already receive the native
   // The four primary routes use the native tab bar. Secondary management
   // routes keep the same four-item bar via this Page shell after their native
@@ -51,7 +58,7 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginLeft: 10 }}>
             <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: theme.primarySoft, alignItems: 'center', justifyContent: 'center' }}><UserRound color={theme.primary} size={21} /></View>
-            <View><Text style={{ color: theme.text, fontSize: 11, fontWeight: '900' }}>管理员</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 2 }}>管理端已连接</Text></View>
+            <View><Text numberOfLines={1} style={{ maxWidth: 132, color: theme.text, fontSize: 11, fontWeight: '900' }}>{adminIdentity}</Text><Text style={{ color: theme.subtext, fontSize: 10, marginTop: 2 }}>管理端已连接</Text></View>
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>

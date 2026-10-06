@@ -48,7 +48,7 @@ export default function LoginScreen() {
   const [compliance, setCompliance] = useState<AdminComplianceStatus | null>(null);
   const [complianceConfirmed, setComplianceConfirmed] = useState(false);
 
-  if (hasAuthenticatedAdminSession(config) && !busy) return <Redirect href="/monitor" />;
+  if (hasAuthenticatedAdminSession(config) && !busy) return <Redirect href="/" />;
 
   function errorMessage(reason: unknown) {
     const candidate = reason as { status?: unknown; code?: unknown; message?: unknown } | null;
@@ -74,7 +74,7 @@ export default function LoginScreen() {
       // The helper sends x-api-key directly; it never places the key in a URL
       // or logs it. A successful response proves this is an active admin key.
       await validateAdminApiKey(key);
-      router.replace('/monitor');
+      router.replace('/');
     } catch (reason) {
       if (Number((reason as { status?: unknown })?.status ?? 0) === 423 || String((reason as { code?: unknown })?.code ?? '').toUpperCase() === 'ADMIN_COMPLIANCE_ACK_REQUIRED') {
         try {
@@ -85,7 +85,7 @@ export default function LoginScreen() {
             setComplianceConfirmed(false);
           } else {
             await validateAdminApiKey(key);
-            router.replace('/monitor');
+            router.replace('/');
           }
         } catch (complianceError) {
           setError(errorMessage(complianceError));
@@ -107,7 +107,7 @@ export default function LoginScreen() {
       await validateAdminApiKey(complianceKey);
       setComplianceKey('');
       setCompliance(null);
-      router.replace('/monitor');
+      router.replace('/');
     } catch (reason) {
       setError(errorMessage(reason));
     } finally {

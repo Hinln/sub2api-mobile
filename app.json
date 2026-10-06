@@ -7,8 +7,6 @@
     "icon": "./assets/vexlune-icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/vexlune-splash.png",
-      "resizeMode": "contain",
       "backgroundColor": "#F6F5F9"
     },
     "ios": {

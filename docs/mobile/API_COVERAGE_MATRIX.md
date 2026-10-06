@@ -29,6 +29,16 @@ Status meanings:
 | Rate limit | Any admin route | Respect `Retry-After` when present. | `429`; bounded read retry only, no blind write retry. | `src/lib/admin-fetch.ts`; **MOBILE_IMPLEMENTED** |
 | Local logout | Device only | No key in request body or URL. | Delete the SecureStore key, clear Query cache and return to `/login`; official v0.2.13 has no Admin-Key-specific logout route. | `src/auth/session.ts`, root unauthorized handler; **MOBILE_IMPLEMENTED** |
 
+### Admin identity limitation
+
+The official Admin Key status response contains only `exists` and `masked_key`.
+The v0.2.13 contract does not expose a current-admin profile endpoint for
+`x-api-key` sessions; `/api/v1/auth/me` requires a JWT and must not be called
+with an Admin Key. The shared page header therefore shows a verified JWT
+username/email when one is present for compatibility, and otherwise the honest
+role label `管理员`. It never derives an identity from the key or invents an
+email address.
+
 ## Admin workspace routes
 
 All rows below require the official `AdminAuthMiddleware`. The mobile client
