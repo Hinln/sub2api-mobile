@@ -12,10 +12,15 @@ import type {
   DashboardStats,
   DashboardTrend,
   CreateAccountRequest,
+  CreateGroupRequest,
   CreateUserRequest,
+  UpdateGroupRequest,
+  AdminAccountModelsResponse,
+  AdminProxy,
   PaginatedData,
   PaginationParams,
   SystemVersion,
+  UpdateAccountRequest,
   UsageLog,
   UsageStats,
   UserUsageSummary,
@@ -169,6 +174,42 @@ export function getGroup(groupId: number) {
   return adminFetch<AdminGroup>(`/api/v1/admin/groups/${groupId}`);
 }
 
+export function createGroup(body: CreateGroupRequest, idempotencyKey?: string) {
+  return adminFetch<AdminGroup>('/api/v1/admin/groups', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }, { idempotencyKey });
+}
+
+/**
+ * Returns the server-owned model candidates for a group's allowlist. The
+ * endpoint is optional on older official deployments; callers should surface
+ * its real error instead of inventing a model list.
+ */
+export function getGroupModelAllowlistCandidates(groupId: number, platform?: string) {
+  return adminFetch<{ models: string[] }>(
+    `/api/v1/admin/groups/${groupId}/model-allowlist-candidates${buildQuery({ platform })}`
+  );
+}
+
+/** Update only fields supported by the official Sub2API group handler. */
+export function updateGroup(groupId: number, body: UpdateGroupRequest, idempotencyKey?: string) {
+  return adminFetch<AdminGroup>(
+    `/api/v1/admin/groups/${groupId}`,
+    { method: 'PUT', body: JSON.stringify(body) },
+    { idempotencyKey }
+  );
+}
+
+/** Permanently removes a group through the audited official admin endpoint. */
+export function deleteGroup(groupId: number, idempotencyKey?: string) {
+  return adminFetch<{ message?: string }>(
+    `/api/v1/admin/groups/${groupId}`,
+    { method: 'DELETE' },
+    { idempotencyKey }
+  );
+}
+
 export function listAccounts(search = '', pagination: PaginationParams = {}) {
   return adminFetch<PaginatedData<AdminAccount>>(
     `/api/v1/admin/accounts${buildQuery({ page: pagination.page ?? 1, page_size: pagination.page_size ?? 50, search: search.trim(), status: pagination.status, sort_by: pagination.sort, sort_order: pagination.order })}`
@@ -177,6 +218,47 @@ export function listAccounts(search = '', pagination: PaginationParams = {}) {
 
 export function getAccount(accountId: number) {
   return adminFetch<AdminAccount>(`/api/v1/admin/accounts/${accountId}`);
+}
+
+/** Update non-secret account settings through the official v0.2.13 endpoint.
+ * Credentials are intentionally not part of this request type. The API masks
+ * them on reads; sending them back would risk clearing or replacing a secret.
+ */
+export function updateAccount(accountId: number, body: UpdateAccountRequest, idempotencyKey?: string) {
+  return adminFetch<AdminAccount>(`/api/v1/admin/accounts/${accountId}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  }, { idempotencyKey });
+}
+
+/** Returns models discovered for this upstream account. */
+export function getAccountModels(accountId: number) {
+  return adminFetch<AdminAccountModelsResponse>(`/api/v1/admin/accounts/${accountId}/models`);
+}
+
+/** Ask the upstream account to refresh its model catalogue. */
+export function syncAccountModels(accountId: number, idempotencyKey?: string) {
+  return adminFetch<AdminAccountModelsResponse>(`/api/v1/admin/accounts/${accountId}/models/sync-upstream`, {
+    method: 'POST',
+  }, { idempotencyKey });
+}
+
+/**
+ * Save the complete server-redacted non-secret credential object with the
+ * selected model mapping. The official handler preserves omitted credential
+ * secrets server-side; this mobile client never reads or sends masked API
+ * keys, tokens, cookies, or private keys.
+ */
+export function updateAccountModelMapping(accountId: number, credentials: Record<string, unknown>, idempotencyKey?: string) {
+  return adminFetch<AdminAccount>(`/api/v1/admin/accounts/${accountId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ credentials }),
+  }, { idempotencyKey });
+}
+
+/** Proxies available to bind to an account; secrets are never requested. */
+export function listAccountProxies() {
+  return adminFetch<AdminProxy[] | PaginatedData<AdminProxy> | { items?: AdminProxy[]; proxies?: AdminProxy[] }>('/api/v1/admin/proxies/all');
 }
 
 export function createAccount(body: CreateAccountRequest, idempotencyKey?: string) {

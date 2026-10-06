@@ -116,6 +116,8 @@ export default function RootLayout() {
             <Stack.Screen name="users/[id]" options={detailHeaderOptions('\u7528\u6237\u8be6\u60c5')} />
             <Stack.Screen name="users/create-user" options={detailHeaderOptions('\u521b\u5efa\u7528\u6237')} />
             <Stack.Screen name="accounts/[id]" options={detailHeaderOptions('\u8d26\u53f7\u8be6\u60c5')} />
+            <Stack.Screen name="groups/[id]" options={detailHeaderOptions('\u5206\u7ec4\u8be6\u60c5')} />
+            <Stack.Screen name="groups/create" options={detailHeaderOptions('\u65b0\u5efa\u5206\u7ec4')} />
             <Stack.Screen name="exceptions" options={{ headerShown: false }} />
             <Stack.Screen name="about" options={detailHeaderOptions('\u5173\u4e8e')} />
           </Stack>

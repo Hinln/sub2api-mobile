@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { router, usePathname } from 'expo-router';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { VexluneLogo } from '@/src/components/vexlune-logo';
 import { sessionState } from '@/src/auth/session';
@@ -21,6 +21,7 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
   right?: ReactNode;
 }) {
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   // Official Admin Key validation intentionally returns only key status and a
   // masked key, not an administrator profile. If a JWT-backed session ever
   // supplies a verified username/email, prefer it; otherwise keep the honest
@@ -52,12 +53,16 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
     { path: '/settings', label: '设置', Icon: Settings2 },
   ] as const;
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.page }}>
+    <SafeAreaView edges={standalone ? ['top', 'left', 'right', 'bottom'] : ['top', 'left', 'right']} style={{ flex: 1, backgroundColor: theme.page }}>
       <View pointerEvents="none" style={{ position: 'absolute', top: -110, right: -120, width: 300, height: 300, borderRadius: 150, backgroundColor: theme.primarySoft, opacity: 0.58 }} />
       <View pointerEvents="none" style={{ position: 'absolute', top: 240, left: -190, width: 360, height: 360, borderRadius: 180, backgroundColor: '#DFF4FF', opacity: 0.48 }} />
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 144 }}
+        // Native tab routes already reserve the system/tab-bar area. A large
+        // fixed bottom inset here created a second blank band above the tab
+        // bar. Secondary routes render the custom bar below and still need
+        // enough scroll room to reveal their last controls.
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: standalone ? 96 + insets.bottom : 28 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} /> : undefined}
@@ -81,7 +86,7 @@ export function Page({ title, subtitle, children, refreshing = false, onRefresh,
         </View>
         {children}
       </ScrollView>
-      {standalone ? <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 7, paddingBottom: 18 }}>
+      {standalone ? <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 7, paddingBottom: Math.max(12, insets.bottom) }}>
         {navItems.map((item) => {
           const selected = activePath === item.path;
           const Icon = item.Icon;

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Activity, Bell, CircleCheck, CircleDollarSign, KeyRound, Layers3, RefreshCw, Server, UsersRound } from 'lucide-react-native';
+import { Activity, CircleAlert, CircleCheck, CircleDollarSign, ClipboardCheck, FileClock, KeyRound, Layers3, Megaphone, ReceiptText, RefreshCw, Server, UsersRound } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { Badge, Card, Page, RefreshError, SectionTitle, StateCard } from '@/src/components/ui';
@@ -169,7 +169,7 @@ function DashboardMetric({ icon: Icon, label, value, detail, tone = 'default' }:
 function QuickAction({ icon: Icon, title, subtitle, onPress, tone = 'primary' }: { icon: typeof UsersRound; title: string; subtitle: string; onPress: () => void; tone?: 'primary' | 'success' | 'warning' }) {
   const color = tone === 'success' ? theme.success : tone === 'warning' ? theme.warning : theme.primary;
   const background = tone === 'success' ? theme.successSoft : tone === 'warning' ? theme.warningSoft : theme.primarySoft;
-  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ flex: 1, minWidth: 0, borderRadius: 18, backgroundColor: pressed ? theme.muted : theme.card, borderWidth: 1, borderColor: theme.border, padding: 10, opacity: pressed ? 0.86 : 1 })}>
+  return <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityHint={`打开${title}`} onPress={onPress} style={({ pressed }) => ({ flexBasis: '48%', minWidth: 0, borderRadius: 18, backgroundColor: pressed ? theme.muted : theme.card, borderWidth: 1, borderColor: theme.border, padding: 10, opacity: pressed ? 0.86 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] })}>
     <View style={{ width: 30, height: 30, borderRadius: 11, backgroundColor: background, alignItems: 'center', justifyContent: 'center' }}><Icon color={color} size={15} /></View>
     <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: theme.text, fontSize: 11, fontWeight: '900', marginTop: 8 }}>{title}</Text>
     <Text numberOfLines={1} style={{ color: theme.subtext, fontSize: 9, lineHeight: 13, marginTop: 3 }}>{subtitle}</Text>
@@ -239,7 +239,16 @@ export default function HomeScreen() {
       </View>
 
       <SectionTitle title="快捷操作" />
-      <View style={{ flexDirection: 'row', gap: 8 }}><QuickAction icon={UsersRound} title="用户" subtitle="状态与权限" onPress={() => router.push('/users')} /><QuickAction icon={KeyRound} title="账号" subtitle="节点与凭据" onPress={() => router.push('/accounts')} /><QuickAction icon={Layers3} title="分组" subtitle="模型与倍率" onPress={() => router.push('/groups')} /><QuickAction icon={Bell} title="公告" subtitle="系统通知" tone="warning" onPress={() => router.push('/admin-announcements')} /></View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', columnGap: 8, rowGap: 8 }}>
+        <QuickAction icon={UsersRound} title="用户" subtitle="状态与权限" onPress={() => router.push('/users')} />
+        <QuickAction icon={KeyRound} title="上游账号" subtitle="节点与凭据" onPress={() => router.push('/accounts')} />
+        <QuickAction icon={Layers3} title="分组" subtitle="模型与倍率" onPress={() => router.push('/groups')} />
+        <QuickAction icon={Megaphone} title="公告" subtitle="系统通知" tone="warning" onPress={() => router.push('/admin-announcements')} />
+        <QuickAction icon={ReceiptText} title="订单" subtitle="履约与退款" onPress={() => router.push('/admin-orders')} />
+        <QuickAction icon={CircleAlert} title="异常" subtitle="失败请求与账号" tone="warning" onPress={() => router.push('/exceptions')} />
+        <QuickAction icon={FileClock} title="使用记录" subtitle="请求与 Token" onPress={() => router.push('/logs')} />
+        <QuickAction icon={ClipboardCheck} title="审计日志" subtitle="管理员操作记录" onPress={() => router.push('/admin-security')} />
+      </View>
 
       <SectionTitle title="服务状态" action={<Pressable accessibilityRole="button" accessibilityLabel="查看运维监控" hitSlop={8} onPress={() => router.push('/monitor')} style={({ pressed }) => ({ opacity: pressed ? 0.62 : 1 })}><Text style={{ color: theme.primary, fontSize: 12, fontWeight: '900' }}>查看监控</Text></Pressable>} />
       <Card style={{ padding: 14 }}>

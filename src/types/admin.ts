@@ -178,6 +178,15 @@ export type AdminGroup = {
   is_exclusive?: boolean;
   status?: string;
   subscription_type?: string;
+  /** Official v0.2.13 model allowlist. Omitted in simple-mode responses. */
+  model_allowlist?: {
+    enabled: boolean;
+    models: string[];
+  };
+  /** Official group routing is returned only when enabled/configured. */
+  model_routing?: Record<string, number[]> | null;
+  model_routing_enabled?: boolean;
+  rpm_limit?: number;
   daily_limit_usd?: number | null;
   weekly_limit_usd?: number | null;
   monthly_limit_usd?: number | null;
@@ -185,6 +194,34 @@ export type AdminGroup = {
   sort_order?: number;
   created_at?: string;
   updated_at?: string;
+};
+
+/**
+ * Narrow, tri-state update contract used by the official v0.2.13 handler.
+ * Optional fields are deliberately omitted when the server did not return
+ * them (simple mode), so the app never turns an unavailable value into zero.
+ */
+export type UpdateGroupRequest = {
+  name?: string;
+  description?: string | null;
+  platform?: string;
+  rate_multiplier?: number;
+  is_exclusive?: boolean;
+  status?: 'active' | 'inactive';
+  subscription_type?: 'standard' | 'subscription';
+  model_allowlist?: { enabled: boolean; models: string[] };
+  model_routing?: Record<string, number[]> | null;
+  model_routing_enabled?: boolean;
+  rpm_limit?: number;
+};
+
+export type CreateGroupRequest = {
+  name: string;
+  description?: string;
+  platform?: string;
+  rate_multiplier?: number;
+  is_exclusive?: boolean;
+  subscription_type?: 'standard' | 'subscription';
 };
 
 export type AccountTodayStats = {
@@ -206,15 +243,87 @@ export type AdminAccount = {
   concurrency?: number;
   current_concurrency?: number;
   rate_multiplier?: number;
+  load_factor?: number;
   error_message?: string;
   updated_at?: string;
   last_used_at?: string | null;
   last_success_at?: string | null;
   last_failure_at?: string | null;
   rate_limit_reset_at?: string | null;
+  notes?: string | null;
+  /** Unix timestamp in seconds; 0/null means no expiry. */
+  expires_at?: number | null;
+  proxy_id?: number | null;
+  auto_pause_on_expired?: boolean;
+  enable_billing?: boolean;
+  billing_type?: string | null;
+  /** Server-sanitized non-secret credentials fields (for example model_mapping). */
+  credentials?: Record<string, unknown>;
+  credentials_status?: Record<string, boolean>;
   group_ids?: number[];
   groups?: AdminGroup[];
   extra?: Record<string, string | number | boolean | null>;
+};
+
+/** Fields accepted by the official v0.2.13 account update endpoint.
+ * Credentials are deliberately excluded: the detail response redacts them,
+ * and an update must never send an empty replacement for a hidden secret.
+ */
+export type UpdateAccountRequest = {
+  name?: string;
+  notes?: string | null;
+  type?: AccountType | string;
+  extra?: Record<string, string | number | boolean | null>;
+  proxy_id?: number | null;
+  concurrency?: number;
+  priority?: number;
+  rate_multiplier?: number;
+  load_factor?: number;
+  status?: string;
+  group_ids?: number[];
+  /** Unix timestamp in seconds; send 0 to clear an expiry. */
+  expires_at?: number | null;
+  auto_pause_on_expired?: boolean;
+  enable_billing?: boolean;
+  billing_type?: string | null;
+};
+
+/** Account model metadata returned by the official upstream discovery API. */
+export type AdminAccountModel = {
+  id?: number | string;
+  model?: string;
+  name?: string;
+  display_name?: string;
+  enabled?: boolean;
+  status?: string;
+  source?: string;
+  context_window?: number | null;
+  max_output_tokens?: number | null;
+  [key: string]: unknown;
+};
+
+/** Response shape shared by the account catalogue and upstream sync endpoints. */
+export type AdminAccountModelsResponse =
+  | AdminAccountModel[]
+  | string[]
+  | {
+      models?: (AdminAccountModel | string)[];
+      items?: (AdminAccountModel | string)[];
+      metadata?: Record<string, Partial<AdminAccountModel>>;
+      warnings?: { code?: string; message?: string }[];
+    };
+
+/** Proxy metadata used by the account editor. Secrets are never returned here. */
+export type AdminProxy = {
+  id: number;
+  name?: string;
+  host?: string;
+  port?: number;
+  protocol?: string;
+  type?: string;
+  status?: string;
+  enabled?: boolean;
+  url?: string;
 };
 
 export type UsageLog = {
