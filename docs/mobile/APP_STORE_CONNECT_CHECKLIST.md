@@ -11,7 +11,7 @@
 - [x] Apple Developer 已有有效 Distribution certificates；本机钥匙串已导入 iPhone Distribution 身份，签名验证已通过。
 - [x] 已有有效 Ad Hoc profile `Vexlune Mobile Console Ad Hoc 20260907`，绑定 `com.vexlune.mobile`。
 - [x] 已创建并下载绑定 `com.vexlune.mobile` 与新 iOS Distribution 证书的 App Store profile `Vexlune Mobile Console App Store 20261003 Distribu`，有效期至 2027-10-03。
-- [ ] App Store Connect 尚无上传构建，iPhone 截图当前为 0/10。
+- [x] 已通过 Apple Transporter 交付 1.0.1 (3)；iPhone 截图当前为 0/10。
 
 ## App 记录
 
@@ -25,11 +25,11 @@
 ## 签名与构建
 
 - [x] Xcode 中选择 Team `6KW552MWV6`，Bundle ID 与 App ID 匹配，受控 provisioning profile 与签名身份已验证。
-- [x] ASC 版本与工程 `CFBundleShortVersionString=1.0.1` 已对齐；build number 为 `2`，上传前仍需保持两者一致。
-- [x] 当前工作树提交 `468d76e` 的原生 `archive` 和 `-exportArchive` 已完成，解包后的 App 通过 `codesign --verify --deep --strict`，IPA SHA-256 为 `46ff4bfa94e5720fb8fbe103eaa91ae8f4092d8db90b7c66e42a934ab3180da0`，archive dSYM UUID 为 `CBC5924B-9EB3-332A-9337-033714D7BBEB`；不使用 Expo/EAS 云构建或托管签名。
+- [x] ASC 版本与工程 `CFBundleShortVersionString=1.0.1` 已对齐；本次上传 build number 为 `3`。
+- [x] 当前提交 `839a335` 的原生 `archive` 和 `-exportArchive` 已完成，解包后的 App 通过 `codesign --verify --deep --strict`，IPA SHA-256 为 `2903ec426518610c96ee3d2e4c60da16f81a1068fb7b3bf8531e3c1ec9855130`，archive dSYM UUID 为 `CBC5924B-9EB3-332A-9337-033714D7BBEB`；不使用 Expo/EAS 云构建或托管签名。
 - [x] iOS 26.5 Simulator 已安装并启动当前 Release `.app`（iPhone 17 Pro Max，UDID `1453B2BD-6F79-4861-9090-03284CF7E859`）；这只证明本机模拟器启动路径，不能替代实体 iPhone/TestFlight 验收。
-- [x] 当前 Turnstile 工作树已重新导出包内 App 并通过 `codesign --verify --deep --strict`；已记录 IPA SHA-256 和构建 commit。archive UUID 与 App Store Connect build ID 待上传后补录。
-- [ ] 上传完成后记录 App Store Connect build ID、处理状态和导出日志摘要。
+- [x] 当前构建已通过 Apple Transporter 交付；Delivery UUID 为 `cb9286fa-4cbd-4a93-9b7c-e75a3509bbcd`，日志为 `UPLOAD SUCCEEDED with no errors`，交付时间为 2026-10-06 13:10（Asia/Shanghai）。
+- [ ] App Store Connect/TestFlight 后台仍需确认构建处理完成并加入内部测试组；Transporter 交付成功不等于实体设备验收完成。
 
 ## TestFlight 验收
 
